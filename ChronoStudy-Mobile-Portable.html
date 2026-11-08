@@ -7,113 +7,3327 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="ChronoStudy" />
-  <meta name="description" content="ChronoStudy Portable Mobile & Desktop Planner — Time Blocking, 7-Day Weekly Program, SM-2 Spaced Repetition, Pomodoro Deep Focus, and Eisenhower Matrix." />
-  <title>ChronoStudy — Portable Mobile & Desktop Planner</title>
+  <meta name="description" content="ChronoStudy — Mobile-first Time Blocking, Weekly Study Program, Spaced Repetition (SM-2), Pomodoro Deep Focus, and Eisenhower Task Planner." />
+  <title>ChronoStudy — Time, Program, Study & Task Planner</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
-    :root, [data-theme="light"] {
-      --bg-canvas: hsl(38, 42%, 96%);
-      --bg-surface: hsl(38, 50%, 99%);
-      --bg-elevated: hsl(36, 33%, 93%);
-      --bg-subtle: hsl(36, 25%, 90%);
-      --bg-glass: hsla(38, 50%, 99%, 0.88);
-      --text-primary: hsl(24, 18%, 12%);
-      --text-secondary: hsl(24, 10%, 36%);
-      --text-muted: hsl(24, 8%, 52%);
-      --text-on-accent: hsl(38, 50%, 99%);
-      --border-subtle: hsl(34, 20%, 86%);
-      --border-strong: hsl(32, 18%, 74%);
-      --accent-primary: hsl(16, 60%, 49%);
-      --accent-primary-hover: hsl(16, 64%, 42%);
-      --accent-primary-soft: hsla(16, 60%, 49%, 0.12);
-      --accent-sage: hsl(154, 46%, 34%);
-      --accent-sage-soft: hsla(154, 46%, 34%, 0.12);
-      --accent-navy: hsl(216, 49%, 33%);
-      --accent-navy-soft: hsla(216, 49%, 33%, 0.12);
-      --accent-amber: hsl(37, 74%, 45%);
-      --accent-amber-soft: hsla(37, 74%, 45%, 0.14);
-      --accent-crimson: hsl(355, 62%, 47%);
-      --accent-crimson-soft: hsla(355, 62%, 47%, 0.12);
-      --shadow-xs: 0 1px 2px rgba(28, 22, 18, 0.05);
-      --shadow-sm: 0 4px 12px rgba(28, 22, 18, 0.06), 0 1px 2px rgba(28, 22, 18, 0.04);
-      --shadow-md: 0 10px 28px rgba(28, 22, 18, 0.09);
-      --shadow-lg: 0 20px 48px rgba(28, 22, 18, 0.16);
-      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 22px; --radius-pill: 999px;
-      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-serif: 'Instrument Serif', Georgia, serif;
-      --font-mono: 'JetBrains Mono', monospace;
-    }
-    [data-theme="dark"] {
-      --bg-canvas: hsl(24, 10%, 8%);
-      --bg-surface: hsl(24, 10%, 12%);
-      --bg-elevated: hsl(24, 9%, 16%);
-      --bg-subtle: hsl(24, 8%, 20%);
-      --bg-glass: hsla(24, 10%, 12%, 0.88);
-      --text-primary: hsl(36, 30%, 94%);
-      --text-secondary: hsl(32, 14%, 70%);
-      --text-muted: hsl(28, 9%, 52%);
-      --text-on-accent: hsl(38, 50%, 99%);
-      --border-subtle: hsl(24, 9%, 20%);
-      --border-strong: hsl(24, 10%, 29%);
-      --accent-primary: hsl(18, 70%, 56%);
-      --accent-primary-hover: hsl(18, 72%, 62%);
-      --accent-primary-soft: hsla(18, 70%, 56%, 0.16);
-      --accent-sage: hsl(154, 48%, 46%);
-      --accent-sage-soft: hsla(154, 48%, 46%, 0.16);
-      --accent-navy: hsl(212, 68%, 62%);
-      --accent-navy-soft: hsla(212, 68%, 62%, 0.16);
-      --accent-amber: hsl(39, 84%, 56%);
-      --accent-amber-soft: hsla(39, 84%, 56%, 0.16);
-      --accent-crimson: hsl(355, 72%, 60%);
-      --accent-crimson-soft: hsla(355, 72%, 60%, 0.16);
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: var(--bg-canvas); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
-    button, input, select, textarea { font: inherit; color: inherit; }
-    button { cursor: pointer; border: none; background: none; }
-    .app-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100dvh; max-width: 1480px; margin: 0 auto; }
-    .sidebar-nav { background: var(--bg-surface); border-right: 1px solid var(--border-subtle); padding: 22px 16px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100dvh; }
-    .main-column { display: flex; flex-direction: column; min-width: 0; min-height: 100dvh; }
-    .top-bar { position: sticky; top: 0; z-index: 30; background: var(--bg-glass); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border-subtle); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .main-view { flex: 1; padding: 22px 24px 100px; max-width: 1180px; width: 100%; margin: 0 auto; }
-    .bottom-nav { display: none; }
-    .brand-row { display: flex; align-items: center; gap: 11px; }
-    .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: var(--text-primary); color: var(--bg-surface); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 700; }
-    .brand-title { font-family: var(--font-serif); font-size: 1.5rem; line-height: 1.05; }
-    .nav-list { display: flex; flex-direction: column; gap: 4px; list-style: none; }
-    .nav-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: var(--radius-md); color: var(--text-secondary); font-weight: 500; font-size: 0.9rem; }
-    .nav-btn.active { background: var(--accent-primary-soft); color: var(--accent-primary); font-weight: 600; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; }
-    .btn-primary { background: var(--accent-primary); color: var(--text-on-accent); }
-    .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle); }
-    .surface-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-xs); }
-    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-    .metric-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
-    .metric-tile { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 13px 15px; }
-    .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
-    .metric-value { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; margin-top: 2px; }
-    @media (max-width: 920px) {
-      .app-shell { grid-template-columns: 1fr; }
-      .sidebar-nav { display: none; }
-      .grid-2 { grid-template-columns: 1fr; }
-      .metric-strip { grid-template-columns: repeat(2, 1fr); }
-      .bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: var(--bg-glass); backdrop-filter: blur(14px); border-top: 1px solid var(--border-subtle); padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
-      .bottom-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
-      .bottom-nav-btn.active { color: var(--accent-primary); }
-    }
-  </style>
+:root,
+[data-theme="light"] {
+  --bg-canvas: hsl(38, 42%, 96%);
+  --bg-surface: hsl(38, 50%, 99%);
+  --bg-elevated: hsl(36, 33%, 93%);
+  --bg-subtle: hsl(36, 25%, 90%);
+  --bg-glass: hsla(38, 50%, 99%, 0.88);
+
+  --text-primary: hsl(24, 18%, 12%);
+  --text-secondary: hsl(24, 10%, 36%);
+  --text-muted: hsl(24, 8%, 52%);
+  --text-on-accent: hsl(38, 50%, 99%);
+
+  --border-subtle: hsl(34, 20%, 86%);
+  --border-strong: hsl(32, 18%, 74%);
+
+  --accent-primary: hsl(16, 60%, 49%);
+  --accent-primary-hover: hsl(16, 64%, 42%);
+  --accent-primary-soft: hsla(16, 60%, 49%, 0.12);
+
+  --accent-sage: hsl(154, 46%, 34%);
+  --accent-sage-soft: hsla(154, 46%, 34%, 0.12);
+
+  --accent-navy: hsl(216, 49%, 33%);
+  --accent-navy-soft: hsla(216, 49%, 33%, 0.12);
+
+  --accent-amber: hsl(37, 74%, 45%);
+  --accent-amber-soft: hsla(37, 74%, 45%, 0.14);
+
+  --accent-crimson: hsl(355, 62%, 47%);
+  --accent-crimson-soft: hsla(355, 62%, 47%, 0.12);
+
+  --shadow-xs: 0 1px 2px rgba(28, 22, 18, 0.05);
+  --shadow-sm: 0 4px 12px rgba(28, 22, 18, 0.06), 0 1px 2px rgba(28, 22, 18, 0.04);
+  --shadow-md: 0 10px 28px rgba(28, 22, 18, 0.09), 0 2px 6px rgba(28, 22, 18, 0.05);
+  --shadow-lg: 0 20px 48px rgba(28, 22, 18, 0.16);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+[data-theme="dark"] {
+  --bg-canvas: hsl(24, 10%, 8%);
+  --bg-surface: hsl(24, 10%, 12%);
+  --bg-elevated: hsl(24, 9%, 16%);
+  --bg-subtle: hsl(24, 8%, 20%);
+  --bg-glass: hsla(24, 10%, 12%, 0.88);
+
+  --text-primary: hsl(36, 30%, 94%);
+  --text-secondary: hsl(32, 14%, 70%);
+  --text-muted: hsl(28, 9%, 52%);
+  --text-on-accent: hsl(38, 50%, 99%);
+
+  --border-subtle: hsl(24, 9%, 20%);
+  --border-strong: hsl(24, 10%, 29%);
+
+  --accent-primary: hsl(18, 70%, 56%);
+  --accent-primary-hover: hsl(18, 72%, 62%);
+  --accent-primary-soft: hsla(18, 70%, 56%, 0.16);
+
+  --accent-sage: hsl(154, 48%, 46%);
+  --accent-sage-soft: hsla(154, 48%, 46%, 0.16);
+
+  --accent-navy: hsl(212, 68%, 62%);
+  --accent-navy-soft: hsla(212, 68%, 62%, 0.16);
+
+  --accent-amber: hsl(39, 84%, 56%);
+  --accent-amber-soft: hsla(39, 84%, 56%, 0.16);
+
+  --accent-crimson: hsl(355, 72%, 60%);
+  --accent-crimson-soft: hsla(355, 72%, 60%, 0.16);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 24px 54px rgba(0, 0, 0, 0.65);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+/* App Shell Layout */
+.app-shell {
+  display: grid;
+  grid-template-columns: 268px 1fr;
+  min-height: 100dvh;
+  max-width: 1520px;
+  margin: 0 auto;
+}
+
+.sidebar-nav {
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+
+.main-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 100dvh;
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--bg-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.main-view {
+  flex: 1;
+  padding: 24px 28px 110px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.bottom-nav {
+  display: none;
+}
+
+/* Brand Header */
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px;
+}
+
+.brand-mark {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--text-primary);
+  color: var(--bg-surface);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+}
+
+.brand-title {
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+
+.brand-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Navigation Items */
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+}
+
+.nav-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.92rem;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.12s ease;
+}
+
+.nav-btn-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.nav-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.nav-btn.active {
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.nav-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.nav-btn.active .nav-badge {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+/* Mini Active Focus Banner in Sidebar / Header */
+.mini-focus-card {
+  margin-top: auto;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mini-focus-time {
+  font-family: var(--font-mono);
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Buttons & Controls */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn-primary:hover {
+  background: var(--accent-primary-hover);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-subtle);
+}
+
+.btn-ghost {
+  color: var(--text-secondary);
+  padding: 7px 11px;
+}
+
+.btn-ghost:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.btn-sm {
+  padding: 6px 11px;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: inline-grid;
+  place-items: center;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  transition: all 0.15s ease;
+}
+
+.icon-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* Typography & Section Headers */
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.page-title {
+  font-family: var(--font-serif);
+  font-size: clamp(1.85rem, 3vw, 2.35rem);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.page-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  margin-top: 4px;
+}
+
+/* Quick Capture Bar */
+.quick-capture-bar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+
+.quick-capture-input {
+  flex: 1 1 220px;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.quick-capture-input::placeholder {
+  color: var(--text-muted);
+}
+
+.quick-capture-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.select-pill,
+.input-pill {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  outline: none;
+}
+
+/* Cards & Grid Layouts */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.surface-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.card-title {
+  font-size: 1.02rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Metric Summary Strip */
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.metric-tile {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.metric-sub {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+/* Task List & Items */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 13px 15px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.task-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+.task-card.completed {
+  opacity: 0.64;
+}
+
+.task-card.completed .task-title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.task-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.check-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 2px solid var(--border-strong);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all 0.15s ease;
+  background: var(--bg-surface);
+}
+
+.check-circle:hover {
+  border-color: var(--accent-primary);
+}
+
+.check-circle.checked {
+  background: var(--accent-sage);
+  border-color: var(--accent-sage);
+  color: #fff;
+}
+
+.task-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.task-title {
+  font-weight: 600;
+  font-size: 0.94rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.badge-q1 {
+  background: var(--accent-crimson-soft);
+  color: var(--accent-crimson);
+}
+
+.badge-q2 {
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+}
+
+.badge-q3 {
+  background: var(--accent-amber-soft);
+  color: var(--accent-amber);
+}
+
+.badge-q4 {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.subject-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.subject-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+/* Subtasks */
+.subtask-list {
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.subtask-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.subtask-item.done {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+/* Eisenhower Matrix 2x2 */
+.matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.matrix-quadrant {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 240px;
+}
+
+.quadrant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Day Timeline & Time Blocking */
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.time-block-row {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.time-slot-label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding-top: 10px;
+  text-align: right;
+}
+
+.time-block-card {
+  background: var(--bg-elevated);
+  border-left: 4px solid var(--accent-primary);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Weekly Program Grid */
+.program-days-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 16px;
+}
+
+.day-pill {
+  flex: 1;
+  min-width: 64px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.day-pill.active {
+  background: var(--text-primary);
+  color: var(--bg-surface);
+  border-color: var(--text-primary);
+}
+
+/* Study & Spaced Repetition Flashcard Deck */
+.review-stage {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.flashcard-prompt {
+  font-family: var(--font-serif);
+  font-size: 1.55rem;
+  line-height: 1.3;
+}
+
+.flashcard-answer {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  border-left: 3px solid var(--accent-sage);
+}
+
+.sm2-rating-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.sm2-btn {
+  padding: 11px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+
+.sm2-btn span.interval {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Deep Focus Studio */
+.focus-studio-wrap {
+  max-width: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.timer-ring-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 32px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.timer-svg-wrap {
+  position: relative;
+  width: 240px;
+  height: 240px;
+  display: grid;
+  place-items: center;
+}
+
+.timer-digits {
+  font-family: var(--font-mono);
+  font-size: 3.1rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.timer-mode-tabs {
+  display: inline-flex;
+  background: var(--bg-elevated);
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  gap: 4px;
+}
+
+.timer-mode-tab {
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.timer-mode-tab.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+.soundscape-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+.sound-btn {
+  padding: 12px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.sound-btn.active {
+  background: var(--accent-primary-soft);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+/* Segmented Filter Tabs */
+.filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  background: var(--bg-elevated);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  gap: 4px;
+}
+
+.filter-tab {
+  padding: 7px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.filter-tab.active {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-xs);
+}
+
+/* Progress Bar */
+.progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  border-radius: var(--radius-pill);
+  transition: width 0.25s ease;
+}
+
+/* Habits Row */
+.habit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.habit-pill {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.habit-pill.done {
+  border-color: var(--accent-sage);
+  background: var(--accent-sage-soft);
+}
+
+/* Modals & Toasts */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(15, 12, 10, 0.55);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 90dvh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-canvas);
+  font-size: 0.92rem;
+}
+
+.toast-root {
+  position: fixed;
+  bottom: 84px;
+  right: 20px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast-item {
+  background: var(--text-primary);
+  color: var(--bg-surface);
+  padding: 11px 16px;
+  border-radius: var(--radius-md);
+  font-size: 0.86rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-md);
+}
+
+/* Responsive Mobile-First Adaptation */
+@media (max-width: 960px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-nav {
+    display: none;
+  }
+
+  .top-bar {
+    padding: 12px 16px;
+  }
+
+  .main-view {
+    padding: 18px 16px 104px;
+  }
+
+  .metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid-2,
+  .grid-3,
+  .matrix-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .soundscape-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .bottom-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-subtle);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .bottom-nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .bottom-nav-btn.active {
+    color: var(--accent-primary);
+  }
+}
+
+</style>
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar-nav" id="p-sidebar"></aside>
+  <div id="app-shell" class="app-shell">
+    <!-- Desktop/Tablet Rail & Mobile Header rendered dynamically -->
+    <aside id="sidebar-nav" class="sidebar-nav" aria-label="Primary Navigation"></aside>
+
     <div class="main-column">
-      <header class="top-bar" id="p-topbar"></header>
-      <main class="main-view" id="p-main"></main>
+      <header id="top-bar" class="top-bar"></header>
+      <main id="main-view" class="main-view" tabindex="-1"></main>
     </div>
-    <nav class="bottom-nav" id="p-bottom"></nav>
+
+    <!-- Mobile Bottom Bar -->
+    <nav id="bottom-nav" class="bottom-nav" aria-label="Mobile Navigation"></nav>
   </div>
-  <script type="module" src="./src/main.js"></script>
+
+  <!-- Quick-Add & Modal Root -->
+  <div id="modal-root" class="modal-root" aria-live="polite"></div>
+  <div id="toast-root" class="toast-root" aria-live="assertive"></div>
+
+  <script>
+// Pure Web Audio API Soundscape & Notification Synthesizer (100% offline capable)
+
+class SoundscapeEngine {
+  constructor() {
+    this.ctx = null;
+    this.activeNodes = [];
+    this.currentMode = 'off'; // 'off' | 'brown' | 'rain' | 'gamma'
+    this.volume = 0.35;
+    this.masterGain = null;
+  }
+
+  ensureContext() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioCtx();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.volume;
+      this.masterGain.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  setVolume(val) {
+    this.volume = Math.max(0, Math.min(1, Number(val)));
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  stop() {
+    this.activeNodes.forEach((node) => {
+      try {
+        if (node.stop) node.stop();
+        if (node.disconnect) node.disconnect();
+      } catch (_) {}
+    });
+    this.activeNodes = [];
+    this.currentMode = 'off';
+  }
+
+  play(mode) {
+    if (mode === 'off' || mode === this.currentMode) {
+      this.stop();
+      return 'off';
+    }
+    this.stop();
+    this.ensureContext();
+    this.currentMode = mode;
+
+    if (mode === 'brown') {
+      this.startBrownNoise();
+    } else if (mode === 'rain') {
+      this.startRainSound();
+    } else if (mode === 'gamma') {
+      this.startGammaBinaural();
+    }
+    return this.currentMode;
+  }
+
+  startBrownNoise() {
+    const bufferSize = 2 * this.ctx.sampleRate;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    let lastOut = 0.0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      output[i] = (lastOut + 0.02 * white) / 1.02;
+      lastOut = output[i];
+      output[i] *= 0.18;
+    }
+
+    const whiteNoise = this.ctx.createBufferSource();
+    whiteNoise.buffer = noiseBuffer;
+    whiteNoise.loop = true;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+
+    whiteNoise.connect(filter);
+    filter.connect(this.masterGain);
+    whiteNoise.start(0);
+    this.activeNodes.push(whiteNoise, filter);
+  }
+
+  startRainSound() {
+    const bufferSize = 2 * this.ctx.sampleRate;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.018;
+      b6 = white * 0.115926;
+    }
+
+    const pinkNoise = this.ctx.createBufferSource();
+    pinkNoise.buffer = noiseBuffer;
+    pinkNoise.loop = true;
+
+    const bandpass = this.ctx.createBiquadFilter();
+    bandpass.type = 'bandpass';
+    bandpass.frequency.value = 1100;
+    bandpass.Q.value = 0.7;
+
+    pinkNoise.connect(bandpass);
+    bandpass.connect(this.masterGain);
+    pinkNoise.start(0);
+    this.activeNodes.push(pinkNoise, bandpass);
+  }
+
+  startGammaBinaural() {
+    // 200Hz left + 240Hz right = 40Hz Gamma Focus beat
+    const oscLeft = this.ctx.createOscillator();
+    const oscRight = this.ctx.createOscillator();
+    const panLeft = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+    const panRight = this.ctx.createStereoPanner ? this.ctx.createStereoPanner() : null;
+    const toneGain = this.ctx.createGain();
+    toneGain.gain.value = 0.14;
+
+    oscLeft.type = 'sine';
+    oscRight.type = 'sine';
+    oscLeft.frequency.value = 200;
+    oscRight.frequency.value = 240;
+
+    if (panLeft && panRight) {
+      panLeft.pan.value = -0.8;
+      panRight.pan.value = 0.8;
+      oscLeft.connect(panLeft);
+      oscRight.connect(panRight);
+      panLeft.connect(toneGain);
+      panRight.connect(toneGain);
+    } else {
+      oscLeft.connect(toneGain);
+      oscRight.connect(toneGain);
+    }
+
+    toneGain.connect(this.masterGain);
+    oscLeft.start();
+    oscRight.start();
+    this.activeNodes.push(oscLeft, oscRight, toneGain);
+  }
+
+  playChime() {
+    try {
+      this.ensureContext();
+      const now = this.ctx.currentTime;
+      const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+      notes.forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.11);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.11);
+        gain.gain.exponentialRampToValueAtTime(0.18, now + idx * 0.11 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.11 + 0.9);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.11);
+        osc.stop(now + idx * 0.11 + 0.95);
+      });
+    } catch (_) {}
+  }
+}
+
+const soundEngine = new SoundscapeEngine();
+
+// ChronoStudy Reactive State Store, SM-2 Algorithm, & Calendar/Backup Exporters
+
+const STORAGE_KEY = 'chronostudy_state_v1';
+
+function getTodayISO() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function addDaysISO(baseIso, days) {
+  const d = new Date(baseIso + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysUntil(targetIso) {
+  const today = new Date(getTodayISO() + 'T00:00:00');
+  const target = new Date(targetIso + 'T00:00:00');
+  return Math.round((target - today) / 86400000);
+}
+
+function createDefaultState() {
+  const today = getTodayISO();
+  return {
+    theme: 'light',
+    activeTab: 'today', // 'today' | 'tasks' | 'program' | 'study' | 'focus'
+    selectedDate: today,
+    selectedProgramDay: new Date().getDay() === 0 ? 6 : new Date().getDay() - 1, // 0=Mon..6=Sun
+    taskViewMode: 'list', // 'list' | 'matrix' | 'kanban'
+    taskSubjectFilter: 'all',
+    studySubTab: 'cards', // 'cards' | 'syllabus' | 'exams'
+
+    stats: {
+      totalFocusMinutes: 345,
+      todayFocusMinutes: 75,
+      completedPomodoros: 14,
+      currentStreakDays: 6,
+      lastActiveDate: today
+    },
+
+    subjects: [
+      {
+        id: 'subj-algo',
+        name: 'Algorithms & Data Structures',
+        code: 'CS-301',
+        color: '#C85A32',
+        examDate: addDaysISO(today, 12),
+        targetHoursPerWeek: 8,
+        loggedMinutes: 195
+      },
+      {
+        id: 'subj-linalg',
+        name: 'Linear Algebra & Matrix Theory',
+        code: 'MATH-204',
+        color: '#2B4C7E',
+        examDate: addDaysISO(today, 19),
+        targetHoursPerWeek: 6,
+        loggedMinutes: 140
+      },
+      {
+        id: 'subj-cogpsy',
+        name: 'Cognitive Neuroscience',
+        code: 'PSYC-210',
+        color: '#2E7D5B',
+        examDate: addDaysISO(today, 8),
+        targetHoursPerWeek: 5,
+        loggedMinutes: 110
+      },
+      {
+        id: 'subj-sys',
+        name: 'Distributed Systems Lab',
+        code: 'CS-412',
+        color: '#C6841D',
+        examDate: addDaysISO(today, 5),
+        targetHoursPerWeek: 7,
+        loggedMinutes: 165
+      },
+      {
+        id: 'subj-life',
+        name: 'Personal & Wellness',
+        code: 'LIFE',
+        color: '#7A5C43',
+        examDate: addDaysISO(today, 30),
+        targetHoursPerWeek: 4,
+        loggedMinutes: 60
+      }
+    ],
+
+    tasks: [
+      {
+        id: 'task-1',
+        title: 'Implement Dijkstra & A* shortest-path benchmark report',
+        subjectId: 'subj-algo',
+        quadrant: 'Q1', // Q1: Urgent & Important, Q2: Important Not Urgent, Q3: Urgent Not Important, Q4: Later
+        status: 'in_progress', // 'todo' | 'in_progress' | 'done'
+        completed: false,
+        dueDate: today,
+        estimatedPomodoros: 3,
+        completedPomodoros: 1,
+        notes: 'Compare binary heap vs Fibonacci heap asymptotic & empirical runtime.',
+        subtasks: [
+          { id: 'st-1', text: 'Write adjacency list graph generator', done: true },
+          { id: 'st-2', text: 'Run 100k-node benchmark suite', done: true },
+          { id: 'st-3', text: 'Plot latency curves & write conclusion', done: false }
+        ]
+      },
+      {
+        id: 'task-2',
+        title: 'Complete Singular Value Decomposition (SVD) problem set #6',
+        subjectId: 'subj-linalg',
+        quadrant: 'Q1',
+        status: 'todo',
+        completed: false,
+        dueDate: today,
+        estimatedPomodoros: 2,
+        completedPomodoros: 0,
+        notes: 'Focus on orthogonal projection proofs and low-rank matrix approximation.',
+        subtasks: [
+          { id: 'st-4', text: 'Solve problems 1-4 (eigenvalue decomposition)', done: true },
+          { id: 'st-5', text: 'Complete proof for pseudo-inverse stability', done: false }
+        ]
+      },
+      {
+        id: 'task-3',
+        title: 'Synthesize literature review on Working Memory & Prefrontal Cortex',
+        subjectId: 'subj-cogpsy',
+        quadrant: 'Q2',
+        status: 'todo',
+        completed: false,
+        dueDate: addDaysISO(today, 2),
+        estimatedPomodoros: 4,
+        completedPomodoros: 1,
+        notes: 'Compare Baddeley model updates with modern fMRI findings.',
+        subtasks: [
+          { id: 'st-6', text: 'Annotate 5 primary journal articles', done: true },
+          { id: 'st-7', text: 'Draft methodology comparison section', done: false }
+        ]
+      },
+      {
+        id: 'task-4',
+        title: 'Debug Raft consensus leader election timeout edge case',
+        subjectId: 'subj-sys',
+        quadrant: 'Q1',
+        status: 'in_progress',
+        completed: false,
+        dueDate: addDaysISO(today, 1),
+        estimatedPomodoros: 3,
+        completedPomodoros: 2,
+        notes: 'Check randomized election timer reset when AppendEntries heartbeat arrives.',
+        subtasks: []
+      },
+      {
+        id: 'task-5',
+        title: 'Submit lab partner peer-evaluation form & sync calendar',
+        subjectId: 'subj-sys',
+        quadrant: 'Q3',
+        status: 'todo',
+        completed: false,
+        dueDate: today,
+        estimatedPomodoros: 1,
+        completedPomodoros: 0,
+        notes: 'Quick administrative form on course portal.',
+        subtasks: []
+      },
+      {
+        id: 'task-6',
+        title: '35-minute evening mobility & zone-2 run',
+        subjectId: 'subj-life',
+        quadrant: 'Q2',
+        status: 'done',
+        completed: true,
+        dueDate: today,
+        estimatedPomodoros: 1,
+        completedPomodoros: 1,
+        notes: 'Outdoor track or treadmill recovery pace.',
+        subtasks: []
+      }
+    ],
+
+    // Daily time-blocked schedule keyed by date or list with date
+    scheduleBlocks: [
+      {
+        id: 'blk-1',
+        date: today,
+        startTime: '08:30',
+        endTime: '10:00',
+        title: 'Deep Study: Algorithms Graph Theory & A* Heuristics',
+        subjectId: 'subj-algo',
+        category: 'deep_work',
+        done: true
+      },
+      {
+        id: 'blk-2',
+        date: today,
+        startTime: '10:30',
+        endTime: '12:00',
+        title: 'Lecture: Linear Algebra — Spectral Theorem & SVD',
+        subjectId: 'subj-linalg',
+        category: 'lecture',
+        done: true
+      },
+      {
+        id: 'blk-3',
+        date: today,
+        startTime: '13:30',
+        endTime: '15:00',
+        title: 'Distributed Systems Lab: Raft Log Replication',
+        subjectId: 'subj-sys',
+        category: 'deep_work',
+        done: false
+      },
+      {
+        id: 'blk-4',
+        date: today,
+        startTime: '15:30',
+        endTime: '16:30',
+        title: 'SM-2 Active Recall Flashcard Review + Problem Set #6',
+        subjectId: 'subj-linalg',
+        category: 'review',
+        done: false
+      },
+      {
+        id: 'blk-5',
+        date: today,
+        startTime: '17:30',
+        endTime: '18:15',
+        title: 'Zone-2 Run & Mobility Reset',
+        subjectId: 'subj-life',
+        category: 'wellness',
+        done: false
+      },
+      {
+        id: 'blk-6',
+        date: today,
+        startTime: '19:30',
+        endTime: '21:00',
+        title: 'Cognitive Neuroscience Paper Synthesis',
+        subjectId: 'subj-cogpsy',
+        category: 'deep_work',
+        done: false
+      }
+    ],
+
+    // Recurring Weekly Program Template (0=Mon .. 6=Sun)
+    weeklyProgram: {
+      0: [
+        { id: 'wp-m1', startTime: '08:30', endTime: '10:00', title: 'Algorithms Deep Work Block', subjectId: 'subj-algo', type: 'Deep Study' },
+        { id: 'wp-m2', startTime: '10:30', endTime: '12:00', title: 'Linear Algebra Lecture', subjectId: 'subj-linalg', type: 'Lecture' },
+        { id: 'wp-m3', startTime: '14:00', endTime: '16:00', title: 'Distributed Systems Coding Lab', subjectId: 'subj-sys', type: 'Lab' },
+        { id: 'wp-m4', startTime: '17:30', endTime: '18:30', title: 'Strength & Mobility Conditioning', subjectId: 'subj-life', type: 'Wellness' }
+      ],
+      1: [
+        { id: 'wp-tu1', startTime: '09:00', endTime: '10:30', title: 'Cognitive Neuroscience Seminar', subjectId: 'subj-cogpsy', type: 'Lecture' },
+        { id: 'wp-tu2', startTime: '11:00', endTime: '12:30', title: 'SM-2 Spaced Repetition & Problem Sets', subjectId: 'subj-linalg', type: 'Review' },
+        { id: 'wp-tu3', startTime: '15:00', endTime: '17:00', title: 'Algorithms Competitive Problem Solving', subjectId: 'subj-algo', type: 'Deep Study' }
+      ],
+      2: [
+        { id: 'wp-w1', startTime: '08:30', endTime: '10:00', title: 'Algorithms Lecture & Recitation', subjectId: 'subj-algo', type: 'Lecture' },
+        { id: 'wp-w2', startTime: '10:30', endTime: '12:00', title: 'Linear Algebra Lecture', subjectId: 'subj-linalg', type: 'Lecture' },
+        { id: 'wp-w3', startTime: '14:00', endTime: '16:30', title: 'Distributed Systems Architecture Studio', subjectId: 'subj-sys', type: 'Deep Study' }
+      ],
+      3: [
+        { id: 'wp-th1', startTime: '09:00', endTime: '10:30', title: 'Cognitive Neuroscience Seminar', subjectId: 'subj-cogpsy', type: 'Lecture' },
+        { id: 'wp-th2', startTime: '11:00', endTime: '13:00', title: 'Linear Algebra Proof Workshop', subjectId: 'subj-linalg', type: 'Deep Study' },
+        { id: 'wp-th3', startTime: '15:30', endTime: '17:00', title: 'Weekly Paper Reading & Synthesis', subjectId: 'subj-cogpsy', type: 'Review' }
+      ],
+      4: [
+        { id: 'wp-f1', startTime: '09:00', endTime: '11:00', title: 'Mock Exam & Timed Practice Set', subjectId: 'subj-algo', type: 'Review' },
+        { id: 'wp-f2', startTime: '11:30', endTime: '13:00', title: 'Systems Debugging & Code Review', subjectId: 'subj-sys', type: 'Lab' },
+        { id: 'wp-f3', startTime: '15:00', endTime: '16:00', title: 'Weekly Retrospective & Next Week Planning', subjectId: 'subj-life', type: 'Planning' }
+      ],
+      5: [
+        { id: 'wp-sa1', startTime: '10:00', endTime: '12:00', title: 'Saturday Deep Synthesis & Project Build', subjectId: 'subj-sys', type: 'Deep Study' },
+        { id: 'wp-sa2', startTime: '14:00', endTime: '15:00', title: 'Full Deck SM-2 Spaced Repetition Catch-up', subjectId: 'subj-cogpsy', type: 'Review' }
+      ],
+      6: [
+        { id: 'wp-su1', startTime: '10:30', endTime: '12:00', title: 'Light Concept Review & Reading', subjectId: 'subj-linalg', type: 'Review' },
+        { id: 'wp-su2', startTime: '16:30', endTime: '17:30', title: 'Weekly Time-Block Blueprint & Reset', subjectId: 'subj-life', type: 'Planning' }
+      ]
+    },
+
+    // SM-2 Spaced Repetition Flashcards
+    flashcards: [
+      {
+        id: 'fc-1',
+        subjectId: 'subj-algo',
+        prompt: 'What is the time complexity of Dijkstra’s algorithm using a Fibonacci Heap vs. a Binary Heap?',
+        answer: 'Fibonacci Heap: O(E + V log V) because Decrease-Key is O(1) amortized. Binary Heap: O((V + E) log V).',
+        interval: 1,
+        repetitions: 1,
+        efactor: 2.5,
+        dueDate: today
+      },
+      {
+        id: 'fc-2',
+        subjectId: 'subj-linalg',
+        prompt: 'State the Fundamental Theorem of Linear Algebra for the four subspaces of an m × n matrix A of rank r.',
+        answer: 'Col(A) has dim r in R^m (orth. complement Null(A^T), dim m-r). Row(A) has dim r in R^n (orth. complement Null(A), dim n-r).',
+        interval: 1,
+        repetitions: 2,
+        efactor: 2.6,
+        dueDate: today
+      },
+      {
+        id: 'fc-3',
+        subjectId: 'subj-sys',
+        prompt: 'In the Raft consensus algorithm, what guarantees the Leader Completeness Property?',
+        answer: 'RequestVote RPC restriction: a voter denies its vote if the candidate’s log is less up-to-date than its own (compared by lastLogTerm, then lastLogIndex).',
+        interval: 2,
+        repetitions: 1,
+        efactor: 2.4,
+        dueDate: today
+      },
+      {
+        id: 'fc-4',
+        subjectId: 'subj-cogpsy',
+        prompt: 'How does the Episodic Buffer in Baddeley’s working memory model interact with long-term memory?',
+        answer: 'It acts as a limited-capacity multimodal interface binding visual, phonological, and semantic information into coherent episodes linked to LTM.',
+        interval: 3,
+        repetitions: 2,
+        efactor: 2.5,
+        dueDate: today
+      },
+      {
+        id: 'fc-5',
+        subjectId: 'subj-linalg',
+        prompt: 'Why does the Singular Value Decomposition A = U Σ V^T exist for EVERY matrix, unlike eigendecomposition?',
+        answer: 'Because A^T A is always symmetric and positive semi-definite, guaranteeing orthonormal eigenvectors V and non-negative real singular values σ_i = √λ_i.',
+        interval: 4,
+        repetitions: 3,
+        efactor: 2.7,
+        dueDate: addDaysISO(today, 1)
+      }
+    ],
+
+    // Syllabus Topics for Mastery Tracking
+    syllabusTopics: [
+      { id: 'syl-1', subjectId: 'subj-algo', title: 'Shortest Paths (Dijkstra, Bellman-Ford, A*)', status: 'Reviewing', confidence: 85 },
+      { id: 'syl-2', subjectId: 'subj-algo', title: 'Dynamic Programming & Memoization Proofs', status: 'Learning', confidence: 65 },
+      { id: 'syl-3', subjectId: 'subj-algo', title: 'Network Flow & Max-Flow Min-Cut Theorem', status: 'Not Started', confidence: 20 },
+      { id: 'syl-4', subjectId: 'subj-linalg', title: 'Orthogonal Projections & Least Squares', status: 'Mastered', confidence: 95 },
+      { id: 'syl-5', subjectId: 'subj-linalg', title: 'Singular Value Decomposition (SVD) & PCA', status: 'Learning', confidence: 70 },
+      { id: 'syl-6', subjectId: 'subj-sys', title: 'Raft Leader Election & Log Replication', status: 'Reviewing', confidence: 88 },
+      { id: 'syl-7', subjectId: 'subj-cogpsy', title: 'Prefrontal Executive Control & Attention Networks', status: 'Reviewing', confidence: 80 }
+    ],
+
+    habits: [
+      { id: 'hab-1', name: '90m+ Deep Focus Block', streak: 6, completedToday: true },
+      { id: 'hab-2', name: 'Zero SM-2 Reviews Overdue', streak: 4, completedToday: false },
+      { id: 'hab-3', name: 'Plan Tomorrow Time-Blocks', streak: 9, completedToday: true },
+      { id: 'hab-4', name: '30m Movement / Zone-2 Cardio', streak: 5, completedToday: true }
+    ],
+
+    focusSession: {
+      mode: 'pomodoro', // 'pomodoro' (25) | 'deep' (50) | 'ultradian' (90) | 'break' (5)
+      durationSeconds: 25 * 60,
+      remainingSeconds: 25 * 60,
+      isRunning: false,
+      linkedTaskId: 'task-1',
+      linkedSubjectId: 'subj-algo',
+      soundscape: 'off'
+    }
+  };
+}
+
+class Store {
+  constructor() {
+    this.listeners = new Set();
+    this.state = this.load();
+  }
+
+  load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return createDefaultState();
+      const parsed = JSON.parse(raw);
+      return { ...createDefaultState(), ...parsed };
+    } catch (_) {
+      return createDefaultState();
+    }
+  }
+
+  save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+    } catch (_) {}
+  }
+
+  subscribe(fn) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  notify() {
+    this.save();
+    this.listeners.forEach((fn) => fn(this.state));
+  }
+
+  update(updater) {
+    updater(this.state);
+    this.notify();
+  }
+
+  resetToDemo() {
+    this.state = createDefaultState();
+    this.notify();
+  }
+
+  // SuperMemo-2 (SM-2) Algorithm Implementation
+  // quality: 0 (Again), 3 (Hard), 4 (Good), 5 (Easy)
+  reviewFlashcard(cardId, quality) {
+    this.update((s) => {
+      const card = s.flashcards.find((c) => c.id === cardId);
+      if (!card) return;
+
+      let { repetitions, interval, efactor } = card;
+      if (quality < 3) {
+        repetitions = 0;
+        interval = 1;
+      } else {
+        if (repetitions === 0) {
+          interval = 1;
+        } else if (repetitions === 1) {
+          interval = 3;
+        } else {
+          interval = Math.max(1, Math.round(interval * efactor));
+        }
+        repetitions += 1;
+      }
+
+      efactor = efactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+      if (efactor < 1.3) efactor = 1.3;
+
+      card.repetitions = repetitions;
+      card.interval = interval;
+      card.efactor = Number(efactor.toFixed(2));
+      card.dueDate = addDaysISO(getTodayISO(), interval);
+    });
+  }
+
+  // Apply Weekly Program for a given weekday (0=Mon..6=Sun) to selectedDate
+  applyProgramToDate(weekdayIndex, targetDateIso) {
+    let addedCount = 0;
+    this.update((s) => {
+      const templateBlocks = s.weeklyProgram[weekdayIndex] || [];
+      const existingKeys = new Set(
+        s.scheduleBlocks
+          .filter((b) => b.date === targetDateIso)
+          .map((b) => `${b.startTime}-${b.title}`)
+      );
+
+      templateBlocks.forEach((tpl) => {
+        const key = `${tpl.startTime}-${tpl.title}`;
+        if (!existingKeys.has(key)) {
+          s.scheduleBlocks.push({
+            id: 'blk-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            date: targetDateIso,
+            startTime: tpl.startTime,
+            endTime: tpl.endTime,
+            title: tpl.title,
+            subjectId: tpl.subjectId,
+            category: tpl.type.toLowerCase().includes('lecture') ? 'lecture' : 'deep_work',
+            done: false
+          });
+          addedCount++;
+        }
+      });
+
+      s.scheduleBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    });
+    return addedCount;
+  }
+
+  // Generate standard .ics iCalendar file content for mobile calendar apps
+  exportICS() {
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ChronoStudy Planner//EN',
+      'CALSCALE:GREGORIAN'
+    ];
+
+    this.state.scheduleBlocks.forEach((blk) => {
+      const dateCompact = blk.date.replace(/-/g, '');
+      const startCompact = blk.startTime.replace(':', '') + '00';
+      const endCompact = blk.endTime.replace(':', '') + '00';
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${blk.id}@chronostudy.app`,
+        `DTSTART:${dateCompact}T${startCompact}`,
+        `DTEND:${dateCompact}T${endCompact}`,
+        `SUMMARY:${blk.title}`,
+        `DESCRIPTION:ChronoStudy Scheduled Block (${blk.category})`,
+        'END:VEVENT'
+      );
+    });
+
+    this.state.subjects.forEach((subj) => {
+      if (subj.examDate) {
+        const d = subj.examDate.replace(/-/g, '');
+        lines.push(
+          'BEGIN:VEVENT',
+          `UID:exam-${subj.id}@chronostudy.app`,
+          `DTSTART;VALUE=DATE:${d}`,
+          `SUMMARY:EXAM / MILESTONE: ${subj.name} (${subj.code})`,
+          'END:VEVENT'
+        );
+      }
+    });
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n');
+  }
+}
+
+const store = new Store();
+
+
+let timerInterval = null;
+let revealedCardId = null;
+
+function formatTimeMMSS(totalSec) {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function escapeHTML(str = '') {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function getSubject(subjectId) {
+  return (
+    store.state.subjects.find((s) => s.id === subjectId) || {
+      id: 'default',
+      name: 'General',
+      code: 'GEN',
+      color: '#C85A32'
+    }
+  );
+}
+
+function showToast(message) {
+  const root = document.getElementById('toast-root');
+  if (!root) return;
+  const el = document.createElement('div');
+  el.className = 'toast-item';
+  el.textContent = message;
+  root.appendChild(el);
+  setTimeout(() => {
+    el.remove();
+  }, 3000);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const meta = document.getElementById('meta-theme-color');
+  if (meta) {
+    meta.setAttribute('content', theme === 'dark' ? '#161412' : '#FAF7F2');
+  }
+}
+
+// Focus Timer Loop
+function syncTimerLoop() {
+  if (store.state.focusSession.isRunning && !timerInterval) {
+    timerInterval = setInterval(() => {
+      const fs = store.state.focusSession;
+      if (!fs.isRunning) return;
+      if (fs.remainingSeconds > 1) {
+        store.update((s) => {
+          s.focusSession.remainingSeconds -= 1;
+        });
+      } else {
+        // Session finished!
+        soundEngine.playChime();
+        const minutesCompleted = Math.max(1, Math.round(fs.durationSeconds / 60));
+        store.update((s) => {
+          s.focusSession.isRunning = false;
+          s.focusSession.remainingSeconds = s.focusSession.durationSeconds;
+          if (s.focusSession.mode !== 'break') {
+            s.stats.totalFocusMinutes += minutesCompleted;
+            s.stats.todayFocusMinutes += minutesCompleted;
+            s.stats.completedPomodoros += 1;
+            const task = s.tasks.find((t) => t.id === s.focusSession.linkedTaskId);
+            if (task) task.completedPomodoros = (task.completedPomodoros || 0) + 1;
+            const subj = s.subjects.find((sub) => sub.id === s.focusSession.linkedSubjectId);
+            if (subj) subj.loggedMinutes = (subj.loggedMinutes || 0) + minutesCompleted;
+          }
+        });
+        showToast(`Focus session complete! +${minutesCompleted}m logged.`);
+      }
+    }, 1000);
+  } else if (!store.state.focusSession.isRunning && timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+// Render Shell Navigation (Sidebar + TopBar + Mobile Bottom Nav)
+function renderNavigation() {
+  const s = store.state;
+  const openTasksCount = s.tasks.filter((t) => !t.completed).length;
+  const dueCardsCount = s.flashcards.filter((c) => c.dueDate <= getTodayISO()).length;
+
+  const navItems = [
+    { id: 'today', label: 'Today Hub', badge: null, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>` },
+    { id: 'tasks', label: 'Tasks & Matrix', badge: openTasksCount, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
+    { id: 'program', label: 'Weekly Program', badge: '7d', icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>` },
+    { id: 'study', label: 'Study & SM-2', badge: dueCardsCount || null, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>` },
+    { id: 'focus', label: 'Focus Studio', badge: s.focusSession.isRunning ? 'LIVE' : null, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` }
+  ];
+
+  const sidebar = document.getElementById('sidebar-nav');
+  if (sidebar) {
+    sidebar.innerHTML = `
+      <div class="brand-row">
+        <div class="brand-mark">CS</div>
+        <div>
+          <div class="brand-title">ChronoStudy</div>
+          <div class="brand-subtitle">Planner · Study · Focus PWA</div>
+        </div>
+      </div>
+
+      <ul class="nav-list">
+        ${navItems
+          .map(
+            (item) => `
+          <li>
+            <button class="nav-btn ${s.activeTab === item.id ? 'active' : ''}" data-nav="${item.id}" id="nav-sidebar-${item.id}">
+              <span class="nav-btn-left">${item.icon} <span>${item.label}</span></span>
+              ${item.badge !== null ? `<span class="nav-badge">${item.badge}</span>` : ''}
+            </button>
+          </li>
+        `
+          )
+          .join('')}
+      </ul>
+
+      <div style="margin-top: 8px;">
+        <div class="metric-label" style="padding: 0 8px 8px;">Active Courses</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          ${s.subjects
+            .map((sub) => {
+              const d = daysUntil(sub.examDate);
+              return `
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:8px; background:var(--bg-elevated); font-size:0.8rem;">
+                <span style="display:flex; align-items:center; gap:7px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  <span class="subject-dot" style="background:${sub.color}"></span>
+                  ${escapeHTML(sub.code)}
+                </span>
+                <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">${d >= 0 ? `T-${d}d` : 'Done'}</span>
+              </div>
+            `;
+            })
+            .join('')}
+        </div>
+      </div>
+
+      <div class="mini-focus-card">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span class="metric-label">Focus Timer</span>
+          <span class="badge ${s.focusSession.isRunning ? 'badge-q1' : 'badge-q4'}">${s.focusSession.isRunning ? 'Running' : 'Ready'}</span>
+        </div>
+        <div class="mini-focus-time">${formatTimeMMSS(s.focusSession.remainingSeconds)}</div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-primary btn-sm" style="flex:1;" data-action="toggle-timer" id="sidebar-timer-toggle">
+            ${s.focusSession.isRunning ? 'Pause' : 'Start'}
+          </button>
+          <button class="btn btn-secondary btn-sm" data-nav="focus" id="sidebar-open-studio">Studio</button>
+        </div>
+      </div>
+    `;
+  }
+
+  const topBar = document.getElementById('top-bar');
+  if (topBar) {
+    const dateFormatted = new Date().toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+    topBar.innerHTML = `
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-weight:700; font-size:0.95rem;">${dateFormatted}</span>
+        <span class="badge badge-q2" title="Current Daily Study Streak">Streak: ${s.stats.currentStreakDays}d</span>
+        <span class="badge badge-q4" style="font-family:var(--font-mono);">${s.stats.todayFocusMinutes}m focused today</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn btn-secondary btn-sm" data-action="export-ics" id="btn-export-ics" title="Export Schedule & Exams to Mobile Calendar (.ics)">
+          Calendar .ICS
+        </button>
+        <button class="btn btn-secondary btn-sm" data-action="open-backup-modal" id="btn-open-backup">
+          Sync / Backup
+        </button>
+        <button class="icon-btn" data-action="toggle-theme" id="btn-toggle-theme" title="Toggle Light/Dark Mode" aria-label="Toggle Theme">
+          ${s.theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+      </div>
+    `;
+  }
+
+  const bottomNav = document.getElementById('bottom-nav');
+  if (bottomNav) {
+    bottomNav.innerHTML = navItems
+      .map(
+        (item) => `
+      <button class="bottom-nav-btn ${s.activeTab === item.id ? 'active' : ''}" data-nav="${item.id}" id="nav-mobile-${item.id}">
+        ${item.icon}
+        <span>${item.label.split(' ')[0]}</span>
+      </button>
+    `
+      )
+      .join('');
+  }
+}
+
+// VIEW 1: TODAY HUB (Unified Daily Command Center)
+function renderTodayView() {
+  const s = store.state;
+  const today = getTodayISO();
+  const todayBlocks = s.scheduleBlocks
+    .filter((b) => b.date === s.selectedDate)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const priorityTasks = s.tasks.filter((t) => !t.completed).slice(0, 5);
+  const dueCards = s.flashcards.filter((c) => c.dueDate <= today);
+  const completedTasksCount = s.tasks.filter((t) => t.completed).length;
+
+  return `
+    <section aria-labelledby="heading-today">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="heading-today">Daily Command Center</h1>
+          <p class="page-subtitle">Your unified time-blocks, high-priority study tasks, SM-2 recall queue, and daily habits.</p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="date" class="input-pill" id="today-date-picker" value="${s.selectedDate}" aria-label="Selected Schedule Date" />
+          <button class="btn btn-primary btn-sm" data-action="open-block-modal" id="btn-add-timeblock">+ Time Block</button>
+        </div>
+      </div>
+
+      <!-- Quick Capture Bar -->
+      <form class="quick-capture-bar" id="quick-task-form">
+        <input
+          type="text"
+          class="quick-capture-input"
+          id="quick-task-title"
+          placeholder="Quick-capture a study task, assignment, or errand..."
+          required
+        />
+        <div class="quick-capture-controls">
+          <select class="select-pill" id="quick-task-subject" aria-label="Task Subject">
+            ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+          </select>
+          <select class="select-pill" id="quick-task-quadrant" aria-label="Eisenhower Priority">
+            <option value="Q1">Q1 · Urgent & Important</option>
+            <option value="Q2" selected>Q2 · Important / Deep Work</option>
+            <option value="Q3">Q3 · Quick / Urgent</option>
+            <option value="Q4">Q4 · Later</option>
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm" id="btn-quick-add-submit">Add Task</button>
+        </div>
+      </form>
+
+      <!-- Metric Strip -->
+      <div class="metric-strip">
+        <div class="metric-tile">
+          <span class="metric-label">Focus Logged</span>
+          <span class="metric-value">${s.stats.todayFocusMinutes}m</span>
+          <span class="metric-sub">${s.stats.completedPomodoros} total Pomodoros</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Tasks Completed</span>
+          <span class="metric-value">${completedTasksCount}/${s.tasks.length}</span>
+          <span class="metric-sub">${s.tasks.filter((t) => !t.completed && t.quadrant === 'Q1').length} Q1 critical left</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">SM-2 Cards Due</span>
+          <span class="metric-value">${dueCards.length}</span>
+          <span class="metric-sub">Active recall queue</span>
+        </div>
+        <div class="metric-tile">
+          <span class="metric-label">Nearest Exam</span>
+          <span class="metric-value">${Math.min(...s.subjects.map((sub) => Math.max(0, daysUntil(sub.examDate))))}d</span>
+          <span class="metric-sub">Countdown readiness</span>
+        </div>
+      </div>
+
+      <!-- Two-Column Core Workspace: Time-Block Schedule + Priority Tasks -->
+      <div class="grid-2">
+        <!-- Left: Time-Blocked Schedule -->
+        <div class="surface-card">
+          <div class="card-header">
+            <h2 class="card-title">Time-Blocked Schedule (${s.selectedDate})</h2>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-secondary btn-sm" data-action="apply-today-template" id="btn-apply-template" title="Populate from Weekly Program">
+                Load Routine
+              </button>
+            </div>
+          </div>
+
+          <div class="timeline-container">
+            ${
+              todayBlocks.length === 0
+                ? `<p style="color:var(--text-muted); font-size:0.88rem; padding:16px 0;">No time blocks scheduled for this date yet. Click <strong>Load Routine</strong> or <strong>+ Time Block</strong>.</p>`
+                : todayBlocks
+                    .map((blk) => {
+                      const subj = getSubject(blk.subjectId);
+                      return `
+                      <div class="time-block-row">
+                        <div class="time-slot-label">${blk.startTime}<br/><span style="font-size:0.75rem; opacity:0.75;">${blk.endTime}</span></div>
+                        <div class="time-block-card" style="border-left-color:${subj.color}; ${blk.done ? 'opacity:0.58;' : ''}">
+                          <div>
+                            <div style="font-weight:600; font-size:0.9rem; ${blk.done ? 'text-decoration:line-through;' : ''}">${escapeHTML(blk.title)}</div>
+                            <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+                              <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
+                              <span style="font-size:0.75rem; color:var(--text-muted);">${escapeHTML(blk.category.replace('_', ' '))}</span>
+                            </div>
+                          </div>
+                          <div style="display:flex; align-items:center; gap:6px;">
+                            <button class="check-circle ${blk.done ? 'checked' : ''}" data-action="toggle-block" data-id="${blk.id}" aria-label="Mark block complete">
+                              ${blk.done ? '✓' : ''}
+                            </button>
+                            <button class="btn-ghost btn-sm" data-action="delete-block" data-id="${blk.id}" title="Remove block">✕</button>
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                    })
+                    .join('')
+            }
+          </div>
+        </div>
+
+        <!-- Right: Top Priority Tasks + Spaced Repetition Prompt -->
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          <div class="surface-card">
+            <div class="card-header">
+              <h2 class="card-title">Priority Action Queue</h2>
+              <button class="btn btn-ghost btn-sm" data-nav="tasks">View All →</button>
+            </div>
+            <div class="task-list">
+              ${priorityTasks.map((t) => renderTaskItemHTML(t)).join('')}
+            </div>
+          </div>
+
+          <!-- Daily Habits & Routine Tracker -->
+          <div class="surface-card">
+            <div class="card-header">
+              <h2 class="card-title">Daily Study & Wellness Habits</h2>
+              <button class="btn btn-secondary btn-sm" data-action="add-habit-prompt" id="btn-add-habit">+ Habit</button>
+            </div>
+            <div class="habit-grid">
+              ${s.habits
+                .map(
+                  (h) => `
+                <button class="habit-pill ${h.completedToday ? 'done' : ''}" data-action="toggle-habit" data-id="${h.id}">
+                  <div style="text-align:left;">
+                    <div style="font-weight:600; font-size:0.84rem;">${escapeHTML(h.name)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">Streak: ${h.streak}d</div>
+                  </div>
+                  <span class="check-circle ${h.completedToday ? 'checked' : ''}">${h.completedToday ? '✓' : ''}</span>
+                </button>
+              `
+                )
+                .join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderTaskItemHTML(t) {
+  const subj = getSubject(t.subjectId);
+  const doneSubtasks = (t.subtasks || []).filter((st) => st.done).length;
+  const totalSubtasks = (t.subtasks || []).length;
+
+  return `
+    <div class="task-card ${t.completed ? 'completed' : ''}">
+      <div class="task-left">
+        <button class="check-circle ${t.completed ? 'checked' : ''}" data-action="toggle-task" data-id="${t.id}" aria-label="Toggle task complete">
+          ${t.completed ? '✓' : ''}
+        </button>
+        <div class="task-body">
+          <div class="task-title">${escapeHTML(t.title)}</div>
+          <div class="task-meta">
+            <span class="badge badge-${t.quadrant.toLowerCase()}">${t.quadrant}</span>
+            <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
+            <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">🍅 ${t.completedPomodoros || 0}/${t.estimatedPomodoros || 1}</span>
+            <span style="font-size:0.75rem; color:var(--text-muted);">Due ${t.dueDate}</span>
+          </div>
+          ${
+            totalSubtasks > 0
+              ? `
+            <div class="subtask-list">
+              ${t.subtasks
+                .map(
+                  (st) => `
+                <label class="subtask-item ${st.done ? 'done' : ''}" style="cursor:pointer;">
+                  <input type="checkbox" ${st.done ? 'checked' : ''} data-action="toggle-subtask" data-task-id="${t.id}" data-subtask-id="${st.id}" />
+                  <span>${escapeHTML(st.text)}</span>
+                </label>
+              `
+                )
+                .join('')}
+            </div>
+          `
+              : ''
+          }
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
+        <button class="btn btn-secondary btn-sm" data-action="focus-on-task" data-id="${t.id}" title="Launch Focus Timer for this task">
+          Focus
+        </button>
+        <button class="btn-ghost btn-sm" data-action="delete-task" data-id="${t.id}" title="Delete task">✕</button>
+      </div>
+    </div>
+  `;
+}
+
+// VIEW 2: TASKS & EISENHOWER MATRIX + KANBAN
+function renderTasksView() {
+  const s = store.state;
+  const filteredTasks = s.tasks.filter(
+    (t) => s.taskSubjectFilter === 'all' || t.subjectId === s.taskSubjectFilter
+  );
+
+  let bodyContent = '';
+  if (s.taskViewMode === 'matrix') {
+    const quadrants = [
+      { id: 'Q1', title: 'Q1 · Urgent & Important', subtitle: 'Do Immediately — Deadlines & Crises', badge: 'badge-q1' },
+      { id: 'Q2', title: 'Q2 · Important, Not Urgent', subtitle: 'Schedule Deep Study & Long-Term Mastery', badge: 'badge-q2' },
+      { id: 'Q3', title: 'Q3 · Urgent, Less Important', subtitle: 'Quick Batch / Administrative Tasks', badge: 'badge-q3' },
+      { id: 'Q4', title: 'Q4 · Someday / Low Priority', subtitle: 'Backlog & Optional Exploration', badge: 'badge-q4' }
+    ];
+    bodyContent = `
+      <div class="matrix-grid">
+        ${quadrants
+          .map((q) => {
+            const qTasks = filteredTasks.filter((t) => t.quadrant === q.id);
+            return `
+              <div class="matrix-quadrant">
+                <div class="quadrant-header">
+                  <div>
+                    <div style="font-weight:700; font-size:0.95rem;">${q.title}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">${q.subtitle}</div>
+                  </div>
+                  <span class="badge ${q.badge}">${qTasks.length}</span>
+                </div>
+                <div class="task-list">
+                  ${qTasks.length === 0 ? `<p style="font-size:0.84rem; color:var(--text-muted);">No tasks in ${q.id}.</p>` : qTasks.map((t) => renderTaskItemHTML(t)).join('')}
+                </div>
+              </div>
+            `;
+          })
+          .join('')}
+      </div>
+    `;
+  } else if (s.taskViewMode === 'kanban') {
+    const columns = [
+      { id: 'todo', label: 'To Do', items: filteredTasks.filter((t) => !t.completed && t.status !== 'in_progress') },
+      { id: 'in_progress', label: 'In Progress', items: filteredTasks.filter((t) => !t.completed && t.status === 'in_progress') },
+      { id: 'done', label: 'Completed', items: filteredTasks.filter((t) => t.completed) }
+    ];
+    bodyContent = `
+      <div class="grid-3">
+        ${columns
+          .map(
+            (col) => `
+          <div class="surface-card">
+            <div class="card-header">
+              <h2 class="card-title">${col.label}</h2>
+              <span class="badge badge-q4">${col.items.length}</span>
+            </div>
+            <div class="task-list">
+              ${col.items.map((t) => renderTaskItemHTML(t)).join('')}
+            </div>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    `;
+  } else {
+    bodyContent = `
+      <div class="surface-card">
+        <div class="task-list">
+          ${filteredTasks.length === 0 ? `<p style="color:var(--text-muted);">No matching tasks.</p>` : filteredTasks.map((t) => renderTaskItemHTML(t)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <section aria-labelledby="heading-tasks">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="heading-tasks">Tasks & Eisenhower Matrix</h1>
+          <p class="page-subtitle">Prioritize assignments by urgency and importance, break down subtasks, and launch focus sessions.</p>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+          <div class="filter-tabs" role="tablist">
+            <button class="filter-tab ${s.taskViewMode === 'list' ? 'active' : ''}" data-action="set-task-view" data-view="list">List</button>
+            <button class="filter-tab ${s.taskViewMode === 'matrix' ? 'active' : ''}" data-action="set-task-view" data-view="matrix">Eisenhower 2×2</button>
+            <button class="filter-tab ${s.taskViewMode === 'kanban' ? 'active' : ''}" data-action="set-task-view" data-view="kanban">Kanban Board</button>
+          </div>
+          <select class="select-pill" id="filter-task-subject" aria-label="Filter by Subject">
+            <option value="all" ${s.taskSubjectFilter === 'all' ? 'selected' : ''}>All Courses (${s.tasks.length})</option>
+            ${s.subjects
+              .map(
+                (sub) =>
+                  `<option value="${sub.id}" ${s.taskSubjectFilter === sub.id ? 'selected' : ''}>${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`
+              )
+              .join('')}
+          </select>
+          <button class="btn btn-primary btn-sm" data-action="open-task-modal" id="btn-new-detailed-task">+ Detailed Task</button>
+        </div>
+      </div>
+
+      ${bodyContent}
+    </section>
+  `;
+}
+
+// VIEW 3: WEEKLY PROGRAM & ROUTINE ARCHITECT
+function renderProgramView() {
+  const s = store.state;
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const currentDayIdx = s.selectedProgramDay || 0;
+  const dayBlocks = (s.weeklyProgram[currentDayIdx] || []).sort((a, b) =>
+    a.startTime.localeCompare(b.startTime)
+  );
+
+  return `
+    <section aria-labelledby="heading-program">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="heading-program">Weekly Program Blueprint</h1>
+          <p class="page-subtitle">Design your recurring 7-day academic & personal timetable. Push any day's template directly to your live schedule.</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" data-action="push-program-to-today" id="btn-push-program">
+            Apply ${shortDays[currentDayIdx]} Template to Today
+          </button>
+          <button class="btn btn-primary btn-sm" data-action="open-program-modal" id="btn-add-program-slot">
+            + Add Recurring Slot
+          </button>
+        </div>
+      </div>
+
+      <div class="program-days-bar" role="tablist">
+        ${shortDays
+          .map(
+            (label, idx) => `
+          <button class="day-pill ${idx === currentDayIdx ? 'active' : ''}" data-action="select-program-day" data-day="${idx}">
+            <div>${label}</div>
+            <div style="font-size:0.75rem; opacity:0.75; font-family:var(--font-mono);">${(s.weeklyProgram[idx] || []).length} slots</div>
+          </button>
+        `
+          )
+          .join('')}
+      </div>
+
+      <div class="surface-card">
+        <div class="card-header">
+          <h2 class="card-title">${dayNames[currentDayIdx]} Recurring Timetable</h2>
+          <span class="badge badge-q2">${dayBlocks.length} recurring sessions</span>
+        </div>
+
+        <div class="timeline-container">
+          ${
+            dayBlocks.length === 0
+              ? `<p style="color:var(--text-muted); padding:14px 0;">No recurring slots for ${dayNames[currentDayIdx]}. Click <strong>+ Add Recurring Slot</strong> to build your template.</p>`
+              : dayBlocks
+                  .map((slot) => {
+                    const subj = getSubject(slot.subjectId);
+                    return `
+                    <div class="time-block-row">
+                      <div class="time-slot-label">${slot.startTime}<br/><span style="font-size:0.75rem; opacity:0.75;">${slot.endTime}</span></div>
+                      <div class="time-block-card" style="border-left-color:${subj.color};">
+                        <div>
+                          <div style="font-weight:600; font-size:0.94rem;">${escapeHTML(slot.title)}</div>
+                          <div style="display:flex; gap:8px; margin-top:4px; align-items:center;">
+                            <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.name)}</span>
+                            <span class="badge badge-q4">${escapeHTML(slot.type)}</span>
+                          </div>
+                        </div>
+                        <button class="btn-ghost btn-sm" data-action="delete-program-slot" data-id="${slot.id}" title="Delete recurring slot">✕</button>
+                      </div>
+                    </div>
+                  `;
+                  })
+                  .join('')
+          }
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+// VIEW 4: STUDY & SPACED REPETITION (SM-2) HUB
+function renderStudyView() {
+  const s = store.state;
+  const today = getTodayISO();
+  const dueCards = s.flashcards.filter((c) => c.dueDate <= today);
+  const activeCard = dueCards[0] || s.flashcards[0];
+
+  return `
+    <section aria-labelledby="heading-study">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="heading-study">Study & Spaced Repetition Hub</h1>
+          <p class="page-subtitle">SuperMemo-2 (SM-2) active recall deck, course syllabus mastery tracker, and exam countdowns.</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" data-action="open-subject-modal" id="btn-add-subject">+ Course / Exam</button>
+          <button class="btn btn-primary btn-sm" data-action="open-flashcard-modal" id="btn-add-flashcard">+ SM-2 Flashcard</button>
+        </div>
+      </div>
+
+      <!-- Course & Exam Countdown Strip -->
+      <div class="grid-3" style="margin-bottom:24px;">
+        ${s.subjects
+          .map((sub) => {
+            const d = daysUntil(sub.examDate);
+            const pct = Math.min(100, Math.round(((sub.loggedMinutes || 0) / (sub.targetHoursPerWeek * 60)) * 100));
+            return `
+            <div class="surface-card" style="border-top: 4px solid ${sub.color};">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                <div>
+                  <span style="font-family:var(--font-mono); font-size:0.76rem; color:var(--text-muted);">${escapeHTML(sub.code)}</span>
+                  <h3 style="font-size:1rem; font-weight:700; margin-top:2px;">${escapeHTML(sub.name)}</h3>
+                </div>
+                <span class="badge ${d <= 7 ? 'badge-q1' : 'badge-q2'}">${d >= 0 ? `Exam in ${d}d` : 'Completed'}</span>
+              </div>
+              <div style="margin-top:14px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-secondary); margin-bottom:5px;">
+                  <span>Weekly Study Target (${sub.targetHoursPerWeek}h)</span>
+                  <span style="font-family:var(--font-mono);">${Math.round((sub.loggedMinutes || 0) / 60 * 10) / 10}h (${pct}%)</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" style="width:${pct}%; background:${sub.color};"></div>
+                </div>
+              </div>
+            </div>
+          `;
+          })
+          .join('')}
+      </div>
+
+      <div class="grid-2">
+        <!-- Left: SM-2 Active Recall Reviewer -->
+        <div class="review-stage">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="badge badge-q2">SM-2 Active Recall Queue (${dueCards.length} due today)</span>
+            <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-muted);">Total Deck: ${s.flashcards.length}</span>
+          </div>
+
+          ${
+            activeCard
+              ? (() => {
+                  const subj = getSubject(activeCard.subjectId);
+                  const isRevealed = revealedCardId === activeCard.id;
+                  return `
+                  <div>
+                    <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.name)}</span>
+                    <div class="flashcard-prompt" style="margin-top:12px;">${escapeHTML(activeCard.prompt)}</div>
+                  </div>
+
+                  ${
+                    isRevealed
+                      ? `
+                    <div class="flashcard-answer">
+                      <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-sage); font-weight:700; margin-bottom:4px;">Verified Answer</div>
+                      ${escapeHTML(activeCard.answer)}
+                    </div>
+                    <div>
+                      <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">Rate recall quality to schedule next SM-2 interval:</div>
+                      <div class="sm2-rating-row">
+                        <button class="sm2-btn" data-action="grade-card" data-id="${activeCard.id}" data-quality="0">
+                          <span style="color:var(--accent-crimson);">Again</span>
+                          <span class="interval">1d reset</span>
+                        </button>
+                        <button class="sm2-btn" data-action="grade-card" data-id="${activeCard.id}" data-quality="3">
+                          <span style="color:var(--accent-amber);">Hard</span>
+                          <span class="interval">${Math.max(1, activeCard.interval)}d</span>
+                        </button>
+                        <button class="sm2-btn" data-action="grade-card" data-id="${activeCard.id}" data-quality="4">
+                          <span style="color:var(--accent-primary);">Good</span>
+                          <span class="interval">${activeCard.repetitions === 0 ? 1 : activeCard.repetitions === 1 ? 3 : Math.round(activeCard.interval * activeCard.efactor)}d</span>
+                        </button>
+                        <button class="sm2-btn" data-action="grade-card" data-id="${activeCard.id}" data-quality="5">
+                          <span style="color:var(--accent-sage);">Easy</span>
+                          <span class="interval">${Math.round(Math.max(2, activeCard.interval * activeCard.efactor * 1.3))}d</span>
+                        </button>
+                      </div>
+                    </div>
+                  `
+                      : `
+                    <button class="btn btn-primary" data-action="reveal-card" data-id="${activeCard.id}" id="btn-reveal-answer">
+                      Reveal Answer
+                    </button>
+                  `
+                  }
+                `;
+                })()
+              : `<p style="color:var(--text-muted);">No flashcards in deck yet. Add a card above!</p>`
+          }
+        </div>
+
+        <!-- Right: Syllabus Topic Mastery Matrix -->
+        <div class="surface-card">
+          <div class="card-header">
+            <h2 class="card-title">Syllabus Topic Mastery</h2>
+            <button class="btn btn-secondary btn-sm" data-action="add-syllabus-topic" id="btn-add-topic">+ Topic</button>
+          </div>
+          <div class="task-list">
+            ${s.syllabusTopics
+              .map((topic) => {
+                const subj = getSubject(topic.subjectId);
+                return `
+                <div class="task-card" style="align-items:center;">
+                  <div>
+                    <div style="font-weight:600; font-size:0.9rem;">${escapeHTML(topic.title)}</div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+                      <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
+                      <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">Confidence: ${topic.confidence}%</span>
+                    </div>
+                  </div>
+                  <select class="select-pill" data-action="change-topic-status" data-id="${topic.id}" aria-label="Topic Mastery Status">
+                    ${['Not Started', 'Learning', 'Reviewing', 'Mastered']
+                      .map((st) => `<option value="${st}" ${topic.status === st ? 'selected' : ''}>${st}</option>`)
+                      .join('')}
+                  </select>
+                </div>
+              `;
+              })
+              .join('')}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+// VIEW 5: DEEP FOCUS STUDIO (Pomodoro + Web Audio Synthesizer)
+function renderFocusView() {
+  const s = store.state;
+  const fs = s.focusSession;
+  const pct = fs.durationSeconds > 0 ? ((fs.durationSeconds - fs.remainingSeconds) / fs.durationSeconds) * 100 : 0;
+  const radius = 102;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+
+  const modes = [
+    { id: 'pomodoro', label: 'Pomodoro 25m', minutes: 25 },
+    { id: 'deep', label: 'Deep Work 50m', minutes: 50 },
+    { id: 'ultradian', label: 'Ultradian 90m', minutes: 90 },
+    { id: 'break', label: 'Break 5m', minutes: 5 }
+  ];
+
+  const sounds = [
+    { id: 'off', label: 'Silent', desc: 'Zero audio' },
+    { id: 'brown', label: 'Warm Brown Noise', desc: 'Low-pass acoustic shield' },
+    { id: 'rain', label: 'Soft Study Rain', desc: 'Pink-filtered rainfall' },
+    { id: 'gamma', label: '40Hz Gamma Focus', desc: '200/240Hz binaural beat' }
+  ];
+
+  return `
+    <section class="focus-studio-wrap" aria-labelledby="heading-focus">
+      <div class="page-header" style="margin-bottom:4px;">
+        <div>
+          <h1 class="page-title" id="heading-focus">Deep Focus Studio</h1>
+          <p class="page-subtitle">Link your session to a course or task. Synthesized Web Audio soundscapes work 100% offline on mobile.</p>
+        </div>
+      </div>
+
+      <div class="timer-ring-card">
+        <div class="timer-mode-tabs" role="tablist">
+          ${modes
+            .map(
+              (m) => `
+            <button class="timer-mode-tab ${fs.mode === m.id ? 'active' : ''}" data-action="set-timer-mode" data-mode="${m.id}" data-minutes="${m.minutes}">
+              ${m.label}
+            </button>
+          `
+            )
+            .join('')}
+        </div>
+
+        <div class="timer-svg-wrap">
+          <svg width="240" height="240" viewBox="0 0 240 240" style="transform: rotate(-90deg);">
+            <circle cx="120" cy="120" r="${radius}" fill="none" stroke="var(--bg-elevated)" stroke-width="10" />
+            <circle
+              cx="120"
+              cy="120"
+              r="${radius}"
+              fill="none"
+              stroke="var(--accent-primary)"
+              stroke-width="10"
+              stroke-linecap="round"
+              stroke-dasharray="${circumference}"
+              stroke-dashoffset="${strokeDashoffset}"
+            />
+          </svg>
+          <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div class="timer-digits" id="studio-timer-digits">${formatTimeMMSS(fs.remainingSeconds)}</div>
+            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">
+              ${fs.isRunning ? 'Deep Focus Active' : 'Paused / Ready'}
+            </div>
+          </div>
+        </div>
+
+        <!-- Linked Task & Subject Selectors -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:520px;">
+          <div class="form-group" style="text-align:left;">
+            <label class="form-label" for="focus-task-select">Active Task</label>
+            <select class="select-pill" id="focus-task-select">
+              ${s.tasks
+                .filter((t) => !t.completed)
+                .map((t) => `<option value="${t.id}" ${fs.linkedTaskId === t.id ? 'selected' : ''}>${escapeHTML(t.title)}</option>`)
+                .join('')}
+            </select>
+          </div>
+          <div class="form-group" style="text-align:left;">
+            <label class="form-label" for="focus-subject-select">Course Log Target</label>
+            <select class="select-pill" id="focus-subject-select">
+              ${s.subjects
+                .map((sub) => `<option value="${sub.id}" ${fs.linkedSubjectId === sub.id ? 'selected' : ''}>${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`)
+                .join('')}
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; justify-content:center;">
+          <button class="btn btn-primary" style="padding:12px 28px; font-size:1rem;" data-action="toggle-timer" id="btn-main-timer-toggle">
+            ${fs.isRunning ? 'Pause Session' : 'Start Focus Session'}
+          </button>
+          <button class="btn btn-secondary" data-action="reset-timer" id="btn-reset-timer">Reset</button>
+          <button class="btn btn-secondary" data-action="complete-session-now" id="btn-log-now" title="Finish & Log Session Minutes Now">
+            Log Now
+          </button>
+        </div>
+      </div>
+
+      <!-- Offline Web Audio Soundscapes -->
+      <div class="surface-card">
+        <div class="card-header">
+          <h2 class="card-title">Synthesized Acoustic Soundscapes (Offline Web Audio)</h2>
+          <input
+            type="range"
+            min="0.05"
+            max="0.9"
+            step="0.05"
+            value="${soundEngine.volume}"
+            id="sound-volume-slider"
+            aria-label="Soundscape Volume"
+            style="width:110px;"
+          />
+        </div>
+        <div class="soundscape-grid">
+          ${sounds
+            .map(
+              (snd) => `
+            <button class="sound-btn ${soundEngine.currentMode === snd.id ? 'active' : ''}" data-action="toggle-sound" data-sound="${snd.id}">
+              <span>${snd.label}</span>
+              <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">${snd.desc}</span>
+            </button>
+          `
+            )
+            .join('')}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+// MODALS (Add Detailed Task, Add Time Block, Add Recurring Slot, Add Flashcard, Add Subject, Backup/Sync)
+function openModal(type) {
+  const modalRoot = document.getElementById('modal-root');
+  if (!modalRoot) return;
+  const s = store.state;
+
+  let content = '';
+  if (type === 'task') {
+    content = `
+      <h2 class="card-title">New Detailed Study Task</h2>
+      <form id="modal-task-form" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Task Title</label>
+          <input type="text" class="form-input" name="title" required placeholder="e.g., Derive backpropagation matrix gradients" />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Course / Subject</label>
+            <select class="form-select" name="subjectId">
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Eisenhower Quadrant</label>
+            <select class="form-select" name="quadrant">
+              <option value="Q1">Q1 · Urgent & Important</option>
+              <option value="Q2" selected>Q2 · Important, Not Urgent</option>
+              <option value="Q3">Q3 · Urgent, Quick Batch</option>
+              <option value="Q4">Q4 · Later / Backlog</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-input" name="dueDate" value="${getTodayISO()}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estimated Pomodoros (25m)</label>
+            <input type="number" class="form-input" name="estimatedPomodoros" value="2" min="1" max="16" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subtasks (one per line)</label>
+          <textarea class="form-textarea" name="subtasks" rows="3" placeholder="Read lecture notes&#10;Solve practice problems 1-5&#10;Verify solutions"></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Task</button>
+        </div>
+      </form>
+    `;
+  } else if (type === 'block') {
+    content = `
+      <h2 class="card-title">Schedule Time Block (${s.selectedDate})</h2>
+      <form id="modal-block-form" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Session / Activity Title</label>
+          <input type="text" class="form-input" name="title" required placeholder="e.g., Deep Work: Linear Algebra Problem Set" />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Start Time</label>
+            <input type="time" class="form-input" name="startTime" value="14:00" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Time</label>
+            <input type="time" class="form-input" name="endTime" value="15:30" required />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Course</label>
+            <select class="form-select" name="subjectId">
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" name="category">
+              <option value="deep_work">Deep Work</option>
+              <option value="lecture">Lecture / Seminar</option>
+              <option value="review">SM-2 Review</option>
+              <option value="wellness">Exercise / Break</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to Schedule</button>
+        </div>
+      </form>
+    `;
+  } else if (type === 'program') {
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    content = `
+      <h2 class="card-title">Add Recurring Slot (${dayNames[s.selectedProgramDay || 0]})</h2>
+      <form id="modal-program-form" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Recurring Block Title</label>
+          <input type="text" class="form-input" name="title" required placeholder="e.g., Algorithms Recitation & Lab" />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Start Time</label>
+            <input type="time" class="form-input" name="startTime" value="10:00" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Time</label>
+            <input type="time" class="form-input" name="endTime" value="11:30" required />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Course</label>
+            <select class="form-select" name="subjectId">
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Session Type</label>
+            <select class="form-select" name="type">
+              <option value="Deep Study">Deep Study</option>
+              <option value="Lecture">Lecture</option>
+              <option value="Lab">Lab</option>
+              <option value="Review">Review</option>
+              <option value="Wellness">Wellness</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Recurring Slot</button>
+        </div>
+      </form>
+    `;
+  } else if (type === 'flashcard') {
+    content = `
+      <h2 class="card-title">Create SM-2 Spaced Repetition Flashcard</h2>
+      <form id="modal-flashcard-form" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Course</label>
+          <select class="form-select" name="subjectId">
+            ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Question / Active Recall Prompt</label>
+          <textarea class="form-textarea" name="prompt" rows="3" required placeholder="State the theorem, complexity bound, or mechanism..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Answer / Key Proof Idea</label>
+          <textarea class="form-textarea" name="answer" rows="3" required placeholder="Concise verifiable answer..."></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to SM-2 Deck</button>
+        </div>
+      </form>
+    `;
+  } else if (type === 'subject') {
+    content = `
+      <h2 class="card-title">Add Course or Exam Goal</h2>
+      <form id="modal-subject-form" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Course Code</label>
+            <input type="text" class="form-input" name="code" required placeholder="e.g., BIO-202" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color Tag</label>
+            <input type="color" class="form-input" name="color" value="#C85A32" style="height:42px; padding:4px;" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Course / Program Name</label>
+          <input type="text" class="form-input" name="name" required placeholder="e.g., Molecular Genetics" />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Exam / Target Date</label>
+            <input type="date" class="form-input" name="examDate" value="${getTodayISO()}" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Weekly Target Hours</label>
+            <input type="number" class="form-input" name="targetHoursPerWeek" value="6" min="1" max="40" />
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Course</button>
+        </div>
+      </form>
+    `;
+  } else if (type === 'backup') {
+    content = `
+      <h2 class="card-title">Mobile PWA Install & Cloud Data Sync</h2>
+      <p style="font-size:0.88rem; color:var(--text-secondary);">
+        ChronoStudy stores your data offline-first on your device. Export a JSON snapshot anytime to back up to Google Drive or GitHub, or restore on your phone.
+      </p>
+      <div style="display:flex; flex-wrap:wrap; gap:10px;">
+        <button class="btn btn-primary btn-sm" data-action="download-json-backup">Export JSON Backup</button>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+          Import JSON Backup
+          <input type="file" id="import-json-input" accept=".json" style="display:none;" />
+        </label>
+        <button class="btn btn-secondary btn-sm" data-action="reset-demo-data">Reset Demo Data</button>
+      </div>
+      <div style="background:var(--bg-elevated); padding:14px; border-radius:var(--radius-md); font-size:0.83rem; color:var(--text-secondary);">
+        <strong style="color:var(--text-primary);">Use on Mobile Anywhere:</strong>
+        <ul style="margin-left:18px; margin-top:6px; display:flex; flex-direction:column; gap:4px;">
+          <li><strong>iOS Safari:</strong> Tap <em>Share → Add to Home Screen</em> for full-screen offline mode.</li>
+          <li><strong>Android Chrome:</strong> Tap <em>Install App / Add to Home Screen</em>.</li>
+          <li><strong>Calendar Sync:</strong> Tap <em>Calendar .ICS</em> in the top bar to import blocks into Apple/Google Calendar.</li>
+        </ul>
+      </div>
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" data-action="close-modal">Done</button>
+      </div>
+    `;
+  }
+
+  modalRoot.innerHTML = `
+    <div class="modal-backdrop" data-action="backdrop-close">
+      <div class="modal-card" role="dialog" aria-modal="true">
+        ${content}
+      </div>
+    </div>
+  `;
+}
+
+function closeModal() {
+  const modalRoot = document.getElementById('modal-root');
+  if (modalRoot) modalRoot.innerHTML = '';
+}
+
+function renderApp() {
+  applyTheme(store.state.theme);
+  syncTimerLoop();
+  renderNavigation();
+
+  const mainView = document.getElementById('main-view');
+  if (!mainView) return;
+
+  const tab = store.state.activeTab;
+  if (tab === 'today') mainView.innerHTML = renderTodayView();
+  else if (tab === 'tasks') mainView.innerHTML = renderTasksView();
+  else if (tab === 'program') mainView.innerHTML = renderProgramView();
+  else if (tab === 'study') mainView.innerHTML = renderStudyView();
+  else if (tab === 'focus') mainView.innerHTML = renderFocusView();
+}
+
+// Event Delegation
+document.addEventListener('click', (e) => {
+  const navBtn = e.target.closest('[data-nav]');
+  if (navBtn) {
+    const tab = navBtn.getAttribute('data-nav');
+    store.update((s) => {
+      s.activeTab = tab;
+    });
+    return;
+  }
+
+  const actionEl = e.target.closest('[data-action]');
+  if (!actionEl) return;
+  const action = actionEl.getAttribute('data-action');
+  const id = actionEl.getAttribute('data-id');
+
+  if (action === 'toggle-theme') {
+    store.update((s) => {
+      s.theme = s.theme === 'dark' ? 'light' : 'dark';
+    });
+  } else if (action === 'toggle-task') {
+    store.update((s) => {
+      const t = s.tasks.find((x) => x.id === id);
+      if (t) {
+        t.completed = !t.completed;
+        t.status = t.completed ? 'done' : 'todo';
+      }
+    });
+  } else if (action === 'delete-task') {
+    store.update((s) => {
+      s.tasks = s.tasks.filter((x) => x.id !== id);
+    });
+    showToast('Task removed');
+  } else if (action === 'focus-on-task') {
+    store.update((s) => {
+      const t = s.tasks.find((x) => x.id === id);
+      if (t) {
+        s.focusSession.linkedTaskId = t.id;
+        s.focusSession.linkedSubjectId = t.subjectId;
+      }
+      s.activeTab = 'focus';
+    });
+  } else if (action === 'toggle-block') {
+    store.update((s) => {
+      const b = s.scheduleBlocks.find((x) => x.id === id);
+      if (b) b.done = !b.done;
+    });
+  } else if (action === 'delete-block') {
+    store.update((s) => {
+      s.scheduleBlocks = s.scheduleBlocks.filter((x) => x.id !== id);
+    });
+  } else if (action === 'apply-today-template') {
+    const d = new Date(store.state.selectedDate + 'T12:00:00');
+    const weekdayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    const count = store.applyProgramToDate(weekdayIdx, store.state.selectedDate);
+    showToast(count > 0 ? `Added ${count} blocks from Weekly Program` : 'Routine blocks already in schedule');
+  } else if (action === 'toggle-habit') {
+    store.update((s) => {
+      const h = s.habits.find((x) => x.id === id);
+      if (h) {
+        h.completedToday = !h.completedToday;
+        h.streak += h.completedToday ? 1 : -1;
+      }
+    });
+  } else if (action === 'add-habit-prompt') {
+    const name = prompt('Enter daily study or wellness habit name:');
+    if (name && name.trim()) {
+      store.update((s) => {
+        s.habits.push({
+          id: 'hab-' + Date.now(),
+          name: name.trim(),
+          streak: 1,
+          completedToday: false
+        });
+      });
+    }
+  } else if (action === 'set-task-view') {
+    const view = actionEl.getAttribute('data-view');
+    store.update((s) => {
+      s.taskViewMode = view;
+    });
+  } else if (action === 'select-program-day') {
+    const day = Number(actionEl.getAttribute('data-day'));
+    store.update((s) => {
+      s.selectedProgramDay = day;
+    });
+  } else if (action === 'push-program-to-today') {
+    const count = store.applyProgramToDate(store.state.selectedProgramDay || 0, getTodayISO());
+    store.update((s) => {
+      s.selectedDate = getTodayISO();
+      s.activeTab = 'today';
+    });
+    showToast(`Applied ${count} template slots to Today!`);
+  } else if (action === 'delete-program-slot') {
+    store.update((s) => {
+      const day = s.selectedProgramDay || 0;
+      s.weeklyProgram[day] = (s.weeklyProgram[day] || []).filter((x) => x.id !== id);
+    });
+  } else if (action === 'reveal-card') {
+    revealedCardId = id;
+    renderApp();
+  } else if (action === 'grade-card') {
+    const quality = Number(actionEl.getAttribute('data-quality'));
+    revealedCardId = null;
+    store.reviewFlashcard(id, quality);
+    showToast('SM-2 review interval updated!');
+  } else if (action === 'add-syllabus-topic') {
+    const title = prompt('Enter syllabus topic or chapter title:');
+    if (title && title.trim()) {
+      store.update((s) => {
+        s.syllabusTopics.push({
+          id: 'syl-' + Date.now(),
+          subjectId: s.subjects[0]?.id || 'subj-algo',
+          title: title.trim(),
+          status: 'Learning',
+          confidence: 50
+        });
+      });
+    }
+  } else if (action === 'set-timer-mode') {
+    const mode = actionEl.getAttribute('data-mode');
+    const minutes = Number(actionEl.getAttribute('data-minutes'));
+    store.update((s) => {
+      s.focusSession.mode = mode;
+      s.focusSession.isRunning = false;
+      s.focusSession.durationSeconds = minutes * 60;
+      s.focusSession.remainingSeconds = minutes * 60;
+    });
+  } else if (action === 'toggle-timer') {
+    store.update((s) => {
+      s.focusSession.isRunning = !s.focusSession.isRunning;
+    });
+  } else if (action === 'reset-timer') {
+    store.update((s) => {
+      s.focusSession.isRunning = false;
+      s.focusSession.remainingSeconds = s.focusSession.durationSeconds;
+    });
+  } else if (action === 'complete-session-now') {
+    const elapsedMin = Math.max(
+      1,
+      Math.round((store.state.focusSession.durationSeconds - store.state.focusSession.remainingSeconds) / 60) ||
+        Math.round(store.state.focusSession.durationSeconds / 60)
+    );
+    soundEngine.playChime();
+    store.update((s) => {
+      s.focusSession.isRunning = false;
+      s.focusSession.remainingSeconds = s.focusSession.durationSeconds;
+      s.stats.totalFocusMinutes += elapsedMin;
+      s.stats.todayFocusMinutes += elapsedMin;
+      s.stats.completedPomodoros += 1;
+      const task = s.tasks.find((t) => t.id === s.focusSession.linkedTaskId);
+      if (task) task.completedPomodoros = (task.completedPomodoros || 0) + 1;
+      const subj = s.subjects.find((sub) => sub.id === s.focusSession.linkedSubjectId);
+      if (subj) subj.loggedMinutes = (subj.loggedMinutes || 0) + elapsedMin;
+    });
+    showToast(`Logged +${elapsedMin}m to course & task!`);
+  } else if (action === 'toggle-sound') {
+    const snd = actionEl.getAttribute('data-sound');
+    const nextMode = soundEngine.play(snd);
+    store.update((s) => {
+      s.focusSession.soundscape = nextMode;
+    });
+  } else if (action === 'open-task-modal') {
+    openModal('task');
+  } else if (action === 'open-block-modal') {
+    openModal('block');
+  } else if (action === 'open-program-modal') {
+    openModal('program');
+  } else if (action === 'open-flashcard-modal') {
+    openModal('flashcard');
+  } else if (action === 'open-subject-modal') {
+    openModal('subject');
+  } else if (action === 'open-backup-modal') {
+    openModal('backup');
+  } else if (action === 'close-modal' || (action === 'backdrop-close' && e.target === actionEl)) {
+    closeModal();
+  } else if (action === 'export-ics') {
+    const icsData = store.exportICS();
+    const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chronostudy-schedule-${getTodayISO()}.ics`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Exported .ICS calendar file!');
+  } else if (action === 'download-json-backup') {
+    const dataStr = JSON.stringify(store.state, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chronostudy-backup-${getTodayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Backup JSON downloaded!');
+  } else if (action === 'reset-demo-data') {
+    store.resetToDemo();
+    closeModal();
+    showToast('Demo data restored');
+  }
+});
+
+// Change & Form Events
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.id === 'today-date-picker') {
+    store.update((s) => {
+      s.selectedDate = t.value;
+    });
+  } else if (t.id === 'filter-task-subject') {
+    store.update((s) => {
+      s.taskSubjectFilter = t.value;
+    });
+  } else if (t.id === 'focus-task-select') {
+    store.update((s) => {
+      s.focusSession.linkedTaskId = t.value;
+    });
+  } else if (t.id === 'focus-subject-select') {
+    store.update((s) => {
+      s.focusSession.linkedSubjectId = t.value;
+    });
+  } else if (t.id === 'sound-volume-slider') {
+    soundEngine.setVolume(t.value);
+  } else if (t.getAttribute('data-action') === 'toggle-subtask') {
+    const taskId = t.getAttribute('data-task-id');
+    const subtaskId = t.getAttribute('data-subtask-id');
+    store.update((s) => {
+      const task = s.tasks.find((x) => x.id === taskId);
+      const st = task?.subtasks?.find((x) => x.id === subtaskId);
+      if (st) st.done = t.checked;
+    });
+  } else if (t.getAttribute('data-action') === 'change-topic-status') {
+    const id = t.getAttribute('data-id');
+    const statusMap = { 'Not Started': 20, Learning: 60, Reviewing: 85, Mastered: 98 };
+    store.update((s) => {
+      const top = s.syllabusTopics.find((x) => x.id === id);
+      if (top) {
+        top.status = t.value;
+        top.confidence = statusMap[t.value] || 70;
+      }
+    });
+  } else if (t.id === 'import-json-input' && t.files?.[0]) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        store.update((s) => {
+          Object.assign(s, parsed);
+        });
+        closeModal();
+        showToast('Backup restored successfully!');
+      } catch (_) {
+        showToast('Invalid JSON backup file');
+      }
+    };
+    reader.readAsText(t.files[0]);
+  }
+});
+
+document.addEventListener('submit', (e) => {
+  const form = e.target;
+  if (form.id === 'quick-task-form') {
+    e.preventDefault();
+    const title = document.getElementById('quick-task-title').value.trim();
+    const subjectId = document.getElementById('quick-task-subject').value;
+    const quadrant = document.getElementById('quick-task-quadrant').value;
+    if (!title) return;
+    store.update((s) => {
+      s.tasks.unshift({
+        id: 'task-' + Date.now(),
+        title,
+        subjectId,
+        quadrant,
+        status: 'todo',
+        completed: false,
+        dueDate: s.selectedDate || getTodayISO(),
+        estimatedPomodoros: 2,
+        completedPomodoros: 0,
+        subtasks: []
+      });
+    });
+    showToast('Task added to queue!');
+  } else if (form.id === 'modal-task-form') {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const subtasksRaw = String(fd.get('subtasks') || '')
+      .split('\n')
+      .map((x) => x.trim())
+      .filter(Boolean);
+    store.update((s) => {
+      s.tasks.unshift({
+        id: 'task-' + Date.now(),
+        title: fd.get('title'),
+        subjectId: fd.get('subjectId'),
+        quadrant: fd.get('quadrant'),
+        status: 'todo',
+        completed: false,
+        dueDate: fd.get('dueDate'),
+        estimatedPomodoros: Number(fd.get('estimatedPomodoros') || 2),
+        completedPomodoros: 0,
+        subtasks: subtasksRaw.map((txt, i) => ({ id: `st-${Date.now()}-${i}`, text: txt, done: false }))
+      });
+    });
+    closeModal();
+    showToast('Detailed task created!');
+  } else if (form.id === 'modal-block-form') {
+    e.preventDefault();
+    const fd = new FormData(form);
+    store.update((s) => {
+      s.scheduleBlocks.push({
+        id: 'blk-' + Date.now(),
+        date: s.selectedDate,
+        startTime: fd.get('startTime'),
+        endTime: fd.get('endTime'),
+        title: fd.get('title'),
+        subjectId: fd.get('subjectId'),
+        category: fd.get('category'),
+        done: false
+      });
+    });
+    closeModal();
+    showToast('Time block scheduled!');
+  } else if (form.id === 'modal-program-form') {
+    e.preventDefault();
+    const fd = new FormData(form);
+    store.update((s) => {
+      const day = s.selectedProgramDay || 0;
+      if (!s.weeklyProgram[day]) s.weeklyProgram[day] = [];
+      s.weeklyProgram[day].push({
+        id: 'wp-' + Date.now(),
+        startTime: fd.get('startTime'),
+        endTime: fd.get('endTime'),
+        title: fd.get('title'),
+        subjectId: fd.get('subjectId'),
+        type: fd.get('type')
+      });
+    });
+    closeModal();
+    showToast('Recurring slot added to Weekly Program!');
+  } else if (form.id === 'modal-flashcard-form') {
+    e.preventDefault();
+    const fd = new FormData(form);
+    store.update((s) => {
+      s.flashcards.unshift({
+        id: 'fc-' + Date.now(),
+        subjectId: fd.get('subjectId'),
+        prompt: fd.get('prompt'),
+        answer: fd.get('answer'),
+        interval: 1,
+        repetitions: 0,
+        efactor: 2.5,
+        dueDate: getTodayISO()
+      });
+    });
+    closeModal();
+    showToast('SM-2 Flashcard added!');
+  } else if (form.id === 'modal-subject-form') {
+    e.preventDefault();
+    const fd = new FormData(form);
+    store.update((s) => {
+      s.subjects.push({
+        id: 'subj-' + Date.now(),
+        code: fd.get('code'),
+        name: fd.get('name'),
+        color: fd.get('color'),
+        examDate: fd.get('examDate'),
+        targetHoursPerWeek: Number(fd.get('targetHoursPerWeek') || 6),
+        loggedMinutes: 0
+      });
+    });
+    closeModal();
+    showToast('New course added!');
+  }
+});
+
+// Register Service Worker for Mobile Offline PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+store.subscribe(renderApp);
+renderApp();
+
+</script>
 </body>
 </html>

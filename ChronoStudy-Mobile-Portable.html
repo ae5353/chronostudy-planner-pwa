@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#FAF7F2" id="meta-theme-color" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ChronoStudy" />
+  <meta name="description" content="ChronoStudy Portable Mobile & Desktop Planner — Time Blocking, 7-Day Weekly Program, SM-2 Spaced Repetition, Pomodoro Deep Focus, and Eisenhower Matrix." />
+  <title>ChronoStudy — Portable Mobile & Desktop Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root, [data-theme="light"] {
+      --bg-canvas: hsl(38, 42%, 96%);
+      --bg-surface: hsl(38, 50%, 99%);
+      --bg-elevated: hsl(36, 33%, 93%);
+      --bg-subtle: hsl(36, 25%, 90%);
+      --bg-glass: hsla(38, 50%, 99%, 0.88);
+      --text-primary: hsl(24, 18%, 12%);
+      --text-secondary: hsl(24, 10%, 36%);
+      --text-muted: hsl(24, 8%, 52%);
+      --text-on-accent: hsl(38, 50%, 99%);
+      --border-subtle: hsl(34, 20%, 86%);
+      --border-strong: hsl(32, 18%, 74%);
+      --accent-primary: hsl(16, 60%, 49%);
+      --accent-primary-hover: hsl(16, 64%, 42%);
+      --accent-primary-soft: hsla(16, 60%, 49%, 0.12);
+      --accent-sage: hsl(154, 46%, 34%);
+      --accent-sage-soft: hsla(154, 46%, 34%, 0.12);
+      --accent-navy: hsl(216, 49%, 33%);
+      --accent-navy-soft: hsla(216, 49%, 33%, 0.12);
+      --accent-amber: hsl(37, 74%, 45%);
+      --accent-amber-soft: hsla(37, 74%, 45%, 0.14);
+      --accent-crimson: hsl(355, 62%, 47%);
+      --accent-crimson-soft: hsla(355, 62%, 47%, 0.12);
+      --shadow-xs: 0 1px 2px rgba(28, 22, 18, 0.05);
+      --shadow-sm: 0 4px 12px rgba(28, 22, 18, 0.06), 0 1px 2px rgba(28, 22, 18, 0.04);
+      --shadow-md: 0 10px 28px rgba(28, 22, 18, 0.09);
+      --shadow-lg: 0 20px 48px rgba(28, 22, 18, 0.16);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 22px; --radius-pill: 999px;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    [data-theme="dark"] {
+      --bg-canvas: hsl(24, 10%, 8%);
+      --bg-surface: hsl(24, 10%, 12%);
+      --bg-elevated: hsl(24, 9%, 16%);
+      --bg-subtle: hsl(24, 8%, 20%);
+      --bg-glass: hsla(24, 10%, 12%, 0.88);
+      --text-primary: hsl(36, 30%, 94%);
+      --text-secondary: hsl(32, 14%, 70%);
+      --text-muted: hsl(28, 9%, 52%);
+      --text-on-accent: hsl(38, 50%, 99%);
+      --border-subtle: hsl(24, 9%, 20%);
+      --border-strong: hsl(24, 10%, 29%);
+      --accent-primary: hsl(18, 70%, 56%);
+      --accent-primary-hover: hsl(18, 72%, 62%);
+      --accent-primary-soft: hsla(18, 70%, 56%, 0.16);
+      --accent-sage: hsl(154, 48%, 46%);
+      --accent-sage-soft: hsla(154, 48%, 46%, 0.16);
+      --accent-navy: hsl(212, 68%, 62%);
+      --accent-navy-soft: hsla(212, 68%, 62%, 0.16);
+      --accent-amber: hsl(39, 84%, 56%);
+      --accent-amber-soft: hsla(39, 84%, 56%, 0.16);
+      --accent-crimson: hsl(355, 72%, 60%);
+      --accent-crimson-soft: hsla(355, 72%, 60%, 0.16);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg-canvas); color: var(--text-primary); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button { cursor: pointer; border: none; background: none; }
+    .app-shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100dvh; max-width: 1480px; margin: 0 auto; }
+    .sidebar-nav { background: var(--bg-surface); border-right: 1px solid var(--border-subtle); padding: 22px 16px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100dvh; }
+    .main-column { display: flex; flex-direction: column; min-width: 0; min-height: 100dvh; }
+    .top-bar { position: sticky; top: 0; z-index: 30; background: var(--bg-glass); backdrop-filter: blur(14px); border-bottom: 1px solid var(--border-subtle); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .main-view { flex: 1; padding: 22px 24px 100px; max-width: 1180px; width: 100%; margin: 0 auto; }
+    .bottom-nav { display: none; }
+    .brand-row { display: flex; align-items: center; gap: 11px; }
+    .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: var(--text-primary); color: var(--bg-surface); display: grid; place-items: center; font-family: var(--font-mono); font-weight: 700; }
+    .brand-title { font-family: var(--font-serif); font-size: 1.5rem; line-height: 1.05; }
+    .nav-list { display: flex; flex-direction: column; gap: 4px; list-style: none; }
+    .nav-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: var(--radius-md); color: var(--text-secondary); font-weight: 500; font-size: 0.9rem; }
+    .nav-btn.active { background: var(--accent-primary-soft); color: var(--accent-primary); font-weight: 600; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 600; }
+    .btn-primary { background: var(--accent-primary); color: var(--text-on-accent); }
+    .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-subtle); }
+    .surface-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-xs); }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .metric-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .metric-tile { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 13px 15px; }
+    .metric-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+    .metric-value { font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; margin-top: 2px; }
+    @media (max-width: 920px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar-nav { display: none; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .metric-strip { grid-template-columns: repeat(2, 1fr); }
+      .bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: var(--bg-glass); backdrop-filter: blur(14px); border-top: 1px solid var(--border-subtle); padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px)); }
+      .bottom-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+      .bottom-nav-btn.active { color: var(--accent-primary); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar-nav" id="p-sidebar"></aside>
+    <div class="main-column">
+      <header class="top-bar" id="p-topbar"></header>
+      <main class="main-view" id="p-main"></main>
+    </div>
+    <nav class="bottom-nav" id="p-bottom"></nav>
+  </div>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

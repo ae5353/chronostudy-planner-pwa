@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#FAF7F2" id="meta-theme-color" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ChronoStudy" />
+  <meta name="description" content="ChronoStudy — Mobile-first Time Blocking, Weekly Study Program, Spaced Repetition (SM-2), Pomodoro Deep Focus, and Eisenhower Task Planner." />
+  <title>ChronoStudy — Time, Program, Study & Task Planner</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./src/index.css" />
+</head>
+<body>
+  <div id="app-shell" class="app-shell">
+    <!-- Desktop/Tablet Rail & Mobile Header rendered dynamically -->
+    <aside id="sidebar-nav" class="sidebar-nav" aria-label="Primary Navigation"></aside>
+
+    <div class="main-column">
+      <header id="top-bar" class="top-bar"></header>
+      <main id="main-view" class="main-view" tabindex="-1"></main>
+    </div>
+
+    <!-- Mobile Bottom Bar -->
+    <nav id="bottom-nav" class="bottom-nav" aria-label="Mobile Navigation"></nav>
+  </div>
+
+  <!-- Quick-Add & Modal Root -->
+  <div id="modal-root" class="modal-root" aria-live="polite"></div>
+  <div id="toast-root" class="toast-root" aria-live="assertive"></div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

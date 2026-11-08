@@ -1,0 +1,18 @@
+{
+  "name": "ChronoStudy — Time, Program, Study & Task Planner",
+  "short_name": "ChronoStudy",
+  "description": "All-in-one mobile-first planner for time blocking, weekly class/study programs, SM-2 spaced repetition, Pomodoro deep focus, and Eisenhower tasks.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FAF7F2",
+  "theme_color": "#C85A32",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

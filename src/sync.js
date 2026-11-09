@@ -312,11 +312,22 @@ export class SyncManager {
     }
 
     return new Promise((resolve, reject) => {
+      let isSettled = false;
+      const timeout = setTimeout(() => {
+        if (!isSettled) {
+          isSettled = true;
+          reject(new Error('Google sign-in timed out or popup was closed. If your browser blocked the popup, click the popup blocker icon in your address bar to allow it.'));
+        }
+      }, 60000);
+
       try {
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: clientId,
           scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
           callback: (resp) => {
+            if (isSettled) return;
+            isSettled = true;
+            clearTimeout(timeout);
             if (resp.error) {
               reject(new Error(resp.error_description || resp.error));
               return;
@@ -325,12 +336,22 @@ export class SyncManager {
             const expiresIn = parseInt(resp.expires_in, 10) || 3500;
             this.gdriveTokenExpiry = Date.now() + expiresIn * 1000;
             resolve(resp.access_token);
+          },
+          error_callback: (err) => {
+            if (isSettled) return;
+            isSettled = true;
+            clearTimeout(timeout);
+            reject(new Error(err.message || 'Google sign-in popup was closed or blocked by the browser.'));
           }
         });
 
         tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
       } catch (err) {
-        reject(err);
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(timeout);
+          reject(err);
+        }
       }
     });
   }

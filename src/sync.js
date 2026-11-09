@@ -404,6 +404,17 @@ export class SyncManager {
         this.gdriveAccessToken = null;
         throw new Error('Google authorization expired. Please click "Sign in with Google Drive" again.');
       }
+      if (searchRes.status === 403 && (errTxt.includes('Google Drive API has not been used') || errTxt.includes('SERVICE_DISABLED'))) {
+        throw new Error('Google Drive API is disabled in your Google Cloud project. Please click "Enable" in Google Cloud Console and retry.');
+      }
+      try {
+        const parsedErr = JSON.parse(errTxt);
+        if (parsedErr.error && parsedErr.error.message) {
+          throw new Error(`Google Drive: ${parsedErr.error.message}`);
+        }
+      } catch (e) {
+        if (e.message.startsWith('Google Drive')) throw e;
+      }
       throw new Error(`Google Drive search failed (${searchRes.status}): ${errTxt}`);
     }
 

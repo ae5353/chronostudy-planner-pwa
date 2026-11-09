@@ -215,3 +215,130 @@ export function buildGoogleCalendarUrl({ title, date, startTime = '09:00', endTi
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+
+const LIVE_FEEDS_STORAGE_KEY = 'chronostudy_live_feeds_v1';
+
+/**
+ * Normalize webcal://, Google Calendar ID, or university LMS .ics URL into an HTTPS fetchable URL
+ */
+export function normalizeCalendarFeedUrl(rawInput = '') {
+  const trimmed = String(rawInput).trim();
+  if (!trimmed) return '';
+  if (/^webcals?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^webcals?:\/\//i, 'https://');
+  }
+  // If user pasted a bare Google Calendar ID or email (e.g., xyz@group.calendar.google.com)
+  if (!/^https?:\/\//i.test(trimmed) && trimmed.includes('@') && !trimmed.includes(' ')) {
+    return `https://calendar.google.com/calendar/ical/${encodeURIComponent(trimmed)}/public/basic.ics`;
+  }
+  return trimmed;
+}
+
+export function loadSavedCalendarFeeds() {
+  if (typeof localStorage === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(LIVE_FEEDS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+export function saveCalendarFeeds(feeds = []) {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(LIVE_FEEDS_STORAGE_KEY, JSON.stringify(feeds));
+  } catch (_) {}
+}
+
+/**
+ * Fetch and parse a live .ICS / WebCal feed (University Canvas/Moodle/Blackboard, Google Calendar, Outlook)
+ * Automatically retries through local proxy or CORS relay if direct browser fetch is blocked by CORS.
+ */
+export async function fetchLiveCalendarFeed(rawUrl, defaultSubjectId = 'subj-algo', fetchImpl = globalThis.fetch) {
+  const normalizedUrl = normalizeCalendarFeedUrl(rawUrl);
+  if (!normalizedUrl) throw new Error('Please provide a valid Calendar URL or ID');
+
+  const candidateUrls = [
+    normalizedUrl,
+    `/api/proxy-ics?url=${encodeURIComponent(normalizedUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(normalizedUrl)}`
+  ];
+
+  let lastErr = null;
+  for (const target of candidateUrls) {
+    try {
+      const res = await fetchImpl(target);
+      if (!res || !res.ok) continue;
+      const text = await res.text();
+      if (text && text.includes('BEGIN:VCALENDAR')) {
+        return {
+          url: normalizedUrl,
+          ...parseICSCalendar(text, defaultSubjectId)
+        };
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Could not reach live calendar feed. Verify the .ics / webcal URL is accessible.');
+}
+
+/**
+ * Direct Google Calendar v3 REST API Connector
+ * Fetches upcoming events from a Google Calendar ID using an OAuth Access Token or API Key
+ */
+export async function fetchGoogleCalendarEventsAPI({
+  calendarId = 'primary',
+  accessToken = '',
+  apiKey = '',
+  defaultSubjectId = 'subj-algo',
+  fetchImpl = globalThis.fetch
+}) {
+  const timeMin = new Date(Date.now() - 7 * 86400000).toISOString();
+  const params = new URLSearchParams({
+    singleEvents: 'true',
+    orderBy: 'startTime',
+    timeMin,
+    maxResults: '100'
+  });
+  if (apiKey) params.set('key', apiKey);
+
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`;
+  const headers = {};
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
+  const res = await fetchImpl(url, { headers });
+  if (!res.ok) {
+    throw new Error(`Google Calendar API returned ${res.status}`);
+  }
+  const data = await res.json();
+  const scheduleBlocks = [];
+  const weeklySlots = [];
+
+  for (const item of data.items || []) {
+    const startRaw = item.start?.dateTime || item.start?.date || '';
+    const endRaw = item.end?.dateTime || item.end?.date || '';
+    if (!startRaw) continue;
+    const dateIso = startRaw.slice(0, 10);
+    const startTime = startRaw.includes('T') ? startRaw.slice(11, 16) : '09:00';
+    const endTime = endRaw.includes('T') ? endRaw.slice(11, 16) : addMinutesHHMM(startTime, 60);
+    const title = item.summary || 'Google Calendar Event';
+    const category = inferCategoryFromTitle(title);
+
+    scheduleBlocks.push({
+      id: `blk-gcal-${item.id || Math.random().toString(36).slice(2, 7)}`,
+      date: dateIso,
+      startTime,
+      endTime,
+      title,
+      subjectId: defaultSubjectId,
+      category,
+      done: false,
+      importedFrom: 'gcal-api'
+    });
+  }
+
+  return { scheduleBlocks, weeklySlots };
+}
+

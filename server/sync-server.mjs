@@ -133,6 +133,26 @@ export function createSyncServer() {
       return;
     }
 
+    // 3b. Live External University / Google Calendar .ICS Proxy (bypasses browser CORS)
+    if (pathname === '/api/proxy-ics' && req.method === 'GET') {
+      const targetUrl = urlObj.searchParams.get('url') || '';
+      if (!/^https?:\/\//i.test(targetUrl)) {
+        sendJson(res, 400, { ok: false, error: 'Missing or invalid url query parameter' });
+        return;
+      }
+      fetch(targetUrl)
+        .then((upstream) => upstream.text())
+        .then((icsText) => {
+          setCorsHeaders(res);
+          res.writeHead(200, { 'Content-Type': 'text/calendar; charset=utf-8' });
+          res.end(icsText);
+        })
+        .catch((err) => {
+          sendJson(res, 502, { ok: false, error: err.message || 'Upstream calendar fetch failed' });
+        });
+      return;
+    }
+
     // 4. Static PWA Asset Serving
     const relPath = pathname === '/' ? '/index.html' : pathname;
     const safePath = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, '');

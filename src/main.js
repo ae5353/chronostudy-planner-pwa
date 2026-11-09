@@ -1137,16 +1137,78 @@ function openModal(type) {
 
   let content = '';
   if (type === 'calendar-sync') {
+    const savedFeeds = loadSavedCalendarFeeds();
     content = `
-      <h2 class="card-title">📅 Google Calendar & External Schedule Sync</h2>
+      <h2 class="card-title">📅 Automatic Google Calendar & University Live Sync</h2>
       <p style="font-size:0.84rem; color:var(--text-secondary);">
-        Synchronize your Google Calendar, Apple Calendar, workout plan, work shifts, or course timetable with ChronoStudy in both directions:
+        Connect your <strong>University Timetable (Canvas, Moodle, Blackboard, Banner, Outlook)</strong> or <strong>Google Calendar</strong> once — ChronoStudy will automatically pull and refresh your schedules every time you open the app:
       </p>
 
-      <!-- 1. Import .ICS File from Google Calendar / Apple Calendar -->
+      <!-- 0. Automatic Live Feed Subscription (University LMS / Google Calendar Secret iCal / WebCal) -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--accent-primary); display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:0.86rem;">🔄 1. Auto-Connect Live University / Google Calendar Feed URL</strong>
+          <span class="badge badge-terracotta">Auto-Syncs on Startup</span>
+        </div>
+        <p style="font-size:0.78rem; color:var(--text-muted);">
+          Paste your <strong>University Calendar Feed URL</strong> (Canvas / Moodle / Blackboard / Outlook <code>.ics</code> or <code>webcal://</code> link) or <strong>Google Calendar Secret iCal Address</strong>:
+        </p>
+        <div class="grid-2" style="gap:8px;">
+          <input type="text" class="form-input" id="live-feed-label" placeholder="Name (e.g., University Timetable or My Google Cal)" />
+          <select class="form-select" id="live-feed-subject">
+            ${s.subjects.map((sub) => `<option value="${sub.id}">Track: ${escapeHTML(sub.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input type="url" class="form-input" id="live-feed-url" style="flex:1; min-width:220px;" placeholder="https://.../calendar.ics or webcal://... or Google Calendar ID" />
+          <button type="button" class="btn btn-primary btn-sm" data-action="connect-live-feed">🔗 Connect & Auto-Sync</button>
+        </div>
+        ${
+          savedFeeds.length > 0
+            ? `
+          <div style="margin-top:6px; display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--border-subtle); padding-top:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:0.76rem; font-weight:700; color:var(--text-secondary);">CONNECTED LIVE FEEDS (${savedFeeds.length})</span>
+              <button type="button" class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:0.72rem;" data-action="sync-live-feeds-now">🔄 Refresh All Now</button>
+            </div>
+            ${savedFeeds
+              .map(
+                (f, idx) => `
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; background:var(--bg-surface); padding:6px 10px; border-radius:6px;">
+                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:75%;">
+                  <strong>${escapeHTML(f.label || 'Live Calendar Feed')}</strong>
+                  <span style="color:var(--text-muted); font-size:0.72rem;"> · ${f.lastSyncedAt ? 'Synced ' + new Date(f.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}</span>
+                </div>
+                <button type="button" class="btn-icon" data-action="remove-live-feed" data-index="${idx}" title="Disconnect Feed">✕</button>
+              </div>
+            `
+              )
+              .join('')}
+          </div>
+        `
+            : ''
+        }
+      </div>
+
+      <!-- Direct Google Calendar API Live Connect -->
       <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <strong style="font-size:0.86rem;">1. Import from Google / Apple / Outlook Calendar (.ICS)</strong>
+          <strong style="font-size:0.86rem;">⚡ 2. Direct Google Calendar API Live Connection</strong>
+          <span class="badge badge-sage">REST API v3</span>
+        </div>
+        <div class="grid-2" style="gap:8px;">
+          <input type="text" class="form-input" id="gcal-api-calendar-id" placeholder="Calendar ID (default: primary)" value="primary" />
+          <input type="password" class="form-input" id="gcal-api-token" placeholder="Google OAuth Access Token or API Key" />
+        </div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="connect-gcal-api">⚡ Pull Live Google Calendar Events</button>
+        </div>
+      </div>
+
+      <!-- 3. Import .ICS File from Google Calendar / Apple Calendar -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:0.86rem;">3. Import .ICS File (Google / Apple / University Export)</strong>
           <span class="badge badge-sage">Supports Recurring Events</span>
         </div>
         <p style="font-size:0.78rem; color:var(--text-muted);">
@@ -2049,5 +2111,39 @@ if (incomingSnapshot) {
   setTimeout(() => showToast('🔗 Imported state from Instant Sync Link!'), 300);
 }
 
+async function runAutoCalendarSync({ silent = true } = {}) {
+  const feeds = loadSavedCalendarFeeds();
+  if (!feeds.length) return;
+  let totalBlocks = 0;
+  let totalWeekly = 0;
+  const updatedFeeds = [];
+
+  for (const feed of feeds) {
+    try {
+      const parsed = await fetchLiveCalendarFeed(feed.url, feed.subjectId || store.state.subjects[0]?.id);
+      const res = store.importCalendarEvents(parsed);
+      totalBlocks += res.addedBlocks;
+      totalWeekly += res.addedWeekly;
+      updatedFeeds.push({ ...feed, lastSyncedAt: new Date().toISOString() });
+    } catch (_) {
+      updatedFeeds.push(feed);
+    }
+  }
+
+  saveCalendarFeeds(updatedFeeds);
+  if (!silent || totalBlocks > 0 || totalWeekly > 0) {
+    showToast(
+      totalBlocks + totalWeekly > 0
+        ? `🔄 Auto-Synced ${totalBlocks} new events & ${totalWeekly} weekly classes from your connected calendars!`
+        : `✅ Connected calendars are up to date (${feeds.length} active feed${feeds.length > 1 ? 's' : ''})`
+    );
+  }
+}
+
 store.subscribe(renderApp);
 renderApp();
+
+// Automatically sync connected University & Google Calendar feeds on launch + every 15 minutes
+setTimeout(() => runAutoCalendarSync({ silent: true }), 800);
+setInterval(() => runAutoCalendarSync({ silent: true }), 15 * 60 * 1000);
+

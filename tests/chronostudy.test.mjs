@@ -16,7 +16,10 @@ import {
 import {
   parseICSCalendar,
   parseScheduleText,
-  buildGoogleCalendarUrl
+  buildGoogleCalendarUrl,
+  normalizeCalendarFeedUrl,
+  fetchLiveCalendarFeed,
+  fetchGoogleCalendarEventsAPI
 } from '../src/calendar-sync.js';
 
 const mockSubjects = createDefaultState().subjects;
@@ -361,5 +364,45 @@ test('7. v3.0 Google Calendar .ICS Import, Plain-Text Schedule Parser, Goal Pace
     assert.equal(s.state.scheduleBlocks.length, 0);
     assert.equal(s.state.subjects.length, 3);
   });
+
+  await t.test('normalizeCalendarFeedUrl, fetchLiveCalendarFeed, and fetchGoogleCalendarEventsAPI auto-sync university & Google feeds', async () => {
+    assert.equal(
+      normalizeCalendarFeedUrl('webcal://canvas.university.edu/feeds/calendars/user_123.ics'),
+      'https://canvas.university.edu/feeds/calendars/user_123.ics'
+    );
+    assert.ok(
+      normalizeCalendarFeedUrl('student@university.edu').includes('calendar.google.com/calendar/ical/')
+    );
+
+    const mockFetch = async () => ({
+      ok: true,
+      text: async () =>
+        'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nDTSTART:20261113T100000\r\nDTEND:20261113T113000\r\nSUMMARY:University Algorithms Seminar\r\nEND:VEVENT\r\nEND:VCALENDAR',
+      json: async () => ({
+        items: [
+          {
+            id: 'ev-99',
+            summary: 'Google Calendar Live Sync Event',
+            start: { dateTime: '2026-11-14T15:00:00Z' },
+            end: { dateTime: '2026-11-14T16:00:00Z' }
+          }
+        ]
+      })
+    });
+
+    const liveFeed = await fetchLiveCalendarFeed('webcal://canvas.university.edu/feed.ics', 'subj-algo', mockFetch);
+    assert.equal(liveFeed.scheduleBlocks.length, 1);
+    assert.equal(liveFeed.scheduleBlocks[0].title, 'University Algorithms Seminar');
+
+    const gcalRes = await fetchGoogleCalendarEventsAPI({
+      calendarId: 'primary',
+      accessToken: 'mock-token',
+      defaultSubjectId: 'subj-algo',
+      fetchImpl: mockFetch
+    });
+    assert.equal(gcalRes.scheduleBlocks.length, 1);
+    assert.equal(gcalRes.scheduleBlocks[0].title, 'Google Calendar Live Sync Event');
+  });
 });
+
 

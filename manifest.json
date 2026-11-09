@@ -1,12 +1,11 @@
 {
-  "name": "ChronoStudy — Time, Program, Study & Task Planner",
+  "name": "ChronoStudy — Personal Study Tracker & Planner",
   "short_name": "ChronoStudy",
-  "description": "All-in-one mobile-first planner for time blocking, weekly class/study programs, SM-2 spaced repetition, Pomodoro deep focus, and Eisenhower tasks.",
+  "description": "Personal Study Tracker & Planner: Track what you study, when, and for how long with live notes, integrated to-dos, and activity history.",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#FAF7F2",
-  "theme_color": "#C85A32",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "icons": [
     {
       "src": "./icon.svg",

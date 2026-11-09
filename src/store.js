@@ -1,905 +1,1260 @@
-// ChronoStudy v3.0 — Universal Life, Self-Learning, Projects & Time Architect Store
-// Includes: Universal Life & Learning Tracks (Self-Study, Projects, Fitness, Life Admin, Courses),
-// SM-2 Active Recall, Natural Language Task Parser, Smart Auto-Scheduler, Conflict Detector,
-// Goal Pace & Milestone Calculator, Quick Time-Shift, and Two-Way Google Calendar / .ICS Integration
+// src/store.js — Reactive Local-First State Store for ChronoStudy
+// Seeded with Week 7 curriculum, İTÜ courses, personal tracks & Kardeşlik ve İhya Akademisi
 
-const STORAGE_KEY = 'chronostudy_state_v3';
+const STORAGE_KEY = 'chronostudy_v3_state';
 
-const hasLocalStorage = typeof localStorage !== 'undefined';
+export const DEFAULT_GROUPS = [
+  'İTÜ Courses (Fall 2026)',
+  'Seminars & Academies'
+];
 
-export function getTodayISO() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-}
+export const INITIAL_SUBJECTS = [
+  // --- Group 1: İTÜ Courses (Fall 2026) ---
+  {
+    id: 'sub-eef211',
+    code: 'EEF 211E',
+    name: 'Circuit Analysis',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#e06d43',
+    targetWeeklyHours: 6,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\EEF211E',
+    schedule: [{ day: 1, start: '08:30', end: '11:29', label: 'Lecture' }] // Pazartesi
+  },
+  {
+    id: 'sub-mat287',
+    code: 'MAT 287',
+    name: 'Advanced Calculus',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#d97706',
+    targetWeeklyHours: 6,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\MAT287',
+    schedule: [
+      { day: 2, start: '09:30', end: '12:29', label: 'Lecture' }, // Salı
+      { day: 5, start: '14:30', end: '16:29', label: 'Lecture' }  // Cuma
+    ]
+  },
+  {
+    id: 'sub-ehb474',
+    code: 'EHB 474E',
+    name: 'Introduction to Optimization',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#57534e',
+    targetWeeklyHours: 5,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\EHB474E',
+    schedule: [{ day: 2, start: '12:30', end: '15:29', label: 'Lecture' }] // Salı
+  },
+  {
+    id: 'sub-ing201',
+    code: 'ING 201A',
+    name: 'English for Academic Purposes',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#334155',
+    targetWeeklyHours: 3,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\ING201A',
+    schedule: [{ day: 3, start: '08:30', end: '11:29', label: 'Lecture' }] // Çarşamba
+  },
+  {
+    id: 'sub-ehb235',
+    code: 'EHB 235',
+    name: 'Kompleks Fonksiyonlar Teorisi',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#78716c',
+    targetWeeklyHours: 5,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\EHB235',
+    schedule: [{ day: 3, start: '12:30', end: '15:29', label: 'Lecture' }] // Çarşamba
+  },
+  {
+    id: 'sub-mtt102',
+    code: 'MTT 102E',
+    name: 'Advanced Linear Algebra',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#9f1239',
+    targetWeeklyHours: 5,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\MTT102E',
+    schedule: [{ day: 3, start: '17:30', end: '21:29', label: 'Lecture' }] // Çarşamba
+  },
+  {
+    id: 'sub-ehb208',
+    code: 'EHB 208E',
+    name: 'Data Structures',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#475569',
+    targetWeeklyHours: 5,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\EHB208E',
+    schedule: [{ day: 4, start: '08:30', end: '11:29', label: 'Lecture' }] // Perşembe
+  },
+  {
+    id: 'sub-eef210',
+    code: 'EEF 210E',
+    name: 'Differential Equations',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#ea580c',
+    targetWeeklyHours: 5,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\EEF210E',
+    schedule: [{ day: 4, start: '12:30', end: '15:29', label: 'Lecture' }] // Perşembe
+  },
+  {
+    id: 'sub-eef205',
+    code: 'EEF 205E',
+    name: 'Digital Design',
+    group: 'İTÜ Courses (Fall 2026)',
+    color: '#f97316',
+    targetWeeklyHours: 5,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İTÜ\\EEF205E',
+    schedule: [{ day: 5, start: '08:30', end: '11:29', label: 'Lecture' }] // Cuma
+  },
 
-export function addDaysISO(baseIso, days) {
-  const d = new Date(baseIso + 'T12:00:00');
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-
-export function daysUntil(targetIso) {
-  const today = new Date(getTodayISO() + 'T00:00:00');
-  const target = new Date(targetIso + 'T00:00:00');
-  return Math.round((target - today) / 86400000);
-}
-
-export function timeToMinutes(hhmm = '00:00') {
-  const [h, m] = String(hhmm).split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
-}
-
-export function minutesToTime(totalMin) {
-  const clamped = Math.max(0, Math.min(23 * 60 + 59, Math.round(totalMin)));
-  const h = Math.floor(clamped / 60);
-  const m = clamped % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
-/**
- * Natural-Language Smart Task Parser
- * Supports tokens like:
- *   #AI-DEV or #CS-301 (matches track/subject code or name)
- *   !Q1 / !Q2 / !Q3 / !Q4 (sets Eisenhower quadrant)
- *   ~3p or ~3 (sets estimated Pomodoros)
- *   @today / @tomorrow / @+3d / @2026-11-15 (sets due date)
- */
-export function parseSmartTaskInput(rawText, subjects = [], defaultDate = getTodayISO()) {
-  let title = String(rawText || '').trim();
-  let quadrant = null;
-  let subjectId = null;
-  let estimatedPomodoros = null;
-  let dueDate = null;
-
-  const qMatch = title.match(/(?:^|\s)!(Q[1-4])\b/i);
-  if (qMatch) {
-    quadrant = qMatch[1].toUpperCase();
-    title = title.replace(qMatch[0], ' ').trim();
+  // --- Group 2: Seminars & Academies ---
+  {
+    id: 'sub-ihya',
+    code: 'İHYA',
+    name: 'Kardeşlik ve İhya Akademisi',
+    group: 'Seminars & Academies',
+    color: '#059669',
+    targetWeeklyHours: 4,
+    folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İHYA',
+    schedule: [] // Managed via weeklyEvents to avoid duplication
   }
+];
 
-  const pMatch = title.match(/(?:^|\s)~(\d{1,2})p?(?:omos?)?\b/i);
-  if (pMatch) {
-    estimatedPomodoros = Math.max(1, Math.min(20, Number(pMatch[1])));
-    title = title.replace(pMatch[0], ' ').trim();
+export const INITIAL_WEEKLY_EVENTS = [
+  // User's Additional commitments
+  {
+    id: 'wevent-ihya',
+    title: 'Kardeşlik ve İhya Akademisi',
+    day: 4, // Perşembe
+    start: '19:00',
+    end: '21:30',
+    category: 'Seminars & Academies',
+    color: '#059669',
+    recurrence: 'weekly', // 'weekly' | 'biweekly' | 'monthly' | 'weekdays' | 'daily'
+    notes: 'Haftalık İhya semineri ve okuma müzakeresi'
   }
+];
 
-  const dMatch = title.match(/(?:^|\s)@(today|tomorrow|\+\d+d|\d{4}-\d{2}-\d{2})\b/i);
-  if (dMatch) {
-    const tok = dMatch[1].toLowerCase();
-    if (tok === 'today') dueDate = getTodayISO();
-    else if (tok === 'tomorrow') dueDate = addDaysISO(getTodayISO(), 1);
-    else if (tok.startsWith('+')) {
-      const n = parseInt(tok.slice(1), 10) || 1;
-      dueDate = addDaysISO(getTodayISO(), n);
-    } else {
-      dueDate = tok;
-    }
-    title = title.replace(dMatch[0], ' ').trim();
-  }
-
-  const sMatch = title.match(/(?:^|\s)#([A-Za-z0-9_-]+)\b/);
-  if (sMatch) {
-    const query = sMatch[1].toLowerCase();
-    const found = subjects.find(
-      (s) =>
-        s.code.toLowerCase() === query ||
-        s.code.toLowerCase().replace('-', '') === query.replace('-', '') ||
-        s.name.toLowerCase().includes(query)
-    );
-    if (found) {
-      subjectId = found.id;
-      title = title.replace(sMatch[0], ' ').trim();
-    }
-  }
-
-  return {
-    title: title.replace(/\s+/g, ' ').trim() || String(rawText).trim(),
-    quadrant,
-    subjectId,
-    estimatedPomodoros,
-    dueDate: dueDate || defaultDate
-  };
+export function toLocalDateStr(d = new Date()) {
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-/**
- * Detect overlapping time blocks on a given date
- */
-export function detectScheduleConflicts(blocks = []) {
-  const sorted = [...blocks].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-  const conflictIds = new Set();
-  for (let i = 0; i < sorted.length; i++) {
-    const a = sorted[i];
-    const aEnd = timeToMinutes(a.endTime);
-    for (let j = i + 1; j < sorted.length; j++) {
-      const b = sorted[j];
-      const bStart = timeToMinutes(b.startTime);
-      if (bStart < aEnd) {
-        conflictIds.add(a.id);
-        conflictIds.add(b.id);
-      } else {
-        break;
-      }
-    }
-  }
-  return conflictIds;
-}
-
-/**
- * Smart Auto-Scheduler: Finds free gaps between 08:00 and 21:30 on targetDate
- * and schedules top uncompleted Q1/Q2 tasks into available gaps.
- */
-export function computeAutoScheduleBlocks(existingBlocksForDate = [], openTasks = [], targetDate = getTodayISO()) {
-  const dayStart = 8 * 60;
-  const dayEnd = 21 * 60 + 30;
-  const occupied = existingBlocksForDate
-    .map((b) => [timeToMinutes(b.startTime), timeToMinutes(b.endTime)])
-    .filter(([s, e]) => e > s)
-    .sort((a, b) => a[0] - b[0]);
-
-  const merged = [];
-  for (const [s, e] of occupied) {
-    if (!merged.length || s > merged[merged.length - 1][1]) {
-      merged.push([s, e]);
-    } else {
-      merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], e);
-    }
-  }
-
-  const gaps = [];
-  let cursor = dayStart;
-  for (const [s, e] of merged) {
-    if (s - cursor >= 45) {
-      gaps.push([cursor, s]);
-    }
-    cursor = Math.max(cursor, e + 15);
-  }
-  if (dayEnd - cursor >= 45) {
-    gaps.push([cursor, dayEnd]);
-  }
-
-  const rankMap = { Q1: 1, Q2: 2, Q3: 3, Q4: 4 };
-  const existingTitles = new Set(existingBlocksForDate.map((b) => b.title.toLowerCase()));
-  const candidates = openTasks
-    .filter((t) => !t.completed && !existingTitles.has(`deep focus: ${t.title}`.toLowerCase()))
-    .sort((a, b) => {
-      const rDiff = (rankMap[a.quadrant] || 9) - (rankMap[b.quadrant] || 9);
-      if (rDiff !== 0) return rDiff;
-      return String(a.dueDate).localeCompare(String(b.dueDate));
-    });
-
-  const generated = [];
-  let taskIdx = 0;
-
-  for (const [gapStart, gapEnd] of gaps) {
-    let slotStart = gapStart;
-    while (slotStart + 45 <= gapEnd && taskIdx < candidates.length && generated.length < 4) {
-      const task = candidates[taskIdx++];
-      const remainingPomos = Math.max(1, (task.estimatedPomodoros || 2) - (task.completedPomodoros || 0));
-      const desiredMin = Math.min(90, Math.max(45, remainingPomos * 25));
-      const actualEnd = Math.min(gapEnd, slotStart + desiredMin);
-      generated.push({
-        id: `blk-auto-${Date.now()}-${taskIdx}`,
-        date: targetDate,
-        startTime: minutesToTime(slotStart),
-        endTime: minutesToTime(actualEnd),
-        title: `Deep Focus: ${task.title}`,
-        subjectId: task.subjectId,
-        category: 'deep_work',
-        done: false,
-        autoScheduled: true
-      });
-      slotStart = actualEnd + 15;
-    }
-  }
-
-  return generated;
-}
-
-/**
- * Universal Milestone Pace Calculator
- * Calculates daily minutes required to reach a weekly/milestone hour target
- */
-export function calculateGoalPace(loggedMinutes = 0, targetHoursPerWeek = 6, daysRemainingInWeek = 4) {
-  const targetMins = Math.max(30, Number(targetHoursPerWeek) * 60);
-  const remainingMins = Math.max(0, targetMins - Number(loggedMinutes));
-  const days = Math.max(1, Number(daysRemainingInWeek));
-  const dailyNeeded = Math.round(remainingMins / days);
-  const completionPct = Math.min(100, Math.round((Number(loggedMinutes) / targetMins) * 100));
-  return {
-    remainingMinutes: remainingMins,
-    dailyMinutesNeeded: dailyNeeded,
-    completionPct,
-    status: completionPct >= 80 ? 'Ahead / On Track' : dailyNeeded <= 60 ? 'Steady Pace' : 'High Focus Needed'
-  };
-}
-
-/**
- * Required Assessment / Certification / Exam Score Calculator
- */
-export function calculateRequiredExamScore(currentGrade, examWeightPercent, targetGrade = 90) {
-  const w = Math.max(1, Math.min(100, Number(examWeightPercent))) / 100;
-  const curr = Number(currentGrade) || 0;
-  const target = Number(targetGrade) || 90;
-  if (w >= 1) return target;
-  const required = (target - curr * (1 - w)) / w;
-  return Number(required.toFixed(1));
-}
-
-export function createDefaultState() {
-  const today = getTodayISO();
-  return {
-    theme: 'light',
-    profileMode: 'universal', // 'universal' | 'academic' | 'blank'
-    activeTab: 'today', // 'today' | 'tasks' | 'program' | 'study' | 'focus' | 'analytics'
-    selectedDate: today,
-    selectedProgramDay: new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
-    taskViewMode: 'list', // 'list' | 'matrix' | 'kanban'
-    taskSubjectFilter: 'all',
-    studySubTab: 'cards',
-
-    stats: {
-      totalFocusMinutes: 420,
-      todayFocusMinutes: 75,
-      completedPomodoros: 17,
-      currentStreakDays: 6,
-      lastActiveDate: today,
-      weeklyDailyMinutes: [65, 95, 80, 110, 50, 90, 75]
-    },
-
-    // Universal Tracks / Focus Areas (Supports Self-Study, Personal Projects, Skills, Fitness, Life & Courses)
-    subjects: [
-      {
-        id: 'subj-algo',
-        name: 'AI, Coding & Technical Mastery',
-        code: 'CS-301',
-        category: 'Self-Study & Tech',
-        color: '#C85A32',
-        examDate: addDaysISO(today, 12),
-        milestoneLabel: 'Portfolio Launch',
-        targetHoursPerWeek: 8,
-        loggedMinutes: 195,
-        currentGrade: 91.5,
-        examWeight: 35,
-        targetCourseGrade: 90
-      },
-      {
-        id: 'subj-linalg',
-        name: 'Quantitative & Analytical Foundations',
-        code: 'MATH-204',
-        category: 'Deep Skill Study',
-        color: '#2B4C7E',
-        examDate: addDaysISO(today, 19),
-        milestoneLabel: 'Module Mastery',
-        targetHoursPerWeek: 6,
-        loggedMinutes: 140,
-        currentGrade: 88.0,
-        examWeight: 40,
-        targetCourseGrade: 90
-      },
-      {
-        id: 'subj-cogpsy',
-        name: 'Language, Reading & Synthesis',
-        code: 'PSYC-210',
-        category: 'Language & Books',
-        color: '#2E7D5B',
-        examDate: addDaysISO(today, 8),
-        milestoneLabel: 'Book & Fluency Goal',
-        targetHoursPerWeek: 5,
-        loggedMinutes: 110,
-        currentGrade: 94.0,
-        examWeight: 30,
-        targetCourseGrade: 92
-      },
-      {
-        id: 'subj-sys',
-        name: 'Personal Projects & Career Build',
-        code: 'CS-412',
-        category: 'Work & Projects',
-        color: '#C6841D',
-        examDate: addDaysISO(today, 5),
-        milestoneLabel: 'v1.0 Release',
-        targetHoursPerWeek: 7,
-        loggedMinutes: 165,
-        currentGrade: 89.5,
-        examWeight: 35,
-        targetCourseGrade: 90
-      },
-      {
-        id: 'subj-life',
-        name: 'Fitness, Training & Life Admin',
-        code: 'LIFE',
-        category: 'Health & Lifestyle',
-        color: '#7A5C43',
-        examDate: addDaysISO(today, 30),
-        milestoneLabel: '10K & Conditioning',
-        targetHoursPerWeek: 4,
-        loggedMinutes: 60,
-        currentGrade: 100,
-        examWeight: 10,
-        targetCourseGrade: 95
-      }
-    ],
-
-    tasks: [
-      {
-        id: 'task-1',
-        title: 'Build & benchmark graph search / AI agent workflow module',
-        subjectId: 'subj-algo',
-        quadrant: 'Q1',
-        status: 'in_progress',
-        completed: false,
-        dueDate: today,
-        estimatedPomodoros: 3,
-        completedPomodoros: 1,
-        notes: 'Compare heuristic performance and document architecture.',
-        subtasks: [
-          { id: 'st-1', text: 'Set up core data structures & test harness', done: true },
-          { id: 'st-2', text: 'Run benchmark suite & profile bottlenecks', done: true },
-          { id: 'st-3', text: 'Write summary notes & commit clean build', done: false }
-        ]
-      },
-      {
-        id: 'task-2',
-        title: 'Complete matrix transformations & PCA practice exercises',
-        subjectId: 'subj-linalg',
-        quadrant: 'Q1',
-        status: 'todo',
-        completed: false,
-        dueDate: today,
-        estimatedPomodoros: 2,
-        completedPomodoros: 0,
-        notes: 'Focus on intuition behind orthogonal projections and dimensionality reduction.',
-        subtasks: [
-          { id: 'st-4', text: 'Work through 4 core practice problems', done: true },
-          { id: 'st-5', text: 'Create 2 SM-2 recall flashcards for key takeaways', done: false }
-        ]
-      },
-      {
-        id: 'task-3',
-        title: 'Read 25 pages & synthesize notes on cognitive focus & memory',
-        subjectId: 'subj-cogpsy',
-        quadrant: 'Q2',
-        status: 'todo',
-        completed: false,
-        dueDate: addDaysISO(today, 2),
-        estimatedPomodoros: 3,
-        completedPomodoros: 1,
-        notes: 'Capture key insights in Cornell Notes and convert top cues to flashcards.',
-        subtasks: [
-          { id: 'st-6', text: 'Highlight primary chapters & concepts', done: true },
-          { id: 'st-7', text: 'Write 1-paragraph synthesis summary', done: false }
-        ]
-      },
-      {
-        id: 'task-4',
-        title: 'Ship Personal Project milestone & deploy live mobile build',
-        subjectId: 'subj-sys',
-        quadrant: 'Q1',
-        status: 'in_progress',
-        completed: false,
-        dueDate: addDaysISO(today, 1),
-        estimatedPomodoros: 3,
-        completedPomodoros: 2,
-        notes: 'Verify mobile responsiveness and Google Calendar sync.',
-        subtasks: []
-      },
-      {
-        id: 'task-5',
-        title: 'Organize weekly calendar, bills & appointments',
-        subjectId: 'subj-life',
-        quadrant: 'Q3',
-        status: 'todo',
-        completed: false,
-        dueDate: today,
-        estimatedPomodoros: 1,
-        completedPomodoros: 0,
-        notes: 'Quick life-admin batch block.',
-        subtasks: []
-      },
-      {
-        id: 'task-6',
-        title: '40-minute strength & zone-2 cardio conditioning session',
-        subjectId: 'subj-life',
-        quadrant: 'Q2',
-        status: 'done',
-        completed: true,
-        dueDate: today,
-        estimatedPomodoros: 1,
-        completedPomodoros: 1,
-        notes: 'Outdoor run + mobility work.',
-        subtasks: []
-      }
-    ],
-
-    scheduleBlocks: [
-      {
-        id: 'blk-1',
-        date: today,
-        startTime: '08:30',
-        endTime: '10:00',
-        title: 'Deep Focus: AI & Technical Skill Mastery',
-        subjectId: 'subj-algo',
-        category: 'deep_work',
-        done: true
-      },
-      {
-        id: 'blk-2',
-        date: today,
-        startTime: '10:30',
-        endTime: '12:00',
-        title: 'Structured Study: Analytical Foundations & Practice',
-        subjectId: 'subj-linalg',
-        category: 'lecture',
-        done: true
-      },
-      {
-        id: 'blk-3',
-        date: today,
-        startTime: '13:30',
-        endTime: '15:00',
-        title: 'Project Build: Feature Implementation & Testing',
-        subjectId: 'subj-sys',
-        category: 'deep_work',
-        done: false
-      },
-      {
-        id: 'blk-4',
-        date: today,
-        startTime: '15:30',
-        endTime: '16:30',
-        title: 'SM-2 Spaced Repetition Recall & Flashcard Deck',
-        subjectId: 'subj-cogpsy',
-        category: 'review',
-        done: false
-      },
-      {
-        id: 'blk-5',
-        date: today,
-        startTime: '17:30',
-        endTime: '18:15',
-        title: 'Fitness: Zone-2 Run & Mobility Reset',
-        subjectId: 'subj-life',
-        category: 'wellness',
-        done: false
-      },
-      {
-        id: 'blk-6',
-        date: today,
-        startTime: '19:30',
-        endTime: '21:00',
-        title: 'Evening Reading, Language Practice & Synthesis',
-        subjectId: 'subj-cogpsy',
-        category: 'deep_work',
-        done: false
-      }
-    ],
-
-    weeklyProgram: {
-      0: [
-        { id: 'wp-m1', startTime: '08:30', endTime: '10:00', title: 'Morning Deep Focus: Technical Skill Study', subjectId: 'subj-algo', type: 'Deep Focus' },
-        { id: 'wp-m2', startTime: '10:30', endTime: '12:00', title: 'Analytical Foundations & Problem Solving', subjectId: 'subj-linalg', type: 'Structured Study' },
-        { id: 'wp-m3', startTime: '14:00', endTime: '16:00', title: 'Personal Project Build Session', subjectId: 'subj-sys', type: 'Project Work' },
-        { id: 'wp-m4', startTime: '17:30', endTime: '18:30', title: 'Strength & Mobility Conditioning', subjectId: 'subj-life', type: 'Fitness & Health' }
-      ],
-      1: [
-        { id: 'wp-tu1', startTime: '09:00', endTime: '10:30', title: 'Language Immersion & Reading Block', subjectId: 'subj-cogpsy', type: 'Self-Study' },
-        { id: 'wp-tu2', startTime: '11:00', endTime: '12:30', title: 'SM-2 Active Recall & Concept Practice', subjectId: 'subj-linalg', type: 'Review' },
-        { id: 'wp-tu3', startTime: '15:00', endTime: '17:00', title: 'Hands-On Coding & System Design', subjectId: 'subj-algo', type: 'Deep Focus' }
-      ],
-      2: [
-        { id: 'wp-w1', startTime: '08:30', endTime: '10:00', title: 'Core Skill Deep Dive & Exercises', subjectId: 'subj-algo', type: 'Deep Focus' },
-        { id: 'wp-w2', startTime: '10:30', endTime: '12:00', title: 'Quantitative Study Session', subjectId: 'subj-linalg', type: 'Structured Study' },
-        { id: 'wp-w3', startTime: '14:00', endTime: '16:30', title: 'Project Architecture & Execution', subjectId: 'subj-sys', type: 'Project Work' }
-      ],
-      3: [
-        { id: 'wp-th1', startTime: '09:00', endTime: '10:30', title: 'Reading, Synthesis & Note-Taking', subjectId: 'subj-cogpsy', type: 'Self-Study' },
-        { id: 'wp-th2', startTime: '11:00', endTime: '13:00', title: 'Applied Problem Solving Workshop', subjectId: 'subj-linalg', type: 'Deep Focus' },
-        { id: 'wp-th3', startTime: '17:30', endTime: '18:30', title: 'Cardio Conditioning & Recovery', subjectId: 'subj-life', type: 'Fitness & Health' }
-      ],
-      4: [
-        { id: 'wp-f1', startTime: '09:00', endTime: '11:00', title: 'Weekly Skill Challenge & Timed Practice', subjectId: 'subj-algo', type: 'Review' },
-        { id: 'wp-f2', startTime: '11:30', endTime: '13:00', title: 'Project Ship & Code Polish', subjectId: 'subj-sys', type: 'Project Work' },
-        { id: 'wp-f3', startTime: '15:00', endTime: '16:00', title: 'Weekly Retrospective & Life Admin Batch', subjectId: 'subj-life', type: 'Planning' }
-      ],
-      5: [
-        { id: 'wp-sa1', startTime: '10:00', endTime: '12:00', title: 'Saturday Creative Build & Exploration', subjectId: 'subj-sys', type: 'Project Work' },
-        { id: 'wp-sa2', startTime: '14:00', endTime: '15:00', title: 'Full Deck SM-2 Spaced Repetition Catch-up', subjectId: 'subj-cogpsy', type: 'Review' }
-      ],
-      6: [
-        { id: 'wp-su1', startTime: '10:30', endTime: '12:00', title: 'Long-Form Reading & Reflection', subjectId: 'subj-cogpsy', type: 'Self-Study' },
-        { id: 'wp-su2', startTime: '16:30', endTime: '17:30', title: 'Weekly Time-Block Blueprint & Reset', subjectId: 'subj-life', type: 'Planning' }
-      ]
-    },
-
-    flashcards: [
-      {
-        id: 'fc-1',
-        subjectId: 'subj-algo',
-        prompt: 'What is the time complexity of Dijkstra’s algorithm using a Fibonacci Heap vs. a Binary Heap?',
-        answer: 'Fibonacci Heap: O(E + V log V) because Decrease-Key is O(1) amortized. Binary Heap: O((V + E) log V).',
-        interval: 1,
-        repetitions: 1,
-        efactor: 2.5,
-        dueDate: today
-      },
-      {
-        id: 'fc-2',
-        subjectId: 'subj-linalg',
-        prompt: 'State the Fundamental Theorem of Linear Algebra for the four subspaces of an m × n matrix A of rank r.',
-        answer: 'Col(A) has dim r in R^m (orth. complement Null(A^T), dim m-r). Row(A) has dim r in R^n (orth. complement Null(A), dim n-r).',
-        interval: 1,
-        repetitions: 2,
-        efactor: 2.6,
-        dueDate: today
-      },
-      {
-        id: 'fc-3',
-        subjectId: 'subj-sys',
-        prompt: 'In distributed systems (Raft), what guarantees the Leader Completeness Property?',
-        answer: 'RequestVote RPC restriction: a voter denies its vote if the candidate’s log is less up-to-date than its own (compared by lastLogTerm, then lastLogIndex).',
-        interval: 2,
-        repetitions: 1,
-        efactor: 2.4,
-        dueDate: today
-      },
-      {
-        id: 'fc-4',
-        subjectId: 'subj-cogpsy',
-        prompt: 'How does spaced repetition (SM-2) counteract the Ebbinghaus Forgetting Curve?',
-        answer: 'By scheduling active recall right before memory decay crosses the forgetting threshold, flattening the decay curve and multiplying retention intervals.',
-        interval: 3,
-        repetitions: 2,
-        efactor: 2.5,
-        dueDate: today
-      },
-      {
-        id: 'fc-5',
-        subjectId: 'subj-linalg',
-        prompt: 'Why does the Singular Value Decomposition A = U Σ V^T exist for EVERY matrix, unlike eigendecomposition?',
-        answer: 'Because A^T A is always symmetric and positive semi-definite, guaranteeing orthonormal eigenvectors V and non-negative real singular values σ_i = √λ_i.',
-        interval: 4,
-        repetitions: 3,
-        efactor: 2.7,
-        dueDate: addDaysISO(today, 1)
-      }
-    ],
-
-    cornellNotes: [
-      {
-        id: 'cn-1',
-        subjectId: 'subj-algo',
-        title: 'A* Search Admissibility & Consistency Conditions',
-        date: today,
-        cue: 'When is an A* heuristic h(n) admissible vs. consistent (monotonic)?',
-        notes: '1. Admissible: h(n) <= h*(n) (never overestimates true cost to goal). Guarantees optimality in tree search.\n2. Consistent: h(n) <= c(n, a, n\') + h(n\') (triangle inequality). Guarantees optimality in graph search without re-opening closed nodes.',
-        summary: 'Consistency implies admissibility; consistent heuristics ensure non-decreasing f(n) = g(n) + h(n) along any path.'
-      },
-      {
-        id: 'cn-2',
-        subjectId: 'subj-cogpsy',
-        title: 'Deliberate Practice vs. Passive Review',
-        date: today,
-        cue: 'Why does active recall + immediate feedback outperform re-reading by 3x?',
-        notes: 'Retrieval practice strengthens neural pathways and exposes illusion-of-competence gaps immediately, allowing targeted correction.',
-        summary: 'Always convert passive reading notes into testable cues and active problem-solving blocks.'
-      }
-    ],
-
-    syllabusTopics: [
-      { id: 'syl-1', subjectId: 'subj-algo', title: 'Graph Search & Heuristic Optimization', status: 'Reviewing', confidence: 85 },
-      { id: 'syl-2', subjectId: 'subj-algo', title: 'Dynamic Programming & State Transitions', status: 'Learning', confidence: 65 },
-      { id: 'syl-3', subjectId: 'subj-sys', title: 'End-to-End Architecture & Cloud Deployment', status: 'Reviewing', confidence: 88 },
-      { id: 'syl-4', subjectId: 'subj-linalg', title: 'Orthogonal Projections & Least Squares', status: 'Mastered', confidence: 95 },
-      { id: 'syl-5', subjectId: 'subj-linalg', title: 'Singular Value Decomposition (SVD) & PCA', status: 'Learning', confidence: 70 },
-      { id: 'syl-6', subjectId: 'subj-cogpsy', title: 'Active Recall & Spaced Repetition Systems', status: 'Mastered', confidence: 92 },
-      { id: 'syl-7', subjectId: 'subj-life', title: 'Aerobic Base & Progressive Overload Routine', status: 'Reviewing', confidence: 84 }
-    ],
-
-    habits: [
-      { id: 'hab-1', name: '90m+ Deep Focus Block', streak: 6, completedToday: true },
-      { id: 'hab-2', name: 'Clear Daily SM-2 Recall Queue', streak: 4, completedToday: false },
-      { id: 'hab-3', name: 'Time-Block Tomorrow’s Plan', streak: 9, completedToday: true },
-      { id: 'hab-4', name: '30m+ Training / Movement', streak: 5, completedToday: true }
-    ],
-
-    focusSession: {
-      mode: 'pomodoro',
-      durationSeconds: 25 * 60,
-      remainingSeconds: 25 * 60,
-      isRunning: false,
-      linkedTaskId: 'task-1',
-      linkedSubjectId: 'subj-algo',
-      soundscape: 'off'
-    }
-  };
-}
-
-// Empty workspace: one neutral "General" track (UI needs at least one), no invented
-// categories, tasks, or routines. Everything else comes from the user or their calendars.
-export function applyBlankSlate(s) {
-  const today = getTodayISO();
-  s.profileMode = 'blank';
-  s.subjects = [
+// Authentic study tasks aligned with user schedule
+const INITIAL_STATE = {
+  version: 11,
+  groups: DEFAULT_GROUPS,
+  subjects: INITIAL_SUBJECTS,
+  weeklyEvents: INITIAL_WEEKLY_EVENTS,
+  tasks: [
+    // --- Day 9 (Pazartesi) ---
     {
-      id: 'subj-main',
-      name: 'General',
-      code: 'GEN',
-      category: 'General',
-      color: '#C85A32',
-      examDate: addDaysISO(today, 30),
-      milestoneLabel: 'Milestone',
-      targetHoursPerWeek: 5,
-      loggedMinutes: 0,
-      currentGrade: 90,
-      examWeight: 30,
-      targetCourseGrade: 90
-    }
-  ];
-  s.tasks = [];
-  s.scheduleBlocks = [];
-  s.weeklyProgram = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
-  s.flashcards = [];
-  s.cornellNotes = [];
-  s.syllabusTopics = [];
-  s.habits = [];
-  s.stats = {
-    totalFocusMinutes: 0,
-    todayFocusMinutes: 0,
-    completedPomodoros: 0,
-    currentStreakDays: 1,
-    lastActiveDate: today,
-    weeklyDailyMinutes: [0, 0, 0, 0, 0, 0, 0]
-  };
-  return s;
-}
+      id: 'task-w5-eef211',
+      title: 'EEF 211E: Week 5 Methods of Analysis & Graph Theory Problems',
+      subject: 'Circuit Analysis',
+      targetMinutes: 60,
+      dueDate: '2026-11-09',
+      notes: 'Nodal and mesh analysis problems from course notes (Desktop/İTÜ/EEF211E)',
+      completed: true,
+      createdAt: '2026-11-09T09:00:00.000Z',
+      completedAt: '2026-11-09T18:30:00.000Z',
+      timeSpentSec: 5160
+    },
 
-export class Store {
+    // --- Day 10 (Salı) ---
+    {
+      id: 'task-folland-mat287',
+      title: 'MAT 287: Folland Advanced Calculus Handout 1 Exercises',
+      subject: 'Advanced Calculus',
+      targetMinutes: 60,
+      dueDate: '2026-11-10',
+      notes: 'Multivariable calculus exercises (MAT287 folder)',
+      completed: false,
+      createdAt: '2026-11-09T10:00:00.000Z',
+      completedAt: null,
+      timeSpentSec: 0
+    },
+    {
+      id: 'task-w7-ehb474',
+      title: 'EHB 474E: Introduction to Optimization - Convex Sets & Calafiore Models',
+      subject: 'Introduction to Optimization',
+      targetMinutes: 45,
+      dueDate: '2026-11-10',
+      notes: 'Calafiore optimization models & gradient search exercises (EHB474E)',
+      completed: false,
+      createdAt: '2026-11-09T10:00:00.000Z',
+      completedAt: null,
+      timeSpentSec: 0
+    },
+
+    // --- Day 11 (Çarşamba) ---
+    {
+      id: 'task-ing201-synth',
+      title: 'ING 201A: Academic Writing Synthesis & Pacing Guide Assignment',
+      subject: 'English for Academic Purposes',
+      targetMinutes: 40,
+      dueDate: '2026-11-11',
+      notes: 'APA in-text referencing and synthesis matrix (Desktop/İTÜ/ING201A)',
+      completed: false,
+      createdAt: '2026-11-09T10:00:00.000Z',
+      completedAt: null,
+      timeSpentSec: 0
+    },
+
+    // --- Day 12 (Perşembe) ---
+    {
+      id: 'task-ehb208-trees',
+      title: 'EHB 208E: Data Structures - Binary Trees & Linked List Operations',
+      subject: 'Data Structures',
+      targetMinutes: 45,
+      dueDate: '2026-11-12',
+      notes: 'Binary search tree traversal, pointer operations and Midterm 1 review (Desktop/İTÜ/EHB208E)',
+      completed: false,
+      createdAt: '2026-11-09T10:00:00.000Z',
+      completedAt: null,
+      timeSpentSec: 0
+    },
+    {
+      id: 'task-w7-eef210',
+      title: 'EEF 210E: Differential Equations - 2nd Order Linear Differential Equations',
+      subject: 'Differential Equations',
+      targetMinutes: 50,
+      dueDate: '2026-11-12',
+      notes: 'Boyce & DiPrima undetermined coefficients & variation of parameters',
+      completed: false,
+      createdAt: '2026-11-09T10:00:00.000Z',
+      completedAt: null,
+      timeSpentSec: 0
+    },
+
+    // --- Day 13 (Cuma) ---
+    {
+      id: 'task-eef205-kmap',
+      title: 'EEF 205E: Digital Design - K-Map Minimization & OneWare VHDL Simulation',
+      subject: 'Digital Design',
+      targetMinutes: 45,
+      dueDate: '2026-11-13',
+      notes: 'Digital Design Global Edition Chapter 5 problems and OneWare Studio simulation',
+      completed: false,
+      createdAt: '2026-11-09T10:00:00.000Z',
+      completedAt: null,
+      timeSpentSec: 0
+    }
+  ],
+  sessions: [
+    {
+      id: 'sess-eef211-1',
+      subject: 'Circuit Analysis',
+      topic: 'EEF 211E: Week 5 Methods of Analysis & Graph Theory Problems',
+      taskId: 'task-w5-eef211',
+      durationSec: 5160, // 86m studied on Pazartesi Day 9
+      startTime: '2026-11-09T17:04:00.000Z',
+      endTime: '2026-11-09T18:30:00.000Z',
+      notes: 'Nodal and mesh analysis problems solved.',
+      createdAt: '2026-11-09T18:30:00.000Z'
+    }
+  ],
+  activeTimer: {
+    isRunning: false,
+    mode: 'stopwatch',
+    targetSec: 1500,
+    elapsedSec: 0,
+    startedAt: null,
+    subject: 'Circuit Analysis',
+    topic: '',
+    linkedTaskId: null,
+    draftNotes: '',
+    isZenMode: false
+  },
+  settings: {
+    theme: 'slate',
+    fontStyle: 'sans', // 'sans' | 'serif' | 'mono' | 'humanist' | 'cinzel' | 'cormorant'
+    timerStyle: 'chronograph', // 'chronograph' | 'cadran' | 'minimal'
+    soundEnabled: true,
+    ambientSound: 'none',
+    volume: 0.5,
+    calendarView: 'week'
+  }
+};
+
+class Store {
   constructor() {
     this.listeners = new Set();
-    this.state = this.load();
+    this.state = this.sanitizeState(this.loadState());
+    this.saveState();
   }
 
-  load() {
-    if (!hasLocalStorage) return createDefaultState();
+  sanitizeState(state) {
+    if (!state || typeof state !== 'object') return { ...INITIAL_STATE };
+
+    const subjects = Array.isArray(state.subjects) ? state.subjects : [...INITIAL_SUBJECTS];
+    const groups = Array.isArray(state.groups) && state.groups.length > 0 ? [...state.groups] : [...DEFAULT_GROUPS];
+
+    // Ensure all 9 authentic İTÜ subjects exist and have correct group & properties
+    INITIAL_SUBJECTS.forEach((initSub) => {
+      const existing = subjects.find(
+        (s) => s.id === initSub.id || (s.name && initSub.name && s.name.toLowerCase() === initSub.name.toLowerCase()) || (s.code && initSub.code && s.code === initSub.code)
+      );
+      if (!existing) {
+        subjects.push({ ...initSub });
+      } else {
+        // Heal existing subject properties
+        if (!existing.group || existing.group === 'General' || existing.group === 'undefined') {
+          existing.group = initSub.group;
+        }
+        if (!existing.folderPath) existing.folderPath = initSub.folderPath;
+        if (initSub.id === 'sub-ihya' || (existing.name && existing.name.includes('İhya'))) {
+          existing.schedule = []; // Avoid duplicate chip
+        } else if (!existing.schedule || existing.schedule.length === 0) {
+          existing.schedule = initSub.schedule;
+        }
+        if (!existing.code) existing.code = initSub.code;
+        if (!existing.color) existing.color = initSub.color;
+      }
+    });
+
+    subjects.forEach((s) => {
+      if (s.id === 'sub-ihya' || (s.name && s.name.includes('İhya')) || s.code === 'İHYA') {
+        s.group = 'Seminars & Academies';
+        s.schedule = []; // Avoid duplicate chip in lecture slots
+      } else if (!s.group || s.group === 'General' || s.group.includes('İTÜ') || s.group.includes('ITU') || s.group.includes('Course')) {
+        s.group = 'İTÜ Courses (Fall 2026)';
+      }
+      if (!groups.includes(s.group)) groups.push(s.group);
+    });
+
+    const cleanGroups = ['İTÜ Courses (Fall 2026)', 'Seminars & Academies'];
+    groups.forEach((g) => {
+      const trimmed = (g || '').trim();
+      if (trimmed && !trimmed.includes('ITU') && !trimmed.includes('İTÜ') && !trimmed.includes('Seminar') && !cleanGroups.includes(trimmed)) {
+        cleanGroups.push(trimmed);
+      }
+    });
+
+    // Weekly Events sanitization
+    const weeklyEvents = Array.isArray(state.weeklyEvents) ? state.weeklyEvents : [...INITIAL_WEEKLY_EVENTS];
+    INITIAL_WEEKLY_EVENTS.forEach((initEv) => {
+      if (!weeklyEvents.some((ev) => ev.id === initEv.id || (ev.title && ev.title.toLowerCase() === initEv.title.toLowerCase()))) {
+        weeklyEvents.push({ ...initEv });
+      }
+    });
+    weeklyEvents.forEach((ev) => {
+      if (!ev.recurrence) ev.recurrence = 'weekly';
+    });
+
+    const unwantedTaskIds = new Set([
+      'task-w7-eef211',
+      'task-w7-ehb235',
+      'task-w7-mtt102',
+      'task-w7-ihya',
+      'task-w7-mat287-fri',
+      'task-backlog-1',
+      'task-backlog-2'
+    ]);
+    const rawTasks = Array.isArray(state.tasks) ? state.tasks : [...INITIAL_STATE.tasks];
+    const tasks = rawTasks.filter((t) => !unwantedTaskIds.has(t.id));
+    tasks.forEach((t) => {
+      if (!t.recurrence) t.recurrence = 'none';
+      // Anchor authentic tasks to their intended curriculum calendar dates
+      if (t.id === 'task-w5-eef211') {
+        t.dueDate = '2026-11-09';
+        t.completed = true;
+      } else if (t.id === 'task-folland-mat287' || t.id === 'task-w7-ehb474') {
+        if (!t.dueDate || t.dueDate === '2026-11-11' || t.dueDate === '2026-11-09') t.dueDate = '2026-11-10';
+      } else if (t.id === 'task-ing201-synth') {
+        if (!t.dueDate || t.dueDate === '2026-11-12') t.dueDate = '2026-11-11';
+      } else if (t.id === 'task-ehb208-trees' || t.id === 'task-w7-eef210') {
+        if (!t.dueDate || t.dueDate === '2026-11-13') t.dueDate = '2026-11-12';
+      } else if (t.id === 'task-eef205-kmap') {
+        if (!t.dueDate || t.dueDate === '2026-11-14') t.dueDate = '2026-11-13';
+      }
+    });
+
+    const sessions = Array.isArray(state.sessions) ? state.sessions : [...INITIAL_STATE.sessions];
+    sessions.forEach((s) => {
+      if (s.id === 'sess-eef211-1') {
+        s.endTime = '2026-11-09T18:30:00.000Z';
+        s.createdAt = '2026-11-09T18:30:00.000Z';
+      }
+    });
+    state.sessions = sessions;
+
+    if (!state.settings) state.settings = { ...INITIAL_STATE.settings };
+    if (!state.settings.fontStyle) state.settings.fontStyle = 'sans';
+    if (!state.settings.theme) state.settings.theme = 'slate';
+    if (!state.settings.timerStyle || state.settings.timerStyle === 'chronometer') {
+      state.settings.timerStyle = 'chronograph';
+    }
+
+    state.subjects = subjects;
+    state.groups = cleanGroups;
+    state.weeklyEvents = weeklyEvents;
+    state.tasks = tasks;
+    return state;
+  }
+
+  loadState() {
     try {
-      const raw =
-        localStorage.getItem(STORAGE_KEY) ||
-        localStorage.getItem('chronostudy_state_v2') ||
-        localStorage.getItem('chronostudy_state_v1');
-      if (!raw) return applyBlankSlate(createDefaultState());
-      const parsed = JSON.parse(raw);
-      const def = createDefaultState();
-      return {
-        ...def,
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+        return { ...INITIAL_STATE };
+      }
+      const serialized = localStorage.getItem(STORAGE_KEY);
+      if (!serialized) {
+        return { ...INITIAL_STATE };
+      }
+      const parsed = JSON.parse(serialized);
+
+      // Upgrade to version 11 (Clean up unwanted auto-injected tasks, lock authentic schedule dates, chronograph timer)
+      if (!parsed.version || parsed.version < 11) {
+        const unwantedTaskIds = new Set([
+          'task-w7-eef211',
+          'task-w7-ehb235',
+          'task-w7-mtt102',
+          'task-w7-ihya',
+          'task-w7-mat287-fri',
+          'task-backlog-1',
+          'task-backlog-2'
+        ]);
+
+        // Merge authentic İTÜ subjects with any user-added subjects
+        const existingSubjects = Array.isArray(parsed.subjects) ? parsed.subjects : [];
+        const cleanExisting = existingSubjects.filter(
+          (s) => s.id !== 'sub-balkan' && s.id !== 'sub-langs' && !s.name.includes('Balkan') && !s.name.includes('Diller')
+        );
+
+        // Ensure all authentic subjects from INITIAL_SUBJECTS exist
+        const mergedSubjects = [...cleanExisting];
+        INITIAL_SUBJECTS.forEach((initSub) => {
+          if (!mergedSubjects.some((s) => s.id === initSub.id || s.name.toLowerCase() === initSub.name.toLowerCase())) {
+            mergedSubjects.push(initSub);
+          }
+        });
+
+        // Ensure only authentic tasks exist and remove unwanted fabricated tasks
+        const existingTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+        const cleanTasks = existingTasks.filter(
+          (t) => !unwantedTaskIds.has(t.id) && !t.subject?.includes('Balkan') && !t.subject?.includes('Diller')
+        );
+        const mergedTasks = [...cleanTasks];
+        INITIAL_STATE.tasks.forEach((initTask) => {
+          if (!mergedTasks.some((t) => t.id === initTask.id || t.title.toLowerCase() === initTask.title.toLowerCase())) {
+            mergedTasks.push(initTask);
+          }
+        });
+
+        // Ensure sessions are preserved and 86m session exists
+        const existingSessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
+        const mergedSessions = [...existingSessions];
+        INITIAL_STATE.sessions.forEach((initSess) => {
+          if (!mergedSessions.some((s) => s.id === initSess.id)) {
+            mergedSessions.push(initSess);
+          }
+        });
+
+        // Groups
+        const groups = parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
+
+        const candidate = {
+          ...INITIAL_STATE,
+          version: 11,
+          groups: [...new Set(groups)],
+          subjects: mergedSubjects,
+          tasks: mergedTasks,
+          weeklyEvents: parsed.weeklyEvents || INITIAL_WEEKLY_EVENTS,
+          sessions: mergedSessions,
+          settings: { ...INITIAL_STATE.settings, ...(parsed.settings || {}) },
+          activeTimer: { ...INITIAL_STATE.activeTimer, ...(parsed.activeTimer || {}) }
+        };
+        return this.sanitizeState(candidate);
+      }
+
+      const candidate = {
+        ...INITIAL_STATE,
         ...parsed,
-        stats: { ...def.stats, ...(parsed.stats || {}) },
-        cornellNotes: parsed.cornellNotes || def.cornellNotes
+        groups: parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS,
+        subjects: parsed.subjects && parsed.subjects.length > 0 ? parsed.subjects : INITIAL_SUBJECTS,
+        weeklyEvents: parsed.weeklyEvents || INITIAL_WEEKLY_EVENTS,
+        settings: { ...INITIAL_STATE.settings, ...(parsed.settings || {}) },
+        activeTimer: { ...INITIAL_STATE.activeTimer, ...(parsed.activeTimer || {}) }
       };
-    } catch (_) {
-      return createDefaultState();
+      return this.sanitizeState(candidate);
+    } catch (err) {
+      console.warn('Failed to parse localStorage, resetting to initial state', err);
+      return { ...INITIAL_STATE };
     }
   }
 
-  save() {
-    if (!hasLocalStorage) return;
+  saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-    } catch (_) {}
+      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      }
+    } catch (err) {
+      console.error('Failed to save to localStorage', err);
+    }
+    this.notify();
   }
 
-  subscribe(fn) {
-    this.listeners.add(fn);
-    return () => this.listeners.delete(fn);
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   notify() {
-    this.save();
-    this.listeners.forEach((fn) => fn(this.state));
+    for (const listener of this.listeners) {
+      try {
+        listener(this.state);
+      } catch (err) {
+        console.error('Listener notification error:', err);
+      }
+    }
   }
 
-  update(updater) {
-    updater(this.state);
-    this.notify();
+  getState() {
+    return this.state;
   }
 
-  resetToDemo() {
-    this.state = createDefaultState();
-    this.notify();
+  // --- Task Methods (Optional target time, due date, & rich recurrence) ---
+  calculateNextRecurrenceDate(dueDate, recurrence, interval = 1) {
+    let base;
+    if (dueDate && /^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+      const [y, m, d] = dueDate.split('-').map(Number);
+      base = new Date(y, m - 1, d, 12, 0, 0); // Noon prevents any daylight saving or timezone shifts
+    } else {
+      base = new Date();
+      base.setHours(12, 0, 0, 0);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // If the due date was in the past, calculate relative to today
+    if (base < today) {
+      base = new Date(today);
+      base.setHours(12, 0, 0, 0);
+    }
+
+    const next = new Date(base);
+    const step = parseInt(interval, 10) || 1;
+
+    switch (recurrence) {
+      case 'daily':
+        next.setDate(next.getDate() + step);
+        break;
+      case 'weekdays':
+        next.setDate(next.getDate() + 1);
+        while (next.getDay() === 0 || next.getDay() === 6) {
+          next.setDate(next.getDate() + 1);
+        }
+        break;
+      case 'weekly':
+        next.setDate(next.getDate() + (7 * step));
+        break;
+      case 'biweekly':
+        next.setDate(next.getDate() + 14);
+        break;
+      case 'triweekly':
+        next.setDate(next.getDate() + 21);
+        break;
+      case 'monthly':
+        next.setMonth(next.getMonth() + step);
+        break;
+      case 'custom_days':
+        next.setDate(next.getDate() + step);
+        break;
+      case 'custom_weeks':
+        next.setDate(next.getDate() + (7 * step));
+        break;
+      default:
+        next.setDate(next.getDate() + 7);
+        break;
+    }
+
+    const year = next.getFullYear();
+    const month = String(next.getMonth() + 1).padStart(2, '0');
+    const day = String(next.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
-  // Start a clean blank slate for users who want to build from zero
-  startBlankSlate() {
-    this.update((s) => applyBlankSlate(s));
+  addTask({ title, subject = null, targetMinutes = null, dueDate = null, recurrence = 'none', recurrenceInterval = null, notes = '' }) {
+    if (!title || !title.trim()) return null;
+
+    const parsedMins = targetMinutes ? parseInt(targetMinutes, 10) : null;
+    const cleanDueDate = dueDate && dueDate.trim() ? dueDate.trim() : null;
+    const cleanSubject = subject && subject.trim() && subject.trim().toLowerCase() !== 'none' && subject.trim().toLowerCase() !== 'all' ? subject.trim() : null;
+
+    const newTask = {
+      id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      title: title.trim(),
+      subject: cleanSubject,
+      targetMinutes: parsedMins && parsedMins > 0 ? parsedMins : null,
+      dueDate: cleanDueDate,
+      recurrence: recurrence && recurrence !== 'none' ? recurrence : 'none',
+      recurrenceInterval: recurrenceInterval ? parseInt(recurrenceInterval, 10) : null,
+      parentRecurringId: null,
+      notes: notes ? notes.trim() : '',
+      completed: false,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+      timeSpentSec: 0
+    };
+    this.state.tasks.unshift(newTask);
+    this.saveState();
+    return newTask;
   }
 
-  // Shift a time block earlier or later by deltaMinutes (e.g., -15 or +15)
-  shiftBlockTime(blockId, deltaMinutes = 15) {
-    this.update((s) => {
-      const blk = s.scheduleBlocks.find((b) => b.id === blockId);
-      if (!blk) return;
-      const newStart = Math.max(0, Math.min(23 * 60, timeToMinutes(blk.startTime) + deltaMinutes));
-      const duration = Math.max(15, timeToMinutes(blk.endTime) - timeToMinutes(blk.startTime));
-      const newEnd = Math.min(23 * 60 + 59, newStart + duration);
-      blk.startTime = minutesToTime(newStart);
-      blk.endTime = minutesToTime(newEnd);
-      s.scheduleBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    });
-  }
+  toggleTask(taskId) {
+    const task = this.state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
 
-  // Import parsed .ICS or plain-text schedule blocks and recurring weekly slots
-  importCalendarEvents({ scheduleBlocks = [], weeklySlots = [] }) {
-    let addedBlocks = 0;
-    let addedWeekly = 0;
-    this.update((s) => {
-      const existingBlockKeys = new Set(
-        s.scheduleBlocks.map((b) => `${b.date}-${b.startTime}-${b.title.toLowerCase()}`)
+    const wasCompleted = task.completed;
+    task.completed = !wasCompleted;
+    task.completedAt = task.completed ? new Date().toISOString() : null;
+
+    // If the task was just marked COMPLETED and it is RECURRING, spawn the next occurrence
+    if (task.completed && task.recurrence && task.recurrence !== 'none') {
+      const nextDate = this.calculateNextRecurrenceDate(task.dueDate, task.recurrence, task.recurrenceInterval);
+      
+      // Ensure we don't duplicate if a pending task with same parent & due date already exists
+      const parentId = task.parentRecurringId || task.id;
+      const alreadyExists = this.state.tasks.some(
+        (t) => !t.completed && 
+               (t.parentRecurringId === parentId || t.id === parentId || (t.title.toLowerCase() === task.title.toLowerCase() && t.recurrence === task.recurrence)) && 
+               t.dueDate === nextDate
       );
-      scheduleBlocks.forEach((blk) => {
-        const key = `${blk.date}-${blk.startTime}-${blk.title.toLowerCase()}`;
-        if (!existingBlockKeys.has(key)) {
-          s.scheduleBlocks.push(blk);
-          existingBlockKeys.add(key);
-          addedBlocks++;
-        }
-      });
-      s.scheduleBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-      weeklySlots.forEach((slot) => {
-        const day = slot.dayIndex ?? 0;
-        if (!s.weeklyProgram[day]) s.weeklyProgram[day] = [];
-        const exists = s.weeklyProgram[day].some(
-          (w) => w.startTime === slot.startTime && w.title.toLowerCase() === slot.title.toLowerCase()
-        );
-        if (!exists) {
-          s.weeklyProgram[day].push({
-            id: slot.id,
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-            title: slot.title,
-            subjectId: slot.subjectId || s.subjects[0]?.id || 'subj-algo',
-            type: slot.type || 'Deep Focus'
-          });
-          addedWeekly++;
-        }
-      });
-    });
-    return { addedBlocks, addedWeekly };
+      if (!alreadyExists && nextDate) {
+        const nextTask = {
+          id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+          title: task.title,
+          subject: task.subject,
+          targetMinutes: task.targetMinutes || null,
+          dueDate: nextDate,
+          recurrence: task.recurrence,
+          recurrenceInterval: task.recurrenceInterval || null,
+          parentRecurringId: parentId,
+          notes: task.notes || '',
+          completed: false,
+          createdAt: new Date().toISOString(),
+          completedAt: null,
+          timeSpentSec: 0
+        };
+        this.state.tasks.unshift(nextTask);
+      }
+    }
+
+    this.saveState();
   }
 
-  // SuperMemo-2 (SM-2) Algorithm Implementation
-  reviewFlashcard(cardId, quality) {
-    this.update((s) => {
-      const card = s.flashcards.find((c) => c.id === cardId);
-      if (!card) return;
+  updateTask(taskId, updates) {
+    const task = this.state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    Object.assign(task, updates);
+    this.saveState();
+  }
 
-      let { repetitions, interval, efactor } = card;
-      if (quality < 3) {
-        repetitions = 0;
-        interval = 1;
-      } else {
-        if (repetitions === 0) {
-          interval = 1;
-        } else if (repetitions === 1) {
-          interval = 3;
-        } else {
-          interval = Math.max(1, Math.round(interval * efactor));
+  deleteTask(taskId) {
+    this.state.tasks = this.state.tasks.filter((t) => t.id !== taskId);
+    if (this.state.activeTimer.linkedTaskId === taskId) {
+      this.state.activeTimer.linkedTaskId = null;
+    }
+    this.saveState();
+  }
+
+  addTimeSpentToTask(taskId, durationSec) {
+    const task = this.state.tasks.find((t) => t.id === taskId);
+    if (task) {
+      task.timeSpentSec = (task.timeSpentSec || 0) + durationSec;
+      this.saveState();
+    }
+  }
+
+  // --- Session Log Methods ---
+  addSession({
+    subject,
+    topic,
+    taskId = null,
+    durationSec,
+    startTime = null,
+    endTime = null,
+    notes = ''
+  }) {
+    const now = new Date();
+    const end = endTime ? new Date(endTime) : now;
+    const start = startTime ? new Date(startTime) : new Date(end.getTime() - durationSec * 1000);
+
+    const cleanSubject = subject && subject.trim() && subject.trim().toLowerCase() !== 'none' ? subject.trim() : 'General';
+
+    const newSession = {
+      id: 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      subject: cleanSubject,
+      topic: topic ? topic.trim() : 'Study Session',
+      taskId: taskId || null,
+      durationSec: Math.max(1, Math.round(durationSec)),
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      notes: notes ? notes.trim() : '',
+      createdAt: now.toISOString()
+    };
+
+    this.state.sessions.unshift(newSession);
+
+    if (taskId) {
+      this.addTimeSpentToTask(taskId, newSession.durationSec);
+    }
+
+    this.saveState();
+    return newSession;
+  }
+
+  deleteSession(sessionId) {
+    this.state.sessions = this.state.sessions.filter((s) => s.id !== sessionId);
+    this.saveState();
+  }
+
+  // --- Subject Management (Groups, Folder Paths, Schedules) ---
+  addSubject(nameOrObj, color = '#e06d43', code = '', targetWeeklyHours = null, group = 'İTÜ Courses (Fall 2026)', folderPath = '') {
+    let name = nameOrObj;
+    if (nameOrObj && typeof nameOrObj === 'object') {
+      name = nameOrObj.name;
+      color = nameOrObj.color || color;
+      code = nameOrObj.code || code;
+      targetWeeklyHours = nameOrObj.targetWeeklyHours !== undefined ? nameOrObj.targetWeeklyHours : targetWeeklyHours;
+      group = nameOrObj.group || group;
+      folderPath = nameOrObj.folderPath || folderPath;
+    }
+
+    const trimmed = typeof name === 'string' ? name.trim() : '';
+    if (!trimmed) return null;
+
+    const existing = this.state.subjects.find(
+      (s) => s.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) return existing;
+
+    const newSub = {
+      id: 'sub-' + Date.now(),
+      code: code ? code.trim().toUpperCase() : trimmed.slice(0, 7).toUpperCase(),
+      name: trimmed,
+      group: group ? group.trim() : 'İTÜ Courses (Fall 2026)',
+      color: color || '#e06d43',
+      targetWeeklyHours: targetWeeklyHours ? parseInt(targetWeeklyHours, 10) : null,
+      folderPath: folderPath ? folderPath.trim() : '',
+      schedule: []
+    };
+    this.state.subjects.push(newSub);
+
+    // If new group, add to groups list
+    if (newSub.group && !this.state.groups.includes(newSub.group)) {
+      this.state.groups.push(newSub.group);
+    }
+
+    this.saveState();
+    return newSub;
+  }
+
+  updateSubject(subjectId, { name, color, code, targetWeeklyHours, group, folderPath }) {
+    const sub = this.state.subjects.find((s) => s.id === subjectId);
+    if (!sub) return;
+
+    const oldName = sub.name;
+    if (name && name.trim()) sub.name = name.trim();
+    if (color) sub.color = color;
+    if (code !== undefined) sub.code = code.trim().toUpperCase();
+    if (targetWeeklyHours !== undefined) {
+      sub.targetWeeklyHours = targetWeeklyHours ? parseInt(targetWeeklyHours, 10) : null;
+    }
+    if (group !== undefined) {
+      sub.group = group ? group.trim() : 'General';
+      if (!this.state.groups.includes(sub.group)) {
+        this.state.groups.push(sub.group);
+      }
+    }
+    if (folderPath !== undefined) sub.folderPath = folderPath.trim();
+
+    if (oldName !== sub.name) {
+      this.state.tasks.forEach((t) => {
+        if (t.subject === oldName) t.subject = sub.name;
+      });
+      this.state.sessions.forEach((s) => {
+        if (s.subject === oldName) s.subject = sub.name;
+      });
+      if (this.state.activeTimer.subject === oldName) {
+        this.state.activeTimer.subject = sub.name;
+      }
+    }
+
+    this.saveState();
+  }
+
+  deleteSubject(subjectId) {
+    this.state.subjects = this.state.subjects.filter((s) => s.id !== subjectId);
+    this.saveState();
+  }
+
+  // --- Category / Group Management ---
+  getGroups() {
+    return this.state.groups || [];
+  }
+
+  addCategory(groupName) {
+    if (!groupName || typeof groupName !== 'string') return false;
+    const trimmed = groupName.trim();
+    if (!trimmed) return false;
+    if (!this.state.groups.includes(trimmed)) {
+      this.state.groups.push(trimmed);
+      this.saveState();
+      return true;
+    }
+    return false;
+  }
+
+  renameCategory(oldName, newName) {
+    if (!oldName || !newName || typeof newName !== 'string') return false;
+    const trimmedNew = newName.trim();
+    if (!trimmedNew || oldName === trimmedNew) return false;
+
+    // Update in groups list
+    const index = this.state.groups.indexOf(oldName);
+    if (index !== -1) {
+      this.state.groups[index] = trimmedNew;
+    } else {
+      this.state.groups.push(trimmedNew);
+    }
+
+    // Deduplicate
+    this.state.groups = [...new Set(this.state.groups)];
+
+    // Update subjects belonging to this group
+    this.state.subjects.forEach((s) => {
+      if (s.group === oldName) {
+        s.group = trimmedNew;
+      }
+    });
+
+    // Update weekly events belonging to this category
+    if (Array.isArray(this.state.weeklyEvents)) {
+      this.state.weeklyEvents.forEach((we) => {
+        if (we.category === oldName) {
+          we.category = trimmedNew;
         }
-        repetitions += 1;
+      });
+    }
+
+    this.saveState();
+    return true;
+  }
+
+  deleteCategory(groupName, fallbackGroup = 'İTÜ Courses (Fall 2026)') {
+    if (!groupName) return false;
+    this.state.groups = this.state.groups.filter((g) => g !== groupName);
+    if (this.state.groups.length === 0) {
+      this.state.groups = [fallbackGroup];
+    }
+    const target = this.state.groups[0];
+
+    this.state.subjects.forEach((s) => {
+      if (s.group === groupName) {
+        s.group = target;
+      }
+    });
+
+    if (Array.isArray(this.state.weeklyEvents)) {
+      this.state.weeklyEvents.forEach((we) => {
+        if (we.category === groupName) {
+          we.category = target;
+        }
+      });
+    }
+
+    this.saveState();
+    return true;
+  }
+
+  getSubjectColor(subjectName) {
+    const sub = this.state.subjects.find(
+      (s) => s.name.toLowerCase() === (subjectName || '').toLowerCase()
+    );
+    return sub ? sub.color : '#64748b';
+  }
+
+  getSubjectStats(subjectName) {
+    const tasks = this.state.tasks.filter((t) => t.subject === subjectName);
+    const sessions = this.state.sessions.filter((s) => s.subject === subjectName);
+
+    const totalSeconds = sessions.reduce((acc, s) => acc + (s.durationSec || 0), 0);
+    const pendingTasks = tasks.filter((t) => !t.completed).length;
+    const completedTasks = tasks.filter((t) => t.completed).length;
+
+    const startOfWeek = new Date();
+    const day = startOfWeek.getDay() || 7;
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - day + 1);
+
+    const thisWeekSeconds = sessions
+      .filter((s) => new Date(s.endTime || s.createdAt) >= startOfWeek)
+      .reduce((acc, s) => acc + (s.durationSec || 0), 0);
+
+    return {
+      totalMinutes: Math.round(totalSeconds / 60),
+      thisWeekHours: (thisWeekSeconds / 3600).toFixed(1),
+      pendingTasks,
+      completedTasks,
+      totalTasks: tasks.length
+    };
+  }
+
+  // --- Standalone / Additional Weekly Scheduled Events (Kardeşlik ve İhya, Seminars, etc.) ---
+  addWeeklyEvent({ title, day, start, end, category = 'General', color = '#059669', recurrence = 'weekly', notes = '' }) {
+    if (!title || !title.trim()) return null;
+    const newEvent = {
+      id: 'wevent-' + Date.now(),
+      title: title.trim(),
+      day: parseInt(day, 10) || 1, // 1 = Mon ... 7 = Sun
+      start: start || '19:00',
+      end: end || '21:00',
+      category: category || 'General',
+      color: color || '#059669',
+      recurrence: recurrence || 'weekly', // 'weekly' | 'biweekly' | 'monthly' | 'weekdays' | 'daily'
+      notes: notes ? notes.trim() : ''
+    };
+    if (!Array.isArray(this.state.weeklyEvents)) {
+      this.state.weeklyEvents = [];
+    }
+    this.state.weeklyEvents.push(newEvent);
+    this.saveState();
+    return newEvent;
+  }
+
+  deleteWeeklyEvent(eventId) {
+    if (!Array.isArray(this.state.weeklyEvents)) return;
+    this.state.weeklyEvents = this.state.weeklyEvents.filter((e) => e.id !== eventId);
+    this.saveState();
+  }
+
+  updateWeeklyEvent(eventId, { title, day, start, end, category, color, recurrence, notes }) {
+    if (!Array.isArray(this.state.weeklyEvents)) return null;
+    const ev = this.state.weeklyEvents.find((e) => e.id === eventId);
+    if (!ev) return null;
+    if (title && title.trim()) ev.title = title.trim();
+    if (day !== undefined) ev.day = parseInt(day, 10) || 1;
+    if (start) ev.start = start;
+    if (end) ev.end = end;
+    if (category !== undefined) ev.category = category.trim();
+    if (color) ev.color = color;
+    if (recurrence !== undefined) ev.recurrence = recurrence;
+    if (notes !== undefined) ev.notes = notes.trim();
+    this.saveState();
+    return ev;
+  }
+
+  // --- Course Lecture Slots Management ---
+  addLectureSlot(subjectId, { day, start, end, label = 'Lecture' }) {
+    const sub = this.state.subjects.find((s) => s.id === subjectId);
+    if (!sub) return false;
+    if (!Array.isArray(sub.schedule)) sub.schedule = [];
+    sub.schedule.push({
+      day: parseInt(day, 10) || 1,
+      start: start || '08:30',
+      end: end || '11:29',
+      label: label ? label.trim() : 'Lecture'
+    });
+    this.saveState();
+    return true;
+  }
+
+  updateLectureSlot(subjectId, slotIndex, { day, start, end, label = 'Lecture' }) {
+    const sub = this.state.subjects.find((s) => s.id === subjectId);
+    if (!sub || !Array.isArray(sub.schedule) || !sub.schedule[slotIndex]) return false;
+    sub.schedule[slotIndex] = {
+      day: parseInt(day, 10) || 1,
+      start: start || '08:30',
+      end: end || '11:29',
+      label: label ? label.trim() : 'Lecture'
+    };
+    this.saveState();
+    return true;
+  }
+
+  deleteLectureSlot(subjectId, slotIndex) {
+    const sub = this.state.subjects.find((s) => s.id === subjectId);
+    if (!sub || !Array.isArray(sub.schedule)) return false;
+    sub.schedule.splice(slotIndex, 1);
+    this.saveState();
+    return true;
+  }
+
+  // --- Active Timer State ---
+  updateActiveTimer(partial) {
+    this.state.activeTimer = {
+      ...this.state.activeTimer,
+      ...partial
+    };
+    this.saveState();
+  }
+
+  // --- Settings ---
+  updateSettings(partial) {
+    this.state.settings = {
+      ...this.state.settings,
+      ...partial
+    };
+    this.saveState();
+  }
+
+  // --- Statistics Helpers ---
+  getTodayStats() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const todaySessions = this.state.sessions.filter((s) => {
+      const sDate = new Date(s.endTime || s.createdAt);
+      return sDate >= startOfToday;
+    });
+
+    const totalSecondsToday = todaySessions.reduce((acc, s) => acc + (s.durationSec || 0), 0);
+    const completedTasksToday = this.state.tasks.filter((t) => {
+      if (!t.completed || !t.completedAt) return false;
+      return new Date(t.completedAt) >= startOfToday;
+    }).length;
+
+    return {
+      totalSecondsToday,
+      todaySessionsCount: todaySessions.length,
+      completedTasksToday,
+      pendingTasksCount: this.state.tasks.filter((t) => !t.completed).length
+    };
+  }
+
+  // --- Comprehensive Analytics Engine ---
+  getAnalyticsData() {
+    const sessions = this.state.sessions || [];
+    const tasks = this.state.tasks || [];
+    const subjects = this.state.subjects || [];
+
+    // Total focus stats
+    let totalSec = 0;
+    sessions.forEach((s) => {
+      totalSec += (s.durationSec || 0);
+    });
+
+    // Current Monday - Sunday boundary
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 is Sun, 1 is Mon...
+    const distToMon = (currentDay + 6) % 7;
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - distToMon);
+    mon.setHours(0, 0, 0, 0);
+
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    sun.setHours(23, 59, 59, 999);
+
+    const monTime = mon.getTime();
+    const sunTime = sun.getTime();
+
+    let weekSec = 0;
+    const activeDaysSet = new Set();
+
+    // 7-day focus trend
+    const dayLabels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const dailyTrend = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mon);
+      d.setDate(mon.getDate() + i);
+      const dStr = toLocalDateStr(d);
+      const isToday = dStr === toLocalDateStr(now);
+      dailyTrend.push({
+        dayIndex: (i + 1) % 7,
+        label: dayLabels[i],
+        dateStr: dStr,
+        durationSec: 0,
+        durationMins: 0,
+        isToday
+      });
+    }
+
+    // Aggregate sessions
+    const subjectSecMap = {};
+    sessions.forEach((s) => {
+      const d = s.startTime ? new Date(s.startTime) : new Date(s.createdAt);
+      const t = d.getTime();
+      const dur = s.durationSec || 0;
+
+      // Current week metrics
+      if (t >= monTime && t <= sunTime) {
+        weekSec += dur;
+        const dStr = toLocalDateStr(d);
+        activeDaysSet.add(dStr);
+
+        const trendDay = dailyTrend.find((td) => td.dateStr === dStr);
+        if (trendDay) {
+          trendDay.durationSec += dur;
+          trendDay.durationMins = Math.round(trendDay.durationSec / 60);
+        }
       }
 
-      efactor = efactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-      if (efactor < 1.3) efactor = 1.3;
-
-      card.repetitions = repetitions;
-      card.interval = interval;
-      card.efactor = Number(efactor.toFixed(2));
-      card.dueDate = addDaysISO(getTodayISO(), interval);
+      // Subject breakdown
+      const subName = s.subject || 'General / Other';
+      subjectSecMap[subName] = (subjectSecMap[subName] || 0) + dur;
     });
-  }
 
-  convertCornellNoteToFlashcard(noteId) {
-    let created = null;
-    this.update((s) => {
-      const note = s.cornellNotes.find((n) => n.id === noteId);
-      if (!note) return;
-      created = {
-        id: 'fc-cn-' + Date.now(),
-        subjectId: note.subjectId,
-        prompt: note.cue || note.title,
-        answer: `${note.summary ? note.summary + ' — ' : ''}${note.notes}`,
-        interval: 1,
-        repetitions: 0,
-        efactor: 2.5,
-        dueDate: getTodayISO()
+    // Subject breakdown sorted by duration descending
+    const subjectBreakdown = Object.entries(subjectSecMap).map(([name, durSec]) => {
+      const subObj = subjects.find((s) => s.name === name || s.code === name);
+      const color = subObj ? subObj.color : '#64748b';
+      const percentage = totalSec > 0 ? Math.round((durSec / totalSec) * 100) : 0;
+      return {
+        name,
+        color,
+        durationSec: durSec,
+        durationMins: Math.round(durSec / 60),
+        durationHours: (durSec / 3600).toFixed(1),
+        percentage
       };
-      s.flashcards.unshift(created);
-    });
-    return created;
+    }).sort((a, b) => b.durationSec - a.durationSec);
+
+    // Tasks metrics
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((t) => t.completed).length;
+    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    return {
+      totalSec,
+      totalSessions: sessions.length,
+      weekSec,
+      activeDaysCount: activeDaysSet.size,
+      totalTasks,
+      completedTasks,
+      completionRate,
+      dailyTrend,
+      subjectBreakdown
+    };
   }
 
-  autoScheduleDate(targetDateIso = this.state.selectedDate) {
-    let added = [];
-    this.update((s) => {
-      const existing = s.scheduleBlocks.filter((b) => b.date === targetDateIso);
-      added = computeAutoScheduleBlocks(existing, s.tasks, targetDateIso);
-      s.scheduleBlocks.push(...added);
-      s.scheduleBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    });
-    return added.length;
-  }
-
-  applyProgramToDate(weekdayIndex, targetDateIso) {
-    let addedCount = 0;
-    this.update((s) => {
-      const templateBlocks = s.weeklyProgram[weekdayIndex] || [];
-      const existingKeys = new Set(
-        s.scheduleBlocks
-          .filter((b) => b.date === targetDateIso)
-          .map((b) => `${b.startTime}-${b.title}`)
-      );
-
-      templateBlocks.forEach((tpl) => {
-        const key = `${tpl.startTime}-${tpl.title}`;
-        if (!existingKeys.has(key)) {
-          s.scheduleBlocks.push({
-            id: 'blk-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-            date: targetDateIso,
-            startTime: tpl.startTime,
-            endTime: tpl.endTime,
-            title: tpl.title,
-            subjectId: tpl.subjectId,
-            category: tpl.type.toLowerCase().includes('lecture') ? 'lecture' : 'deep_work',
-            done: false
-          });
-          addedCount++;
-        }
-      });
-
-      s.scheduleBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    });
-    return addedCount;
-  }
-
-  exportICS() {
+  // --- Google Calendar & iCal Export Helper ---
+  generateICS() {
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//ChronoStudy Planner v3.0//EN',
-      'CALSCALE:GREGORIAN'
+      'PRODID:-//ChronoStudy//ITU Study Tracker//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:ChronoStudy Schedule'
     ];
 
-    this.state.scheduleBlocks.forEach((blk) => {
-      const dateCompact = blk.date.replace(/-/g, '');
-      const startCompact = blk.startTime.replace(':', '') + '00';
-      const endCompact = blk.endTime.replace(':', '') + '00';
+    const formatICSDate = (date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    // Scheduled Tasks with due dates
+    this.state.tasks.forEach((task) => {
+      if (!task.dueDate) return;
+      const start = new Date(task.dueDate + 'T09:00:00');
+      const end = new Date(start.getTime() + (task.targetMinutes || 45) * 60000);
+
       lines.push(
         'BEGIN:VEVENT',
-        `UID:${blk.id}@chronostudy.app`,
-        `DTSTART:${dateCompact}T${startCompact}`,
-        `DTEND:${dateCompact}T${endCompact}`,
-        `SUMMARY:${blk.title}`,
-        `DESCRIPTION:ChronoStudy Scheduled Block (${blk.category})`,
+        `UID:task-${task.id}@chronostudy.app`,
+        `DTSTAMP:${formatICSDate(new Date())}`,
+        `DTSTART:${formatICSDate(start)}`,
+        `DTEND:${formatICSDate(end)}`,
+        `SUMMARY:[Study] ${task.subject}: ${task.title}`,
+        `DESCRIPTION:${task.notes || 'Scheduled study block in ChronoStudy'}`,
+        `STATUS:${task.completed ? 'COMPLETED' : 'CONFIRMED'}`,
         'END:VEVENT'
       );
     });
 
-    this.state.subjects.forEach((subj) => {
-      if (subj.examDate) {
-        const d = subj.examDate.replace(/-/g, '');
+    // Standalone Weekly Recurring Events (e.g. Kardeşlik ve İhya)
+    if (Array.isArray(this.state.weeklyEvents)) {
+      this.state.weeklyEvents.forEach((ev) => {
         lines.push(
           'BEGIN:VEVENT',
-          `UID:milestone-${subj.id}@chronostudy.app`,
-          `DTSTART;VALUE=DATE:${d}`,
-          `SUMMARY:MILESTONE: ${subj.name} (${subj.code})`,
+          `UID:event-${ev.id}@chronostudy.app`,
+          `DTSTAMP:${formatICSDate(new Date())}`,
+          `SUMMARY:[Event] ${ev.title}`,
+          `DESCRIPTION:${ev.notes || ''}`,
+          'STATUS:CONFIRMED',
           'END:VEVENT'
         );
-      }
-    });
+      });
+    }
 
     lines.push('END:VCALENDAR');
     return lines.join('\r\n');
   }
+
+  // --- Import / Export ---
+  exportJSON() {
+    return JSON.stringify(
+      {
+        appName: 'ChronoStudy',
+        version: this.state.version,
+        exportedAt: new Date().toISOString(),
+        groups: this.state.groups,
+        subjects: this.state.subjects,
+        weeklyEvents: this.state.weeklyEvents,
+        tasks: this.state.tasks,
+        sessions: this.state.sessions,
+        settings: this.state.settings
+      },
+      null,
+      2
+    );
+  }
+
+  exportCSV() {
+    const headers = ['Session ID', 'Date', 'Start Time', 'End Time', 'Duration (Minutes)', 'Subject', 'Topic', 'Notes'];
+    const rows = this.state.sessions.map((s) => {
+      const startDate = s.startTime ? new Date(s.startTime) : new Date(s.createdAt);
+      const endDate = s.endTime ? new Date(s.endTime) : startDate;
+      const dateStr = toLocalDateStr(startDate);
+      const startStr = startDate.toTimeString().slice(0, 8);
+      const endStr = endDate.toTimeString().slice(0, 8);
+      const mins = Math.round((s.durationSec || 0) / 60);
+      const escape = (val) => `"${(val || '').toString().replace(/"/g, '""')}"`;
+
+      return [
+        escape(s.id),
+        escape(dateStr),
+        escape(startStr),
+        escape(endStr),
+        mins,
+        escape(s.subject),
+        escape(s.topic),
+        escape(s.notes)
+      ].join(',');
+    });
+
+    return [headers.join(','), ...rows].join('\r\n');
+  }
+
+  generateCSV() {
+    return this.exportCSV();
+  }
+
+  importJSON(jsonString) {
+    try {
+      const data = JSON.parse(jsonString);
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid JSON format');
+      }
+
+      if (Array.isArray(data.groups)) this.state.groups = data.groups;
+      if (Array.isArray(data.subjects)) this.state.subjects = data.subjects;
+      if (Array.isArray(data.weeklyEvents)) this.state.weeklyEvents = data.weeklyEvents;
+      if (Array.isArray(data.tasks)) this.state.tasks = data.tasks;
+      if (Array.isArray(data.sessions)) this.state.sessions = data.sessions;
+      if (data.settings) this.state.settings = { ...this.state.settings, ...data.settings };
+
+      this.saveState();
+      return { success: true, count: this.state.sessions.length };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
 }
 
 export const store = new Store();
+export default store;

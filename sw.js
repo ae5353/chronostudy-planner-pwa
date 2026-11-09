@@ -1,24 +1,23 @@
-const CACHE_NAME = 'chronostudy-v4.2';
+// sw.js — Service Worker for Offline PWA Capabilities
+const CACHE_NAME = 'chronostudy-clean-v1';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon.svg',
-  './src/index.css',
-  './src/main.js',
+  './src/styles.css',
+  './src/app.js',
   './src/store.js',
-  './src/audio.js',
-  './src/cloud-sync.js',
-  './src/calendar-sync.js',
-  './src/reports.js',
-  './src/calview.js',
-  './src/todo.js',
-  './src/log.js'
+  './src/timer.js',
+  './src/ui.js',
+  './src/audio.js'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -32,7 +31,8 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  // Network-first for HTML / navigation requests so updates appear immediately without stale cache
+
+  // Stale-while-revalidate / Network first for HTML
   if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(
       fetch(event.request)
@@ -47,6 +47,7 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request)

@@ -1,20 +1,19 @@
 {
   "name": "chronostudy",
-  "version": "2.0.0",
-  "description": "ChronoStudy v2.0 \u2014 Multi-platform Mobile PWA, Portable Bundle, Terminal CLI, LAN Sync Server & Capacitor Suite for Time Blocking, Weekly Programs, SM-2 Spaced Repetition, Cornell Notes, Pomodoro Focus & Exam Analytics",
+  "version": "1.0.0",
+  "description": "ChronoStudy — Personal Study Tracker & Planner for PC & Mobile",
   "type": "module",
-  "bin": {
-    "chronostudy": "./cli/chronostudy-cli.mjs"
-  },
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173",
-    "start": "node server/sync-server.mjs",
-    "cli": "node cli/chronostudy-cli.mjs",
-    "test": "node --test tests/chronostudy.test.mjs",
-    "build": "vite build",
-    "test:all": "node --test tests/chronostudy.test.mjs && node --test chronostudy-termux/test/ && node --test studylog-minimal/tests/ && node --test chronostudy-sheets-reports/tests/"
+    "start": "node server.mjs",
+    "dev": "node server.mjs"
   },
-  "devDependencies": {
-    "vite": "^6.0.0"
-  }
+  "keywords": [
+    "study-tracker",
+    "focus-timer",
+    "study-planner",
+    "todo",
+    "notes"
+  ],
+  "author": "",
+  "license": "MIT"
 }

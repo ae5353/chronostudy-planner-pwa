@@ -1,62 +1,71 @@
-# ChronoStudy v2.0 — Multi-Platform Time, Program, Study, Cornell Notes & Task Planner Suite
+# ChronoStudy — Personal Study Tracker & Planner
 
-ChronoStudy v2.0 is a complete, offline-first, multi-platform productivity and academic mastery suite designed for mobile, tablet, desktop, and terminal workflows.
-
----
-
-## Multi-Platform Ecosystem
-
-| Platform / Target | Entry Point | Capabilities |
-| :--- | :--- | :--- |
-| **1. Mobile & Desktop PWA** | [index.html](file:///home/antigravity/chronostudy/index.html) + [sw.js](file:///home/antigravity/chronostudy/sw.js) | Installable iOS/Android Home Screen PWA, offline service worker cache, Screen WakeLock API, Lock-Screen MediaSession controls, 6 responsive views. |
-| **2. Single-File Mobile Portable App** | [ChronoStudy-Mobile-Portable.html](file:///home/antigravity/chronostudy/ChronoStudy-Mobile-Portable.html) | 100% self-contained single-file HTML bundle (all CSS, state, SM-2, and Web Audio synthesizer inlined). Open directly from Google Drive, iCloud, or local phone storage with zero server required. |
-| **3. Terminal / CLI Companion** | [cli/chronostudy-cli.mjs](file:///home/antigravity/chronostudy/cli/chronostudy-cli.mjs) | Zero-dependency Node.js CLI for Linux, macOS, Windows, and Android Termux (`dashboard`, `add`, `auto-schedule`, `grades`, `export-ics`). |
-| **4. Self-Hosted Sync & Calendar Server** | [server/sync-server.mjs](file:///home/antigravity/chronostudy/server/sync-server.mjs) + [Dockerfile](file:///home/antigravity/chronostudy/Dockerfile) | Serves the PWA + REST state sync (`/api/state`) + live subscribable RFC-5545 calendar feed (`/api/calendar.ics`) for Apple/Google Calendar. |
-| **5. Native iOS / Android Wrapper** | [capacitor.config.json](file:///home/antigravity/chronostudy/capacitor.config.json) | Ready for native iOS & Android compilation via Capacitor (`app.chronostudy.planner`). |
+A focused, distraction-free study companion designed **PC-first**, responsive for mobile, and built specifically for personal use.
 
 ---
 
-## Core v2.0 Capabilities
+## 🌟 Why ChronoStudy?
 
-### 1. Daily Command Center (`Today Hub`)
-- **Smart Natural-Language Task Capture**: Type shorthand tokens like `"Prove SVD theorem #MATH-204 !Q1 ~3p @tomorrow"` to automatically assign the course (`MATH-204`), Eisenhower quadrant (`Q1`), Pomodoro estimate (`3`), and due date (`tomorrow`).
-- **⚡ Smart Auto-Scheduler (`computeAutoScheduleBlocks`)**: Automatically finds open gaps (`>= 45m`) in your daily schedule between `08:00` and `21:30`, inserts 15-minute recovery buffers, and schedules your highest-priority uncompleted `Q1`/`Q2` tasks.
-- **Live Overlap Conflict Detection (`detectScheduleConflicts`)**: Automatically highlights overlapping time blocks on your schedule.
+Plain stopwatches and separate to-do apps make it difficult to remember **what** you studied, **when**, **for how long**, and **what you learned**. 
 
-### 2. Multi-View Task Engine (`Tasks & Matrix`)
-- Switch seamlessly between **List View**, **Eisenhower 2×2 Priority Matrix** (`Q1 Urgent & Important`, `Q2 Deep Work`, `Q3 Quick Batch`, `Q4 Someday`), and **Kanban Status Board** (`To Do`, `In Progress`, `Completed`) with checkable subtasks.
-
-### 3. Recurring 7-Day Program Builder (`Weekly Program`)
-- Build your reusable Monday–Sunday academic and personal timetable and push any day's template directly into your live schedule with duplicate prevention.
-
-### 4. Study, SM-2 Active Recall & Cornell Notes (`Study & Notes`)
-- **SuperMemo-2 (SM-2) Active Recall Deck**: Dynamically schedules review intervals (`1d → 3d → round(I × EF)`) with an easiness factor floor of `1.3`.
-- **Cornell Note-Taking System**: Structured **Cue Column**, **Lecture/Reading Notes Column**, and **Synthesis Summary Row**, with 1-click **⚡ Convert to SM-2 Card** synthesis.
-- **Syllabus Topic Mastery Matrix**: Track confidence and status across `Not Started`, `Learning`, `Reviewing`, and `Mastered`.
-
-### 5. Deep Focus Studio (`Focus Studio`)
-- **4 Timer Modes**: Pomodoro (`25m`), Deep Work (`50m`), Ultradian (`90m`), and Rest Break (`5m`).
-- **Mobile WakeLock & MediaSession APIs**: Keeps your mobile screen awake while focusing and displays session info on your phone's lock screen.
-- **Offline Web Audio Synthesizer ([src/audio.js](file:///home/antigravity/chronostudy/src/audio.js))**: Generates **Warm Brown Noise**, **Soft Study Rain**, **40Hz Gamma Binaural Focus**, and harmonic completion chimes in pure JavaScript.
-
-### 6. Analytics & Final Exam Target Score Calculator (`Analytics & GPA`)
-- **7-Day Focus Velocity Chart**: Visualizes daily focus minutes across the week.
-- **Weighted Final Exam Score Calculator (`calculateRequiredExamScore`)**: Enter your current coursework grade, final exam weight `%`, and target grade to see the exact exam score needed.
+**ChronoStudy unifies everything in one clean dashboard:**
+1. **Focus Timer & Live Scratchpad**: Start a stopwatch or focus countdown block. Type notes, formulas, questions, or chapter progress right alongside the timer as you study.
+2. **"What I Must Study" (Study To-Do List)**: Keep track of upcoming topics and assignments. Each task has a **`▶ Study Now`** button that immediately primes your timer and links your notes.
+3. **Session History & Activity Log**: Automatic timeline of past study sessions with exact times, durations, subjects, and your saved study notes.
+4. **Manual Offline Logging**: Studied away from the computer with a physical book? Quickly log past study sessions with "+ Log Past Study".
+5. **No Clutter & 100% Private**: Zero logins, zero third-party tracking, zero bloated dependencies. All data is saved on your device with instant 1-click JSON backup and CSV export for Excel / Google Sheets.
 
 ---
 
-## Quick Start & Commands
+## 🚀 Getting Started on PC
+
+You can run ChronoStudy instantly using Node.js:
 
 ```bash
-# Run automated unit & integration test suite (17+ tests)
-npm test
-
-# Run the Terminal CLI Companion
-node cli/chronostudy-cli.mjs dashboard
-node cli/chronostudy-cli.mjs add "Implement Raft log compaction #CS-412 !Q1 ~3p @tomorrow"
-node cli/chronostudy-cli.mjs auto-schedule
-node cli/chronostudy-cli.mjs grades
-
-# Start the Sync + Live Calendar Feed Server (default port 4173)
+# Start the local server
 npm start
 ```
+Then open your browser to:
+👉 **[http://localhost:3000](http://localhost:3000)**
+
+*(Alternatively, you can open `index.html` directly in Google Chrome, Microsoft Edge, or Firefox!)*
+
+---
+
+## ⌨️ Desktop Keyboard Shortcuts
+
+- `Space`: Start / Pause the active study timer (when not typing in an input field).
+- `Ctrl + F`: Finish current study session and open review modal.
+- `Esc`: Close any open modal.
+
+---
+
+## 📱 Using on Mobile
+
+ChronoStudy is a Progressive Web App (PWA) with responsive breakpoints:
+1. On PC / Desktop, it provides a spacious multi-column dashboard.
+2. On mobile screens (under 768px), it automatically switches to an intuitive bottom navigation bar (`⏱ Timer`, `📋 To-Do`, `📜 History`).
+3. To install it as a standalone app on your phone or PC:
+   - **Chrome / Edge (PC)**: Click the install icon in the address bar (or Menu → "Install ChronoStudy").
+   - **Safari (iOS)**: Tap Share → "Add to Home Screen".
+   - **Chrome (Android)**: Tap Menu (three dots) → "Install App".
+
+---
+
+## 🎧 Calming Ambient Sound Generator
+
+Need background focus sound? ChronoStudy includes a procedural Web Audio noise generator:
+- **Soft Rain**
+- **White Noise**
+- **Gentle Stream**
+
+Zero audio files to download—runs 100% offline using your browser's audio synthesizer.
+
+---
+
+## 💾 Data Backups & Spreadsheets
+
+Click the **💾** icon in the header to:
+- **Download Full Backup (.json)**: Safe offline archive of your tasks, sessions, and notes.
+- **Export Study Log to CSV**: Opens directly in Microsoft Excel, Google Sheets, or Apple Numbers with exact dates, start/end times, durations, subjects, and notes.
+- **Restore / Import**: Effortlessly restore your data on any device.

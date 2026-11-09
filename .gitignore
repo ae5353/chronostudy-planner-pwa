@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+_legacy_archive/
 __pycache__/
 *.pyc
 *.pyo

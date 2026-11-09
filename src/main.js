@@ -1,8 +1,16 @@
-import { store, getTodayISO, daysUntil } from './store.js';
+import {
+  store,
+  getTodayISO,
+  daysUntil,
+  parseSmartTaskInput,
+  detectScheduleConflicts,
+  calculateRequiredExamScore
+} from './store.js';
 import { soundEngine } from './audio.js';
 
 let timerInterval = null;
 let revealedCardId = null;
+let wakeLockSentinel = null;
 
 function formatTimeMMSS(totalSec) {
   const m = Math.floor(totalSec / 60);
@@ -38,7 +46,7 @@ export function showToast(message) {
   root.appendChild(el);
   setTimeout(() => {
     el.remove();
-  }, 3000);
+  }, 3200);
 }
 
 function applyTheme(theme) {
@@ -49,8 +57,35 @@ function applyTheme(theme) {
   }
 }
 
+// Mobile Screen WakeLock & MediaSession API Integration for Focus Studio
+async function syncMobileWakeLock(isRunning) {
+  if (typeof navigator === 'undefined') return;
+  try {
+    if (isRunning && 'wakeLock' in navigator && !wakeLockSentinel) {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+    } else if (!isRunning && wakeLockSentinel) {
+      await wakeLockSentinel.release();
+      wakeLockSentinel = null;
+    }
+  } catch (_) {}
+
+  try {
+    if ('mediaSession' in navigator) {
+      const fs = store.state.focusSession;
+      const subj = getSubject(fs.linkedSubjectId);
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: `ChronoStudy Focus (${formatTimeMMSS(fs.remainingSeconds)})`,
+        artist: subj.name,
+        album: 'ChronoStudy Deep Focus Studio'
+      });
+      navigator.mediaSession.playbackState = isRunning ? 'playing' : 'paused';
+    }
+  } catch (_) {}
+}
+
 // Focus Timer Loop
 function syncTimerLoop() {
+  syncMobileWakeLock(store.state.focusSession.isRunning);
   if (store.state.focusSession.isRunning && !timerInterval) {
     timerInterval = setInterval(() => {
       const fs = store.state.focusSession;
@@ -60,7 +95,6 @@ function syncTimerLoop() {
           s.focusSession.remainingSeconds -= 1;
         });
       } else {
-        // Session finished!
         soundEngine.playChime();
         const minutesCompleted = Math.max(1, Math.round(fs.durationSeconds / 60));
         store.update((s) => {
@@ -85,18 +119,19 @@ function syncTimerLoop() {
   }
 }
 
-// Render Shell Navigation (Sidebar + TopBar + Mobile Bottom Nav)
+// Render Shell Navigation (Sidebar + TopBar + Mobile 6-Tab Bottom Nav)
 function renderNavigation() {
   const s = store.state;
   const openTasksCount = s.tasks.filter((t) => !t.completed).length;
   const dueCardsCount = s.flashcards.filter((c) => c.dueDate <= getTodayISO()).length;
 
   const navItems = [
-    { id: 'today', label: 'Today Hub', badge: null, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>` },
-    { id: 'tasks', label: 'Tasks & Matrix', badge: openTasksCount, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
-    { id: 'program', label: 'Weekly Program', badge: '7d', icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>` },
-    { id: 'study', label: 'Study & SM-2', badge: dueCardsCount || null, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>` },
-    { id: 'focus', label: 'Focus Studio', badge: s.focusSession.isRunning ? 'LIVE' : null, icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` }
+    { id: 'today', label: 'Today Hub', badge: null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>` },
+    { id: 'tasks', label: 'Tasks & Matrix', badge: openTasksCount, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
+    { id: 'program', label: 'Weekly Program', badge: '7d', icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>` },
+    { id: 'study', label: 'Study & Notes', badge: dueCardsCount || null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>` },
+    { id: 'focus', label: 'Focus Studio', badge: s.focusSession.isRunning ? 'LIVE' : null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
+    { id: 'analytics', label: 'Analytics & GPA', badge: null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` }
   ];
 
   const sidebar = document.getElementById('sidebar-nav');
@@ -106,7 +141,7 @@ function renderNavigation() {
         <div class="brand-mark">CS</div>
         <div>
           <div class="brand-title">ChronoStudy</div>
-          <div class="brand-subtitle">Planner · Study · Focus PWA</div>
+          <div class="brand-subtitle">v2.0 · Mobile & Desktop Suite</div>
         </div>
       </div>
 
@@ -125,14 +160,14 @@ function renderNavigation() {
           .join('')}
       </ul>
 
-      <div style="margin-top: 8px;">
-        <div class="metric-label" style="padding: 0 8px 8px;">Active Courses</div>
-        <div style="display:flex; flex-direction:column; gap:6px;">
+      <div style="margin-top: 4px;">
+        <div class="metric-label" style="padding: 0 8px 6px;">Course Readiness</div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
           ${s.subjects
             .map((sub) => {
               const d = daysUntil(sub.examDate);
               return `
-              <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:8px; background:var(--bg-elevated); font-size:0.8rem;">
+              <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:8px; background:var(--bg-elevated); font-size:0.79rem;">
                 <span style="display:flex; align-items:center; gap:7px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                   <span class="subject-dot" style="background:${sub.color}"></span>
                   ${escapeHTML(sub.code)}
@@ -169,17 +204,17 @@ function renderNavigation() {
       day: 'numeric'
     });
     topBar.innerHTML = `
-      <div style="display:flex; align-items:center; gap:12px;">
-        <span style="font-weight:700; font-size:0.95rem;">${dateFormatted}</span>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span style="font-weight:700; font-size:0.93rem;">${dateFormatted}</span>
         <span class="badge badge-q2" title="Current Daily Study Streak">Streak: ${s.stats.currentStreakDays}d</span>
-        <span class="badge badge-q4" style="font-family:var(--font-mono);">${s.stats.todayFocusMinutes}m focused today</span>
+        <span class="badge badge-q4" style="font-family:var(--font-mono);">${s.stats.todayFocusMinutes}m today</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px;">
         <button class="btn btn-secondary btn-sm" data-action="export-ics" id="btn-export-ics" title="Export Schedule & Exams to Mobile Calendar (.ics)">
-          Calendar .ICS
+          .ICS Calendar
         </button>
         <button class="btn btn-secondary btn-sm" data-action="open-backup-modal" id="btn-open-backup">
-          Sync / Backup
+          Sync & Platforms
         </button>
         <button class="icon-btn" data-action="toggle-theme" id="btn-toggle-theme" title="Toggle Light/Dark Mode" aria-label="Toggle Theme">
           ${s.theme === 'dark' ? '☀️' : '🌙'}
@@ -203,13 +238,14 @@ function renderNavigation() {
   }
 }
 
-// VIEW 1: TODAY HUB (Unified Daily Command Center)
+// VIEW 1: TODAY HUB (Unified Daily Command Center + Natural Language Capture + Smart Auto-Scheduler)
 function renderTodayView() {
   const s = store.state;
   const today = getTodayISO();
   const todayBlocks = s.scheduleBlocks
     .filter((b) => b.date === s.selectedDate)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const conflictIds = detectScheduleConflicts(todayBlocks);
   const priorityTasks = s.tasks.filter((t) => !t.completed).slice(0, 5);
   const dueCards = s.flashcards.filter((c) => c.dueDate <= today);
   const completedTasksCount = s.tasks.filter((t) => t.completed).length;
@@ -219,21 +255,24 @@ function renderTodayView() {
       <div class="page-header">
         <div>
           <h1 class="page-title" id="heading-today">Daily Command Center</h1>
-          <p class="page-subtitle">Your unified time-blocks, high-priority study tasks, SM-2 recall queue, and daily habits.</p>
+          <p class="page-subtitle">Time-blocking, smart auto-scheduling, natural-language task capture, and daily study habits.</p>
         </div>
-        <div style="display:flex; gap:8px; align-items:center;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
           <input type="date" class="input-pill" id="today-date-picker" value="${s.selectedDate}" aria-label="Selected Schedule Date" />
+          <button class="btn btn-secondary btn-sm" data-action="smart-auto-schedule" id="btn-smart-schedule" title="Automatically schedule top Q1/Q2 tasks into open time gaps">
+            ⚡ Auto-Schedule Free Gaps
+          </button>
           <button class="btn btn-primary btn-sm" data-action="open-block-modal" id="btn-add-timeblock">+ Time Block</button>
         </div>
       </div>
 
-      <!-- Quick Capture Bar -->
+      <!-- Smart Natural-Language Quick Capture Bar -->
       <form class="quick-capture-bar" id="quick-task-form">
         <input
           type="text"
           class="quick-capture-input"
           id="quick-task-title"
-          placeholder="Quick-capture a study task, assignment, or errand..."
+          placeholder="Smart Capture: e.g. 'Prove SVD theorem #MATH-204 !Q1 ~3p @tomorrow' or plain text..."
           required
         />
         <div class="quick-capture-controls">
@@ -260,12 +299,12 @@ function renderTodayView() {
         <div class="metric-tile">
           <span class="metric-label">Tasks Completed</span>
           <span class="metric-value">${completedTasksCount}/${s.tasks.length}</span>
-          <span class="metric-sub">${s.tasks.filter((t) => !t.completed && t.quadrant === 'Q1').length} Q1 critical left</span>
+          <span class="metric-sub">${s.tasks.filter((t) => !t.completed && t.quadrant === 'Q1').length} Q1 critical remaining</span>
         </div>
         <div class="metric-tile">
           <span class="metric-label">SM-2 Cards Due</span>
           <span class="metric-value">${dueCards.length}</span>
-          <span class="metric-sub">Active recall queue</span>
+          <span class="metric-sub">${s.cornellNotes.length} Cornell notes linked</span>
         </div>
         <div class="metric-tile">
           <span class="metric-label">Nearest Exam</span>
@@ -274,12 +313,15 @@ function renderTodayView() {
         </div>
       </div>
 
-      <!-- Two-Column Core Workspace: Time-Block Schedule + Priority Tasks -->
+      <!-- Two-Column Workspace -->
       <div class="grid-2">
-        <!-- Left: Time-Blocked Schedule -->
+        <!-- Left: Time-Blocked Schedule with Conflict Detection & Auto-Fill -->
         <div class="surface-card">
           <div class="card-header">
-            <h2 class="card-title">Time-Blocked Schedule (${s.selectedDate})</h2>
+            <h2 class="card-title">
+              <span>Time-Blocked Schedule (${s.selectedDate})</span>
+              ${conflictIds.size > 0 ? `<span class="badge badge-q1">${conflictIds.size} Overlap Conflict</span>` : ''}
+            </h2>
             <div style="display:flex; gap:6px;">
               <button class="btn btn-secondary btn-sm" data-action="apply-today-template" id="btn-apply-template" title="Populate from Weekly Program">
                 Load Routine
@@ -290,19 +332,22 @@ function renderTodayView() {
           <div class="timeline-container">
             ${
               todayBlocks.length === 0
-                ? `<p style="color:var(--text-muted); font-size:0.88rem; padding:16px 0;">No time blocks scheduled for this date yet. Click <strong>Load Routine</strong> or <strong>+ Time Block</strong>.</p>`
+                ? `<p style="color:var(--text-muted); font-size:0.88rem; padding:16px 0;">No time blocks scheduled for this date. Tap <strong>Load Routine</strong> or <strong>⚡ Auto-Schedule Free Gaps</strong>.</p>`
                 : todayBlocks
                     .map((blk) => {
                       const subj = getSubject(blk.subjectId);
+                      const isConflict = conflictIds.has(blk.id);
                       return `
                       <div class="time-block-row">
                         <div class="time-slot-label">${blk.startTime}<br/><span style="font-size:0.75rem; opacity:0.75;">${blk.endTime}</span></div>
-                        <div class="time-block-card" style="border-left-color:${subj.color}; ${blk.done ? 'opacity:0.58;' : ''}">
+                        <div class="time-block-card ${isConflict ? 'conflict' : ''}" style="border-left-color:${subj.color}; ${blk.done ? 'opacity:0.58;' : ''}">
                           <div>
                             <div style="font-weight:600; font-size:0.9rem; ${blk.done ? 'text-decoration:line-through;' : ''}">${escapeHTML(blk.title)}</div>
-                            <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+                            <div style="display:flex; flex-wrap:wrap; gap:7px; align-items:center; margin-top:4px;">
                               <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
                               <span style="font-size:0.75rem; color:var(--text-muted);">${escapeHTML(blk.category.replace('_', ' '))}</span>
+                              ${blk.autoScheduled ? `<span class="badge badge-sage">Auto-Scheduled</span>` : ''}
+                              ${isConflict ? `<span class="badge badge-q1">Time Overlap</span>` : ''}
                             </div>
                           </div>
                           <div style="display:flex; align-items:center; gap:6px;">
@@ -320,12 +365,12 @@ function renderTodayView() {
           </div>
         </div>
 
-        <!-- Right: Top Priority Tasks + Spaced Repetition Prompt -->
+        <!-- Right: Priority Tasks + Daily Habits -->
         <div style="display:flex; flex-direction:column; gap:20px;">
           <div class="surface-card">
             <div class="card-header">
               <h2 class="card-title">Priority Action Queue</h2>
-              <button class="btn btn-ghost btn-sm" data-nav="tasks">View All →</button>
+              <button class="btn btn-ghost btn-sm" data-nav="tasks">Matrix & Kanban →</button>
             </div>
             <div class="task-list">
               ${priorityTasks.map((t) => renderTaskItemHTML(t)).join('')}
@@ -344,7 +389,7 @@ function renderTodayView() {
                   (h) => `
                 <button class="habit-pill ${h.completedToday ? 'done' : ''}" data-action="toggle-habit" data-id="${h.id}">
                   <div style="text-align:left;">
-                    <div style="font-weight:600; font-size:0.84rem;">${escapeHTML(h.name)}</div>
+                    <div style="font-weight:600; font-size:0.83rem;">${escapeHTML(h.name)}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">Streak: ${h.streak}d</div>
                   </div>
                   <span class="check-circle ${h.completedToday ? 'checked' : ''}">${h.completedToday ? '✓' : ''}</span>
@@ -362,7 +407,6 @@ function renderTodayView() {
 
 function renderTaskItemHTML(t) {
   const subj = getSubject(t.subjectId);
-  const doneSubtasks = (t.subtasks || []).filter((st) => st.done).length;
   const totalSubtasks = (t.subtasks || []).length;
 
   return `
@@ -487,7 +531,7 @@ function renderTasksView() {
       <div class="page-header">
         <div>
           <h1 class="page-title" id="heading-tasks">Tasks & Eisenhower Matrix</h1>
-          <p class="page-subtitle">Prioritize assignments by urgency and importance, break down subtasks, and launch focus sessions.</p>
+          <p class="page-subtitle">Prioritize assignments across List, Eisenhower 2×2 Matrix, and Kanban views.</p>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
           <div class="filter-tabs" role="tablist">
@@ -571,7 +615,7 @@ function renderProgramView() {
                       <div class="time-slot-label">${slot.startTime}<br/><span style="font-size:0.75rem; opacity:0.75;">${slot.endTime}</span></div>
                       <div class="time-block-card" style="border-left-color:${subj.color};">
                         <div>
-                          <div style="font-weight:600; font-size:0.94rem;">${escapeHTML(slot.title)}</div>
+                          <div style="font-weight:600; font-size:0.93rem;">${escapeHTML(slot.title)}</div>
                           <div style="display:flex; gap:8px; margin-top:4px; align-items:center;">
                             <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.name)}</span>
                             <span class="badge badge-q4">${escapeHTML(slot.type)}</span>
@@ -590,7 +634,7 @@ function renderProgramView() {
   `;
 }
 
-// VIEW 4: STUDY & SPACED REPETITION (SM-2) HUB
+// VIEW 4: STUDY, SM-2 SPACED REPETITION & CORNELL NOTES HUB
 function renderStudyView() {
   const s = store.state;
   const today = getTodayISO();
@@ -601,17 +645,18 @@ function renderStudyView() {
     <section aria-labelledby="heading-study">
       <div class="page-header">
         <div>
-          <h1 class="page-title" id="heading-study">Study & Spaced Repetition Hub</h1>
-          <p class="page-subtitle">SuperMemo-2 (SM-2) active recall deck, course syllabus mastery tracker, and exam countdowns.</p>
+          <h1 class="page-title" id="heading-study">Study, SM-2 Recall & Cornell Notes</h1>
+          <p class="page-subtitle">SuperMemo-2 active recall deck, structured Cornell Notes with 1-click Flashcard synthesis, and syllabus mastery.</p>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn btn-secondary btn-sm" data-action="open-subject-modal" id="btn-add-subject">+ Course / Exam</button>
-          <button class="btn btn-primary btn-sm" data-action="open-flashcard-modal" id="btn-add-flashcard">+ SM-2 Flashcard</button>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button class="btn btn-secondary btn-sm" data-action="open-cornell-modal" id="btn-add-cornell">+ Cornell Note</button>
+          <button class="btn btn-secondary btn-sm" data-action="open-subject-modal" id="btn-add-subject">+ Course</button>
+          <button class="btn btn-primary btn-sm" data-action="open-flashcard-modal" id="btn-add-flashcard">+ SM-2 Card</button>
         </div>
       </div>
 
       <!-- Course & Exam Countdown Strip -->
-      <div class="grid-3" style="margin-bottom:24px;">
+      <div class="grid-3" style="margin-bottom:22px;">
         ${s.subjects
           .map((sub) => {
             const d = daysUntil(sub.examDate);
@@ -620,15 +665,15 @@ function renderStudyView() {
             <div class="surface-card" style="border-top: 4px solid ${sub.color};">
               <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                 <div>
-                  <span style="font-family:var(--font-mono); font-size:0.76rem; color:var(--text-muted);">${escapeHTML(sub.code)}</span>
-                  <h3 style="font-size:1rem; font-weight:700; margin-top:2px;">${escapeHTML(sub.name)}</h3>
+                  <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">${escapeHTML(sub.code)}</span>
+                  <h3 style="font-size:0.98rem; font-weight:700; margin-top:2px;">${escapeHTML(sub.name)}</h3>
                 </div>
                 <span class="badge ${d <= 7 ? 'badge-q1' : 'badge-q2'}">${d >= 0 ? `Exam in ${d}d` : 'Completed'}</span>
               </div>
-              <div style="margin-top:14px;">
-                <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-secondary); margin-bottom:5px;">
-                  <span>Weekly Study Target (${sub.targetHoursPerWeek}h)</span>
-                  <span style="font-family:var(--font-mono);">${Math.round((sub.loggedMinutes || 0) / 60 * 10) / 10}h (${pct}%)</span>
+              <div style="margin-top:12px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.77rem; color:var(--text-secondary); margin-bottom:5px;">
+                  <span>Weekly Target (${sub.targetHoursPerWeek}h)</span>
+                  <span style="font-family:var(--font-mono);">${Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10}h (${pct}%)</span>
                 </div>
                 <div class="progress-track">
                   <div class="progress-fill" style="width:${pct}%; background:${sub.color};"></div>
@@ -640,12 +685,13 @@ function renderStudyView() {
           .join('')}
       </div>
 
-      <div class="grid-2">
+      <!-- Study Sub-Navigation -->
+      <div class="grid-2" style="margin-bottom:22px;">
         <!-- Left: SM-2 Active Recall Reviewer -->
         <div class="review-stage">
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <span class="badge badge-q2">SM-2 Active Recall Queue (${dueCards.length} due today)</span>
-            <span style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-muted);">Total Deck: ${s.flashcards.length}</span>
+            <span style="font-family:var(--font-mono); font-size:0.77rem; color:var(--text-muted);">Deck: ${s.flashcards.length} cards</span>
           </div>
 
           ${
@@ -713,7 +759,7 @@ function renderStudyView() {
                 return `
                 <div class="task-card" style="align-items:center;">
                   <div>
-                    <div style="font-weight:600; font-size:0.9rem;">${escapeHTML(topic.title)}</div>
+                    <div style="font-weight:600; font-size:0.89rem;">${escapeHTML(topic.title)}</div>
                     <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
                       <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
                       <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">Confidence: ${topic.confidence}%</span>
@@ -731,16 +777,61 @@ function renderStudyView() {
           </div>
         </div>
       </div>
+
+      <!-- Cornell Note-Taking System Notebook -->
+      <div class="surface-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Cornell Study Notes (Cue · Notes · Synthesis Summary)</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Convert any Cornell Note directly into an SM-2 active recall flashcard with one click.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" data-action="open-cornell-modal">+ New Cornell Sheet</button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          ${(s.cornellNotes || [])
+            .map((note) => {
+              const subj = getSubject(note.subjectId);
+              return `
+              <div class="cornell-card">
+                <div style="padding:12px 14px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
+                    <strong style="font-size:0.94rem;">${escapeHTML(note.title)}</strong>
+                  </div>
+                  <div style="display:flex; gap:6px;">
+                    <button class="btn btn-secondary btn-sm" data-action="cornell-to-flashcard" data-id="${note.id}">
+                      ⚡ Convert to SM-2 Card
+                    </button>
+                    <button class="btn-ghost btn-sm" data-action="delete-cornell" data-id="${note.id}">✕</button>
+                  </div>
+                </div>
+                <div class="cornell-grid">
+                  <div class="cornell-cue-col">
+                    <div style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Cue / Recall Question</div>
+                    ${escapeHTML(note.cue)}
+                  </div>
+                  <div class="cornell-notes-col">${escapeHTML(note.notes)}</div>
+                </div>
+                <div class="cornell-summary-row">
+                  <strong>Synthesis Summary:</strong> ${escapeHTML(note.summary)}
+                </div>
+              </div>
+            `;
+            })
+            .join('')}
+        </div>
+      </div>
     </section>
   `;
 }
 
-// VIEW 5: DEEP FOCUS STUDIO (Pomodoro + Web Audio Synthesizer)
+// VIEW 5: DEEP FOCUS STUDIO (Pomodoro + WakeLock + MediaSession + Web Audio Synthesizer)
 function renderFocusView() {
   const s = store.state;
   const fs = s.focusSession;
   const pct = fs.durationSeconds > 0 ? ((fs.durationSeconds - fs.remainingSeconds) / fs.durationSeconds) * 100 : 0;
-  const radius = 102;
+  const radius = 100;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (pct / 100) * circumference;
 
@@ -763,7 +854,7 @@ function renderFocusView() {
       <div class="page-header" style="margin-bottom:4px;">
         <div>
           <h1 class="page-title" id="heading-focus">Deep Focus Studio</h1>
-          <p class="page-subtitle">Link your session to a course or task. Synthesized Web Audio soundscapes work 100% offline on mobile.</p>
+          <p class="page-subtitle">Mobile Screen WakeLock, Lock-Screen MediaSession controls, and 100% offline Web Audio synthesizer.</p>
         </div>
       </div>
 
@@ -781,11 +872,11 @@ function renderFocusView() {
         </div>
 
         <div class="timer-svg-wrap">
-          <svg width="240" height="240" viewBox="0 0 240 240" style="transform: rotate(-90deg);">
-            <circle cx="120" cy="120" r="${radius}" fill="none" stroke="var(--bg-elevated)" stroke-width="10" />
+          <svg width="236" height="236" viewBox="0 0 236 236" style="transform: rotate(-90deg);">
+            <circle cx="118" cy="118" r="${radius}" fill="none" stroke="var(--bg-elevated)" stroke-width="10" />
             <circle
-              cx="120"
-              cy="120"
+              cx="118"
+              cy="118"
               r="${radius}"
               fill="none"
               stroke="var(--accent-primary)"
@@ -797,8 +888,8 @@ function renderFocusView() {
           </svg>
           <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
             <div class="timer-digits" id="studio-timer-digits">${formatTimeMMSS(fs.remainingSeconds)}</div>
-            <div style="font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">
-              ${fs.isRunning ? 'Deep Focus Active' : 'Paused / Ready'}
+            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:6px; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">
+              ${fs.isRunning ? 'WakeLock Active · Focusing' : 'Paused / Ready'}
             </div>
           </div>
         </div>
@@ -824,13 +915,13 @@ function renderFocusView() {
           </div>
         </div>
 
-        <div style="display:flex; gap:12px; justify-content:center;">
-          <button class="btn btn-primary" style="padding:12px 28px; font-size:1rem;" data-action="toggle-timer" id="btn-main-timer-toggle">
+        <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+          <button class="btn btn-primary" style="padding:11px 26px; font-size:0.95rem;" data-action="toggle-timer" id="btn-main-timer-toggle">
             ${fs.isRunning ? 'Pause Session' : 'Start Focus Session'}
           </button>
           <button class="btn btn-secondary" data-action="reset-timer" id="btn-reset-timer">Reset</button>
           <button class="btn btn-secondary" data-action="complete-session-now" id="btn-log-now" title="Finish & Log Session Minutes Now">
-            Log Now
+            Log Session Now
           </button>
         </div>
       </div>
@@ -867,7 +958,131 @@ function renderFocusView() {
   `;
 }
 
-// MODALS (Add Detailed Task, Add Time Block, Add Recurring Slot, Add Flashcard, Add Subject, Backup/Sync)
+// VIEW 6: ANALYTICS, 7-DAY FOCUS TRENDS & FINAL EXAM GRADE TARGET CALCULATOR
+function renderAnalyticsView() {
+  const s = store.state;
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const weeklyMins = s.stats.weeklyDailyMinutes || [65, 95, 80, 110, 50, 90, 75];
+  const maxDayMin = Math.max(120, ...weeklyMins);
+
+  return `
+    <section aria-labelledby="heading-analytics">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title" id="heading-analytics">Analytics & Final Exam Target Calculator</h1>
+          <p class="page-subtitle">7-day deep focus velocity, course time investment breakdown, and weighted final exam grade calculator.</p>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:22px;">
+        <!-- 7-Day Focus Trend SVG Chart -->
+        <div class="surface-card">
+          <div class="card-header">
+            <h2 class="card-title">7-Day Deep Focus Velocity (Minutes / Day)</h2>
+            <span class="badge badge-sage">${weeklyMins.reduce((a, b) => a + b, 0)}m Weekly Total</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:10px; align-items:end; height:180px; padding-top:20px;">
+            ${weeklyMins
+              .map((mins, idx) => {
+                const hPct = Math.max(10, Math.round((mins / maxDayMin) * 100));
+                return `
+                <div style="display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; justify-content:flex-end;">
+                  <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary);">${mins}m</span>
+                  <div style="width:100%; max-width:36px; height:${hPct}%; background:var(--accent-primary); border-radius:6px 6px 3px 3px;"></div>
+                  <span style="font-size:0.76rem; font-weight:600; color:var(--text-muted);">${days[idx]}</span>
+                </div>
+              `;
+              })
+              .join('')}
+          </div>
+        </div>
+
+        <!-- Course Time Allocation Breakdown -->
+        <div class="surface-card">
+          <div class="card-header">
+            <h2 class="card-title">Course Focus Allocation vs. Weekly Target</h2>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${s.subjects
+              .map((sub) => {
+                const loggedH = Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10;
+                const pct = Math.min(100, Math.round(((sub.loggedMinutes || 0) / (sub.targetHoursPerWeek * 60)) * 100));
+                return `
+                <div>
+                  <div style="display:flex; justify-content:space-between; font-size:0.83rem; margin-bottom:4px;">
+                    <span style="font-weight:600;">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</span>
+                    <span style="font-family:var(--font-mono); color:var(--text-secondary);">${loggedH}h / ${sub.targetHoursPerWeek}h (${pct}%)</span>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill" style="width:${pct}%; background:${sub.color};"></div>
+                  </div>
+                </div>
+              `;
+              })
+              .join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Final Exam Score & GPA Target Calculator -->
+      <div class="surface-card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Weighted Final Exam Target Score Calculator</h2>
+            <p style="font-size:0.82rem; color:var(--text-muted);">Adjust your current coursework grade, exam weight %, and target course grade to compute the exact exam score needed.</p>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:0.86rem;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; color:var(--text-muted);">
+                <th style="padding:10px 8px;">Course</th>
+                <th style="padding:10px 8px;">Current Grade (%)</th>
+                <th style="padding:10px 8px;">Final Exam Weight (%)</th>
+                <th style="padding:10px 8px;">Target Grade (%)</th>
+                <th style="padding:10px 8px;">Required Exam Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${s.subjects
+                .map((sub) => {
+                  const reqScore = calculateRequiredExamScore(
+                    sub.currentGrade ?? 90,
+                    sub.examWeight ?? 35,
+                    sub.targetCourseGrade ?? 90
+                  );
+                  const badgeClass = reqScore > 95 ? 'badge-q1' : reqScore > 82 ? 'badge-q2' : 'badge-sage';
+                  return `
+                  <tr style="border-bottom:1px solid var(--border-subtle);">
+                    <td style="padding:10px 8px; font-weight:600;">
+                      <span class="subject-dot" style="background:${sub.color}; display:inline-block; margin-right:6px;"></span>
+                      ${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}
+                    </td>
+                    <td style="padding:10px 8px;">
+                      <input type="number" class="input-pill" style="width:78px;" step="0.5" value="${sub.currentGrade ?? 90}" data-action="grade-input" data-field="currentGrade" data-id="${sub.id}" />
+                    </td>
+                    <td style="padding:10px 8px;">
+                      <input type="number" class="input-pill" style="width:78px;" step="5" value="${sub.examWeight ?? 35}" data-action="grade-input" data-field="examWeight" data-id="${sub.id}" />
+                    </td>
+                    <td style="padding:10px 8px;">
+                      <input type="number" class="input-pill" style="width:78px;" step="1" value="${sub.targetCourseGrade ?? 90}" data-action="grade-input" data-field="targetCourseGrade" data-id="${sub.id}" />
+                    </td>
+                    <td style="padding:10px 8px; font-family:var(--font-mono); font-weight:700;">
+                      <span class="badge ${badgeClass}">${reqScore}% needed</span>
+                    </td>
+                  </tr>
+                `;
+                })
+                .join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+// MODALS
 function openModal(type) {
   const modalRoot = document.getElementById('modal-root');
   if (!modalRoot) return;
@@ -1027,6 +1242,40 @@ function openModal(type) {
         </div>
       </form>
     `;
+  } else if (type === 'cornell') {
+    content = `
+      <h2 class="card-title">New Cornell Study Note Sheet</h2>
+      <form id="modal-cornell-form" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Course</label>
+            <select class="form-select" name="subjectId">
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Topic Title</label>
+            <input type="text" class="form-input" name="title" required placeholder="e.g., Spectral Theorem & Orthogonal Diagonalization" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cue / Active Recall Question (Left Column)</label>
+          <input type="text" class="form-input" name="cue" required placeholder="Why is every real symmetric matrix orthogonally diagonalizable?" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Detailed Lecture / Reading Notes (Right Column)</label>
+          <textarea class="form-textarea" name="notes" rows="4" required placeholder="Key derivations, definitions, and examples..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">1-Sentence Synthesis Summary (Bottom Row)</label>
+          <input type="text" class="form-input" name="summary" required placeholder="Real symmetric matrices have real eigenvalues and orthogonal eigenvectors." />
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Cornell Note</button>
+        </div>
+      </form>
+    `;
   } else if (type === 'subject') {
     content = `
       <h2 class="card-title">Add Course or Exam Goal</h2>
@@ -1063,24 +1312,25 @@ function openModal(type) {
     `;
   } else if (type === 'backup') {
     content = `
-      <h2 class="card-title">Mobile PWA Install & Cloud Data Sync</h2>
-      <p style="font-size:0.88rem; color:var(--text-secondary);">
-        ChronoStudy stores your data offline-first on your device. Export a JSON snapshot anytime to back up to Google Drive or GitHub, or restore on your phone.
+      <h2 class="card-title">Multi-Platform Sync, Mobile PWA & Cloud Backup</h2>
+      <p style="font-size:0.86rem; color:var(--text-secondary);">
+        ChronoStudy v2.0 runs across Mobile PWA, Portable Single-File HTML, Capacitor iOS/Android, Node CLI, and Self-Hosted LAN Sync Server.
       </p>
-      <div style="display:flex; flex-wrap:wrap; gap:10px;">
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
         <button class="btn btn-primary btn-sm" data-action="download-json-backup">Export JSON Backup</button>
         <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
           Import JSON Backup
           <input type="file" id="import-json-input" accept=".json" style="display:none;" />
         </label>
+        <button class="btn btn-secondary btn-sm" data-action="sync-to-lan-server">Sync with Local Server</button>
         <button class="btn btn-secondary btn-sm" data-action="reset-demo-data">Reset Demo Data</button>
       </div>
-      <div style="background:var(--bg-elevated); padding:14px; border-radius:var(--radius-md); font-size:0.83rem; color:var(--text-secondary);">
-        <strong style="color:var(--text-primary);">Use on Mobile Anywhere:</strong>
+      <div style="background:var(--bg-elevated); padding:14px; border-radius:var(--radius-md); font-size:0.82rem; color:var(--text-secondary);">
+        <strong style="color:var(--text-primary);">Platform Guide & Keyboard Shortcuts:</strong>
         <ul style="margin-left:18px; margin-top:6px; display:flex; flex-direction:column; gap:4px;">
-          <li><strong>iOS Safari:</strong> Tap <em>Share → Add to Home Screen</em> for full-screen offline mode.</li>
-          <li><strong>Android Chrome:</strong> Tap <em>Install App / Add to Home Screen</em>.</li>
-          <li><strong>Calendar Sync:</strong> Tap <em>Calendar .ICS</em> in the top bar to import blocks into Apple/Google Calendar.</li>
+          <li><strong>Mobile PWA (iOS/Android):</strong> Tap <em>Share → Add to Home Screen</em> for full-screen offline mode + Screen WakeLock.</li>
+          <li><strong>Terminal CLI (Linux/macOS/Termux):</strong> Run <code>node cli/chronostudy-cli.mjs dashboard</code></li>
+          <li><strong>Smart Capture Syntax:</strong> Use <code>#CS-301 !Q1 ~3p @tomorrow</code> in the quick-add bar.</li>
         </ul>
       </div>
       <div style="display:flex; justify-content:flex-end;">
@@ -1117,10 +1367,11 @@ function renderApp() {
   else if (tab === 'program') mainView.innerHTML = renderProgramView();
   else if (tab === 'study') mainView.innerHTML = renderStudyView();
   else if (tab === 'focus') mainView.innerHTML = renderFocusView();
+  else if (tab === 'analytics') mainView.innerHTML = renderAnalyticsView();
 }
 
 // Event Delegation
-document.addEventListener('click', (e) => {
+document.addEventListener('click', async (e) => {
   const navBtn = e.target.closest('[data-nav]');
   if (navBtn) {
     const tab = navBtn.getAttribute('data-nav');
@@ -1175,6 +1426,13 @@ document.addEventListener('click', (e) => {
     const weekdayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1;
     const count = store.applyProgramToDate(weekdayIdx, store.state.selectedDate);
     showToast(count > 0 ? `Added ${count} blocks from Weekly Program` : 'Routine blocks already in schedule');
+  } else if (action === 'smart-auto-schedule') {
+    const count = store.autoScheduleDate(store.state.selectedDate);
+    showToast(
+      count > 0
+        ? `⚡ Auto-scheduled ${count} priority tasks into open gaps!`
+        : 'No free gaps or unscheduled tasks available'
+    );
   } else if (action === 'toggle-habit') {
     store.update((s) => {
       const h = s.habits.find((x) => x.id === id);
@@ -1225,6 +1483,14 @@ document.addEventListener('click', (e) => {
     revealedCardId = null;
     store.reviewFlashcard(id, quality);
     showToast('SM-2 review interval updated!');
+  } else if (action === 'cornell-to-flashcard') {
+    const card = store.convertCornellNoteToFlashcard(id);
+    if (card) showToast('⚡ Converted Cornell Note into SM-2 Flashcard!');
+  } else if (action === 'delete-cornell') {
+    store.update((s) => {
+      s.cornellNotes = (s.cornellNotes || []).filter((n) => n.id !== id);
+    });
+    showToast('Cornell note deleted');
   } else if (action === 'add-syllabus-topic') {
     const title = prompt('Enter syllabus topic or chapter title:');
     if (title && title.trim()) {
@@ -1289,6 +1555,8 @@ document.addEventListener('click', (e) => {
     openModal('program');
   } else if (action === 'open-flashcard-modal') {
     openModal('flashcard');
+  } else if (action === 'open-cornell-modal') {
+    openModal('cornell');
   } else if (action === 'open-subject-modal') {
     openModal('subject');
   } else if (action === 'open-backup-modal') {
@@ -1315,6 +1583,18 @@ document.addEventListener('click', (e) => {
     a.click();
     URL.revokeObjectURL(url);
     showToast('Backup JSON downloaded!');
+  } else if (action === 'sync-to-lan-server') {
+    try {
+      const res = await fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(store.state)
+      });
+      if (res.ok) showToast('Synced state to ChronoStudy Sync Server!');
+      else showToast('Local static mode active (saved in localStorage)');
+    } catch (_) {
+      showToast('Saved locally (Sync server not detected on current host)');
+    }
   } else if (action === 'reset-demo-data') {
     store.resetToDemo();
     closeModal();
@@ -1361,6 +1641,13 @@ document.addEventListener('change', (e) => {
         top.confidence = statusMap[t.value] || 70;
       }
     });
+  } else if (t.getAttribute('data-action') === 'grade-input') {
+    const id = t.getAttribute('data-id');
+    const field = t.getAttribute('data-field');
+    store.update((s) => {
+      const sub = s.subjects.find((x) => x.id === id);
+      if (sub && field) sub[field] = Number(t.value);
+    });
   } else if (t.id === 'import-json-input' && t.files?.[0]) {
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -1383,25 +1670,32 @@ document.addEventListener('submit', (e) => {
   const form = e.target;
   if (form.id === 'quick-task-form') {
     e.preventDefault();
-    const title = document.getElementById('quick-task-title').value.trim();
-    const subjectId = document.getElementById('quick-task-subject').value;
-    const quadrant = document.getElementById('quick-task-quadrant').value;
-    if (!title) return;
+    const rawTitle = document.getElementById('quick-task-title').value.trim();
+    const fallbackSubjectId = document.getElementById('quick-task-subject').value;
+    const fallbackQuadrant = document.getElementById('quick-task-quadrant').value;
+    if (!rawTitle) return;
+
+    const parsed = parseSmartTaskInput(
+      rawTitle,
+      store.state.subjects,
+      store.state.selectedDate || getTodayISO()
+    );
+
     store.update((s) => {
       s.tasks.unshift({
         id: 'task-' + Date.now(),
-        title,
-        subjectId,
-        quadrant,
+        title: parsed.title,
+        subjectId: parsed.subjectId || fallbackSubjectId,
+        quadrant: parsed.quadrant || fallbackQuadrant,
         status: 'todo',
         completed: false,
-        dueDate: s.selectedDate || getTodayISO(),
-        estimatedPomodoros: 2,
+        dueDate: parsed.dueDate,
+        estimatedPomodoros: parsed.estimatedPomodoros || 2,
         completedPomodoros: 0,
         subtasks: []
       });
     });
-    showToast('Task added to queue!');
+    showToast(`Added "${parsed.title}" (${parsed.quadrant || fallbackQuadrant})`);
   } else if (form.id === 'modal-task-form') {
     e.preventDefault();
     const fd = new FormData(form);
@@ -1476,6 +1770,23 @@ document.addEventListener('submit', (e) => {
     });
     closeModal();
     showToast('SM-2 Flashcard added!');
+  } else if (form.id === 'modal-cornell-form') {
+    e.preventDefault();
+    const fd = new FormData(form);
+    store.update((s) => {
+      if (!s.cornellNotes) s.cornellNotes = [];
+      s.cornellNotes.unshift({
+        id: 'cn-' + Date.now(),
+        subjectId: fd.get('subjectId'),
+        title: fd.get('title'),
+        date: getTodayISO(),
+        cue: fd.get('cue'),
+        notes: fd.get('notes'),
+        summary: fd.get('summary')
+      });
+    });
+    closeModal();
+    showToast('Cornell Study Sheet saved!');
   } else if (form.id === 'modal-subject-form') {
     e.preventDefault();
     const fd = new FormData(form);
@@ -1487,7 +1798,10 @@ document.addEventListener('submit', (e) => {
         color: fd.get('color'),
         examDate: fd.get('examDate'),
         targetHoursPerWeek: Number(fd.get('targetHoursPerWeek') || 6),
-        loggedMinutes: 0
+        loggedMinutes: 0,
+        currentGrade: 90,
+        examWeight: 35,
+        targetCourseGrade: 90
       });
     });
     closeModal();

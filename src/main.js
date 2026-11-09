@@ -23,6 +23,14 @@ import {
   parseScheduleText,
   buildGoogleCalendarUrl
 } from './calendar-sync.js';
+import {
+  buildReport,
+  reportToCSV,
+  reportToXLSX,
+  postReportToAppsScript,
+  downloadBlob
+} from './reports.js';
+import { makeSession, computeStreaks } from './log.js';
 
 let timerInterval = null;
 let revealedCardId = null;
@@ -1155,6 +1163,9 @@ function renderAnalyticsView() {
             <button type="button" class="btn btn-primary btn-sm" data-action="export-to-google-sheets">
               🚀 Send Report to Google Sheets
             </button>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="download-report-xlsx">
+              📊 Download Excel (.xlsx)
+            </button>
             <button type="button" class="btn btn-secondary btn-sm" data-action="download-report-csv">
               📥 Download Report CSV
             </button>
@@ -1500,7 +1511,7 @@ function openModal(type) {
         <div class="grid-2">
           <div class="form-group">
             <label class="form-label">Target Milestone Date</label>
-            <input type="date" class="form-input" name="examDate" value="${getTodayISO()}" required />
+            <input type="date" class="form-input" name="examDate" value="${new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)}" required />
           </div>
           <div class="form-group">
             <label class="form-label">Weekly Target Hours</label>
@@ -1782,6 +1793,21 @@ document.addEventListener('click', async (e) => {
       if (task) task.completedPomodoros = (task.completedPomodoros || 0) + 1;
       const subj = s.subjects.find((sub) => sub.id === s.focusSession.linkedSubjectId);
       if (subj) subj.loggedMinutes = (subj.loggedMinutes || 0) + elapsedMin;
+
+      if (!s.sessions) s.sessions = [];
+      const nowMs = Date.now();
+      const ses = makeSession({
+        date: getTodayISO(),
+        minutes: elapsedMin,
+        trackId: s.focusSession.linkedSubjectId,
+        taskId: s.focusSession.linkedTaskId,
+        topic: task?.title || 'Deep Focus Session',
+        rating: 5,
+        source: 'timer'
+      });
+      s.sessions.push(ses);
+      const strk = computeStreaks(s.sessions, getTodayISO());
+      s.stats.currentStreakDays = strk.current || 1;
     });
     showToast(`Logged +${elapsedMin}m to track & task!`);
   } else if (action === 'toggle-sound') {
@@ -1913,110 +1939,33 @@ document.addEventListener('click', async (e) => {
     localStorage.setItem('chronostudy_sheets_webhook_url', sheetsUrl);
     showToast('🚀 Sending report to Google Sheets...');
 
-    const s = store.state;
-    const today = getTodayISO();
-    const payload = {
-      version: 1,
-      period: {
-        type: periodType,
-        start: periodType === 'month' ? today.slice(0, 7) + '-01' : today,
-        end: today
-      },
-      totals: {
-        minutes: s.stats.totalFocusMinutes || 0,
-        sessions: s.stats.completedPomodoros || 0,
-        tasksDone: s.tasks.filter((t) => t.completed).length
-      },
-      byTrack: s.subjects.map((sub) => ({
-        name: sub.name,
-        minutes: sub.loggedMinutes || 0,
-        sessions: Math.round((sub.loggedMinutes || 0) / 25)
-      })),
-      daily: (s.stats.weeklyDailyMinutes || []).map((m, i) => ({
-        date: `Day ${i + 1}`,
-        minutes: m
-      })),
-      sessions: (s.scheduleBlocks || [])
-        .filter((b) => b.done)
-        .map((b) => ({
-          date: b.date,
-          start: b.startTime,
-          end: b.endTime,
-          track: s.subjects.find((x) => x.id === b.subjectId)?.name || 'General',
-          topic: b.title,
-          rating: 5,
-          notes: 'Completed session'
-        })),
-      tasks: s.tasks.map((t) => ({
-        title: t.title,
-        track: s.subjects.find((x) => x.id === t.subjectId)?.name || 'General',
-        done: t.completed,
-        due: t.dueDate || ''
-      })),
-      goals: s.subjects.map((sub) => ({
-        track: sub.name,
-        targetHoursPerWeek: sub.targetHoursPerWeek || 5,
-        actualHours: Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10
-      }))
-    };
-
     try {
-      await fetch(sheetsUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
+      const report = buildReport(store.state, periodType, getTodayISO());
+      await postReportToAppsScript(sheetsUrl, report);
       showToast('✅ Report successfully sent to your Google Sheet!');
-    } catch (_) {
-      try {
-        await fetch(sheetsUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          body: JSON.stringify(payload)
-        });
-        showToast('✅ Dispatched report to Google Sheet Webhook!');
-      } catch (err) {
-        showToast('Could not reach Google Sheets URL');
-      }
+    } catch (err) {
+      showToast(err.message || 'Could not reach Google Sheets URL');
     }
   } else if (action === 'download-report-csv') {
-    const s = store.state;
-    const rows = [
-      ['Track / Domain', 'Target Hours/Week', 'Logged Minutes', 'Logged Hours'],
-      ...s.subjects.map((sub) => [
-        `"${sub.name.replace(/"/g, '""')}"`,
-        sub.targetHoursPerWeek || 5,
-        sub.loggedMinutes || 0,
-        Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10
-      ])
-    ];
-    const csvContent = rows.map((r) => r.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `chronostudy-study-report-${getTodayISO()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const periodType = document.getElementById('report-period-type')?.value || 'week';
+    const report = buildReport(store.state, periodType, getTodayISO());
+    const csvContent = reportToCSV(report);
+    downloadBlob(csvContent, `chronostudy-${periodType}-report-${getTodayISO()}.csv`, 'text/csv;charset=utf-8');
     showToast('Downloaded study report CSV!');
+  } else if (action === 'download-report-xlsx') {
+    const periodType = document.getElementById('report-period-type')?.value || 'week';
+    const report = buildReport(store.state, periodType, getTodayISO());
+    const xlsxBuffer = reportToXLSX(report);
+    downloadBlob(xlsxBuffer, `chronostudy-${periodType}-report-${getTodayISO()}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    showToast('Downloaded Excel (.xlsx) study report!');
   } else if (action === 'download-report-json') {
-    const s = store.state;
-    const payload = {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      totals: {
-        minutes: s.stats.totalFocusMinutes || 0,
-        sessions: s.stats.completedPomodoros || 0,
-        tasksDone: s.tasks.filter((t) => t.completed).length
-      },
-      tracks: s.subjects,
-      completedBlocks: s.scheduleBlocks.filter((b) => b.done)
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const periodType = document.getElementById('report-period-type')?.value || 'week';
+    const report = buildReport(store.state, periodType, getTodayISO());
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `chronostudy-report-${getTodayISO()}.json`;
+    a.download = `chronostudy-${periodType}-report-${getTodayISO()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast('Downloaded study report JSON!');

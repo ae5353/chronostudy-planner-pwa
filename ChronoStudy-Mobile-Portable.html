@@ -2067,68 +2067,7 @@ class Store {
 
   // Start a clean blank slate for users who want to build from zero
   startBlankSlate() {
-    const today = getTodayISO();
-    this.update((s) => {
-      s.profileMode = 'blank';
-      s.subjects = [
-        {
-          id: 'subj-main',
-          name: 'Primary Study / Skill Goal',
-          code: 'STUDY',
-          category: 'Self-Study',
-          color: '#C85A32',
-          examDate: addDaysISO(today, 30),
-          milestoneLabel: 'Target Milestone',
-          targetHoursPerWeek: 7,
-          loggedMinutes: 0,
-          currentGrade: 90,
-          examWeight: 30,
-          targetCourseGrade: 90
-        },
-        {
-          id: 'subj-proj',
-          name: 'Work & Personal Projects',
-          code: 'WORK',
-          category: 'Projects',
-          color: '#2B4C7E',
-          examDate: addDaysISO(today, 14),
-          milestoneLabel: 'Project Deadline',
-          targetHoursPerWeek: 10,
-          loggedMinutes: 0,
-          currentGrade: 90,
-          examWeight: 30,
-          targetCourseGrade: 90
-        },
-        {
-          id: 'subj-health',
-          name: 'Health, Fitness & Life',
-          code: 'LIFE',
-          category: 'Lifestyle',
-          color: '#2E7D5B',
-          examDate: addDaysISO(today, 30),
-          milestoneLabel: 'Monthly Routine',
-          targetHoursPerWeek: 5,
-          loggedMinutes: 0,
-          currentGrade: 100,
-          examWeight: 10,
-          targetCourseGrade: 95
-        }
-      ];
-      s.tasks = [];
-      s.scheduleBlocks = [];
-      s.weeklyProgram = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
-      s.flashcards = [];
-      s.cornellNotes = [];
-      s.syllabusTopics = [];
-      s.stats = {
-        totalFocusMinutes: 0,
-        todayFocusMinutes: 0,
-        completedPomodoros: 0,
-        currentStreakDays: 1,
-        lastActiveDate: today,
-        weeklyDailyMinutes: [0, 0, 0, 0, 0, 0, 0]
-      };
-    });
+    this.update((s) => applyBlankSlate(s));
   }
 
   // Shift a time block earlier or later by deltaMinutes (e.g., -15 or +15)

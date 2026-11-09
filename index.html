@@ -5307,6 +5307,72 @@ document.addEventListener('change', (e) => {
       }
     };
     reader.readAsText(t.files[0]);
+  } else if (t.id === 'scan-local-folder-input' && t.files?.length) {
+    const fiveMonthsAgo = Date.now() - 150 * 86400000;
+    const folderCounts = new Map();
+    const recentTopicsByFolder = new Map();
+    const palette = ['#C85A32', '#2B4C7E', '#2E7D5B', '#7A4988', '#D9822B', '#1F7A8C', '#B8336A'];
+
+    for (const file of Array.from(t.files)) {
+      if (file.name.startsWith('.')) continue;
+      if (file.lastModified && file.lastModified < fiveMonthsAgo) continue;
+      const rel = file.webkitRelativePath || file.name;
+      const parts = rel.split('/').filter(Boolean);
+      const folderName = parts.length >= 2 ? parts[parts.length - 2] : parts[0].replace(/\.[^.]+$/, '');
+      if (!folderName || /^(node_modules|\.git|dist|build)$/i.test(folderName)) continue;
+      folderCounts.set(folderName, (folderCounts.get(folderName) || 0) + 1);
+      const cleanFile = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+      if (cleanFile && cleanFile.length > 2) {
+        if (!recentTopicsByFolder.has(folderName)) recentTopicsByFolder.set(folderName, new Set());
+        if (recentTopicsByFolder.get(folderName).size < 6) {
+          recentTopicsByFolder.get(folderName).add(cleanFile);
+        }
+      }
+    }
+
+    const topFolders = Array.from(folderCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 7);
+
+    if (!topFolders.length) {
+      showToast('No files modified in the last 5 months found in that folder');
+      return;
+    }
+
+    store.update((s) => {
+      // Remove default placeholder General track if it has 0 logged minutes
+      s.subjects = s.subjects.filter((sub) => !(sub.id === 'subj-main' && (sub.loggedMinutes || 0) === 0));
+      const existingNames = new Set(s.subjects.map((sub) => sub.name.toLowerCase()));
+      topFolders.forEach(([folderName], idx) => {
+        if (existingNames.has(folderName.toLowerCase())) return;
+        const subjId = `subj-scan-${Date.now()}-${idx}`;
+        const code = folderName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase() || `TRK${idx + 1}`;
+        s.subjects.push({
+          id: subjId,
+          code,
+          name: folderName,
+          color: palette[idx % palette.length],
+          examDate: new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10),
+          targetHoursPerWeek: 6,
+          loggedMinutes: 0,
+          currentGrade: 90,
+          examWeight: 30,
+          targetCourseGrade: 90
+        });
+        const topics = recentTopicsByFolder.get(folderName) || new Set();
+        topics.forEach((topTitle) => {
+          s.syllabusTopics.push({
+            id: `syl-scan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            subjectId: subjId,
+            title: topTitle,
+            status: 'Learning',
+            confidence: 60
+          });
+        });
+      });
+    });
+    closeModal();
+    showToast(`📂 Discovered ${topFolders.length} active tracks from your last 5 months of files!`);
   }
 });
 

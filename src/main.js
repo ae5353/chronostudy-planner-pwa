@@ -1125,6 +1125,45 @@ function renderAnalyticsView() {
           </table>
         </div>
       </div>
+
+      <!-- Google Sheets & Automated Study Reports -->
+      <div class="surface-card" style="margin-top:22px;">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">📊 Google Sheets & Progress Reports</h2>
+            <p style="font-size:0.82rem; color:var(--text-muted);">
+              Export beautifully formatted weekly or monthly reports directly to your personal Google Sheet via Webhook, or download as CSV / JSON:
+            </p>
+          </div>
+          <span class="badge badge-sage">Apps Script Ready</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px; background:var(--bg-elevated); padding:14px; border-radius:var(--radius-md); border:1px solid var(--border-subtle);">
+          <div class="grid-2" style="gap:10px;">
+            <div class="form-group">
+              <label class="form-label" for="report-period-type">Report Period</label>
+              <select class="form-select" id="report-period-type">
+                <option value="week" selected>Current Week (Weekly Digest)</option>
+                <option value="month">Current Month (Monthly Summary)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="report-sheets-url">Google Sheets Webhook URL (from chronostudy-sheets-reports)</label>
+              <input type="url" class="form-input" id="report-sheets-url" placeholder="https://script.google.com/macros/s/.../exec" value="${escapeHTML(localStorage.getItem('chronostudy_sheets_webhook_url') || '')}" />
+            </div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <button type="button" class="btn btn-primary btn-sm" data-action="export-to-google-sheets">
+              🚀 Send Report to Google Sheets
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="download-report-csv">
+              📥 Download Report CSV
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" data-action="download-report-json">
+              💾 Download Report JSON
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
   `;
 }
@@ -1864,6 +1903,123 @@ document.addEventListener('click', async (e) => {
     } catch (_) {
       showToast('Could not reach PC Sync Server');
     }
+  } else if (action === 'export-to-google-sheets') {
+    const sheetsUrl = document.getElementById('report-sheets-url')?.value?.trim();
+    const periodType = document.getElementById('report-period-type')?.value || 'week';
+    if (!sheetsUrl) {
+      showToast('Paste your Google Sheets Webhook URL first (see chronostudy-sheets-reports)');
+      return;
+    }
+    localStorage.setItem('chronostudy_sheets_webhook_url', sheetsUrl);
+    showToast('🚀 Sending report to Google Sheets...');
+
+    const s = store.state;
+    const today = getTodayISO();
+    const payload = {
+      version: 1,
+      period: {
+        type: periodType,
+        start: periodType === 'month' ? today.slice(0, 7) + '-01' : today,
+        end: today
+      },
+      totals: {
+        minutes: s.stats.totalFocusMinutes || 0,
+        sessions: s.stats.completedPomodoros || 0,
+        tasksDone: s.tasks.filter((t) => t.completed).length
+      },
+      byTrack: s.subjects.map((sub) => ({
+        name: sub.name,
+        minutes: sub.loggedMinutes || 0,
+        sessions: Math.round((sub.loggedMinutes || 0) / 25)
+      })),
+      daily: (s.stats.weeklyDailyMinutes || []).map((m, i) => ({
+        date: `Day ${i + 1}`,
+        minutes: m
+      })),
+      sessions: (s.scheduleBlocks || [])
+        .filter((b) => b.done)
+        .map((b) => ({
+          date: b.date,
+          start: b.startTime,
+          end: b.endTime,
+          track: s.subjects.find((x) => x.id === b.subjectId)?.name || 'General',
+          topic: b.title,
+          rating: 5,
+          notes: 'Completed session'
+        })),
+      tasks: s.tasks.map((t) => ({
+        title: t.title,
+        track: s.subjects.find((x) => x.id === t.subjectId)?.name || 'General',
+        done: t.completed,
+        due: t.dueDate || ''
+      })),
+      goals: s.subjects.map((sub) => ({
+        track: sub.name,
+        targetHoursPerWeek: sub.targetHoursPerWeek || 5,
+        actualHours: Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10
+      }))
+    };
+
+    try {
+      await fetch(sheetsUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      showToast('✅ Report successfully sent to your Google Sheet!');
+    } catch (_) {
+      try {
+        await fetch(sheetsUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          body: JSON.stringify(payload)
+        });
+        showToast('✅ Dispatched report to Google Sheet Webhook!');
+      } catch (err) {
+        showToast('Could not reach Google Sheets URL');
+      }
+    }
+  } else if (action === 'download-report-csv') {
+    const s = store.state;
+    const rows = [
+      ['Track / Domain', 'Target Hours/Week', 'Logged Minutes', 'Logged Hours'],
+      ...s.subjects.map((sub) => [
+        `"${sub.name.replace(/"/g, '""')}"`,
+        sub.targetHoursPerWeek || 5,
+        sub.loggedMinutes || 0,
+        Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10
+      ])
+    ];
+    const csvContent = rows.map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chronostudy-study-report-${getTodayISO()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Downloaded study report CSV!');
+  } else if (action === 'download-report-json') {
+    const s = store.state;
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      totals: {
+        minutes: s.stats.totalFocusMinutes || 0,
+        sessions: s.stats.completedPomodoros || 0,
+        tasksDone: s.tasks.filter((t) => t.completed).length
+      },
+      tracks: s.subjects,
+      completedBlocks: s.scheduleBlocks.filter((b) => b.done)
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chronostudy-report-${getTodayISO()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Downloaded study report JSON!');
   } else if (action === 'start-blank-slate') {
     store.startBlankSlate();
     closeModal();

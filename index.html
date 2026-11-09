@@ -1158,26 +1158,19 @@ button {
   }
 }
 
-</style>
+  </style>
 </head>
 <body>
   <div id="app-shell" class="app-shell">
-    <!-- Desktop/Tablet Rail & Mobile Header rendered dynamically -->
     <aside id="sidebar-nav" class="sidebar-nav" aria-label="Primary Navigation"></aside>
-
     <div class="main-column">
       <header id="top-bar" class="top-bar"></header>
       <main id="main-view" class="main-view" tabindex="-1"></main>
     </div>
-
-    <!-- Mobile Bottom Bar -->
     <nav id="bottom-nav" class="bottom-nav" aria-label="Mobile Navigation"></nav>
   </div>
-
-  <!-- Quick-Add & Modal Root -->
   <div id="modal-root" class="modal-root" aria-live="polite"></div>
   <div id="toast-root" class="toast-root" aria-live="assertive"></div>
-
   <script>
 // Pure Web Audio API Soundscape & Notification Synthesizer (100% offline capable)
 
@@ -1586,7 +1579,7 @@ function formatMinutes(min) {
 
 
 // Report generator + exporters (CSV, real .xlsx via minimal zip writer, Apps Script POST).
-import { shiftISO, weekStartISO, monthBounds, sessionsInRange, sumMinutes, minutesByDay } from './log.js';
+
 
 const REPORT_VERSION = 1;
 
@@ -3322,7 +3315,7 @@ function getSubject(subjectId) {
   );
 }
 
-export function showToast(message) {
+function showToast(message) {
   const root = document.getElementById('toast-root');
   if (!root) return;
   const el = document.createElement('div');
@@ -5512,6 +5505,6 @@ setTimeout(() => runAutoCalendarSync({ silent: true }), 800);
 setInterval(() => runAutoCalendarSync({ silent: true }), 15 * 60 * 1000);
 
 
-</script>
+  </script>
 </body>
 </html>

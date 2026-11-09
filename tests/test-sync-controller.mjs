@@ -83,4 +83,21 @@ assert(store.getState().tasks.some(t => t.id === 'task-cloud-import-1'), 'Import
 assert(store.getState().sessions.some(s => s.id === 'sess-cloud-import-1'), 'Imported session must exist in store');
 console.log('✔ Offline snapshot import & additive merge verified.');
 
+// 6. Google Drive Provider Configuration & State
+store.updateSyncSettings({
+  provider: 'gdrive',
+  googleClientId: 'test-client-id-1234.apps.googleusercontent.com',
+  googleUserEmail: 'student@itu.edu.tr'
+});
+const gdriveStatus = syncManager.getStatus();
+assert.equal(gdriveStatus.provider, 'gdrive', 'Provider should be gdrive');
+assert.equal(gdriveStatus.googleClientId, 'test-client-id-1234.apps.googleusercontent.com');
+assert.equal(gdriveStatus.googleUserEmail, 'student@itu.edu.tr');
+assert.equal(syncManager.isConfigured(), true, 'Google Drive should be configured when client ID is provided');
+
+syncManager.disconnectGoogleDrive();
+const disconnectedStatus = syncManager.getStatus();
+assert.equal(disconnectedStatus.googleUserEmail, null, 'Email should be cleared on disconnect');
+console.log('✔ Google Drive provider settings & disconnect verified.');
+
 console.log('\nAll Sync Controller unit tests passed successfully! 🚀');

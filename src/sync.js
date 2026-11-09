@@ -106,6 +106,8 @@ export class SyncManager {
       : true;
     this.silentAudioElement = null;
     this.pwaInstallPrompt = null;
+    this.gdriveAccessToken = null;
+    this.gdriveTokenExpiry = null;
 
     // Generate or restore a unique client device ID
     this.deviceId = this.getOrCreateDeviceId();
@@ -149,7 +151,7 @@ export class SyncManager {
     const syncState = store.getState().sync || {};
     const unsynced = store.getUnsyncedChanges();
     return {
-      provider: syncState.provider || 'none',
+      provider: syncState.provider || 'gdrive',
       status: this.isSyncing ? 'syncing' : (syncState.status || 'idle'),
       isOnline: this.networkOnline,
       lastSyncedAt: syncState.lastSyncedAt || null,
@@ -159,12 +161,18 @@ export class SyncManager {
       lastError: this.lastError,
       autoSync: syncState.autoSync !== false,
       roomId: syncState.supabaseRoomId || '',
+      googleUserEmail: syncState.googleUserEmail || null,
+      googleClientId: syncState.googleClientId || '',
+      isGoogleConnected: Boolean(this.gdriveAccessToken || syncState.googleUserEmail),
       isConfigured: this.isConfigured()
     };
   }
 
   isConfigured() {
     const syncState = store.getState().sync || {};
+    if (syncState.provider === 'gdrive') {
+      return Boolean(syncState.googleClientId);
+    }
     if (syncState.provider === 'supabase') {
       return Boolean(syncState.supabaseUrl && syncState.supabaseKey && syncState.supabaseRoomId);
     }
@@ -251,7 +259,7 @@ export class SyncManager {
     const syncState = store.getState().sync || {};
     if (syncState.provider === 'none' || !this.isConfigured()) {
       if (!silent) {
-        this.lastError = 'Cloud sync is not configured yet. Set up Supabase or export/import in Cloud Sync Settings.';
+        this.lastError = 'Cloud sync is not configured yet. Sign in with Google Drive or enter your Client ID in Cloud Sync Settings.';
       }
       this.notify();
       return { success: false, reason: 'unconfigured' };
@@ -262,7 +270,9 @@ export class SyncManager {
     this.notify();
 
     try {
-      if (syncState.provider === 'supabase') {
+      if (syncState.provider === 'gdrive') {
+        await this.syncGoogleDrive(syncState, { interactive: force });
+      } else if (syncState.provider === 'supabase') {
         await this.syncSupabase(syncState);
       } else {
         throw new Error(`Unsupported sync provider: ${syncState.provider}`);
@@ -280,6 +290,207 @@ export class SyncManager {
       this.notify();
       return { success: false, error: this.lastError };
     }
+  }
+
+  /**
+   * Google Identity Services OAuth 2.0 Token Handler
+   */
+  async requestGoogleAccessToken({ clientId, interactive = false } = {}) {
+    if (typeof window === 'undefined') return null;
+
+    // Return cached token if still valid
+    if (this.gdriveAccessToken && this.gdriveTokenExpiry && Date.now() < this.gdriveTokenExpiry - 60000) {
+      return this.gdriveAccessToken;
+    }
+
+    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+      throw new Error('Google Identity Services SDK is loading. Please check your internet connection.');
+    }
+
+    if (!clientId) {
+      throw new Error('Please enter your Google OAuth Client ID first.');
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
+          callback: (resp) => {
+            if (resp.error) {
+              reject(new Error(resp.error_description || resp.error));
+              return;
+            }
+            this.gdriveAccessToken = resp.access_token;
+            const expiresIn = parseInt(resp.expires_in, 10) || 3500;
+            this.gdriveTokenExpiry = Date.now() + expiresIn * 1000;
+            resolve(resp.access_token);
+          }
+        });
+
+        tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  }
+
+  /**
+   * Google Drive Provider Sync Engine
+   * Zero database setup needed — uses Google Drive REST API v3
+   */
+  async syncGoogleDrive(syncState, { interactive = false } = {}) {
+    const clientId = syncState.googleClientId ? syncState.googleClientId.trim() : '';
+    if (!clientId) {
+      throw new Error('Please enter your Google OAuth Client ID in Cloud Sync settings.');
+    }
+
+    let token = this.gdriveAccessToken;
+    if (!token || !this.gdriveTokenExpiry || Date.now() >= this.gdriveTokenExpiry - 60000) {
+      token = await this.requestGoogleAccessToken({ clientId, interactive });
+    }
+
+    if (!token) {
+      throw new Error('Google Drive authorization needed. Click "Sign in with Google Drive".');
+    }
+
+    // 1. Fetch user email if not cached
+    if (!syncState.googleUserEmail) {
+      try {
+        const userinfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (userinfoRes.ok) {
+          const userinfo = await userinfoRes.json();
+          if (userinfo.email) {
+            store.updateSyncSettings({ googleUserEmail: userinfo.email });
+          }
+        }
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
+    // 2. Query for existing chronostudy_sync.json on Google Drive
+    const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='chronostudy_sync.json' and trashed=false&fields=files(id,name,modifiedTime)`;
+    const searchRes = await fetch(searchUrl, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    if (!searchRes.ok) {
+      const errTxt = await searchRes.text();
+      if (searchRes.status === 401) {
+        this.gdriveAccessToken = null;
+        throw new Error('Google authorization expired. Please click "Sign in with Google Drive" again.');
+      }
+      throw new Error(`Google Drive search failed (${searchRes.status}): ${errTxt}`);
+    }
+
+    const searchData = await searchRes.json();
+    const existingFile = searchData.files && searchData.files.length > 0 ? searchData.files[0] : null;
+
+    // 3. Download and merge if file exists
+    if (existingFile) {
+      store.updateSyncSettings({ googleDriveFileId: existingFile.id });
+      const downloadUrl = `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`;
+      const dlRes = await fetch(downloadUrl, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (dlRes.ok) {
+        const rawContent = await dlRes.text();
+        if (rawContent && rawContent.trim()) {
+          try {
+            const remotePayload = await decryptPayload(rawContent, syncState.passphrase);
+            if (remotePayload && remotePayload.version) {
+              store.mergeRemoteState(remotePayload);
+            }
+          } catch (decryptErr) {
+            throw new Error(`Failed to decrypt remote Google Drive data: ${decryptErr.message}`);
+          }
+        }
+      }
+    }
+
+    // 4. Prepare updated local payload and upload to Drive
+    const localPayload = store.getSyncPayload();
+    const serializedForCloud = await encryptPayload(localPayload, syncState.passphrase);
+
+    if (existingFile) {
+      // Update existing file (PATCH)
+      const patchUrl = `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=media`;
+      const patchRes = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: serializedForCloud
+      });
+
+      if (!patchRes.ok) {
+        const patchErr = await patchRes.text();
+        throw new Error(`Failed to update file in Google Drive: ${patchErr}`);
+      }
+    } else {
+      // Create new file via multipart upload
+      const boundary = '-------ChronoStudyBoundary' + Math.random().toString(36).slice(2);
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelimiter = `\r\n--${boundary}--`;
+
+      const metadata = {
+        name: 'chronostudy_sync.json',
+        mimeType: 'application/json'
+      };
+
+      const multipartBody =
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        serializedForCloud +
+        closeDelimiter;
+
+      const createRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': `multipart/related; boundary=${boundary}`
+        },
+        body: multipartBody
+      });
+
+      if (!createRes.ok) {
+        const createErr = await createRes.text();
+        throw new Error(`Failed to create file in Google Drive: ${createErr}`);
+      }
+
+      const createData = await createRes.json();
+      if (createData.id) {
+        store.updateSyncSettings({ googleDriveFileId: createData.id });
+      }
+    }
+
+    // 5. Mark records synced locally
+    const nowIso = new Date().toISOString();
+    store.markRecordsSynced(nowIso);
+  }
+
+  disconnectGoogleDrive() {
+    if (typeof window !== 'undefined' && window.google?.accounts?.oauth2?.revoke && this.gdriveAccessToken) {
+      try {
+        window.google.accounts.oauth2.revoke(this.gdriveAccessToken, () => {});
+      } catch (e) {}
+    }
+    this.gdriveAccessToken = null;
+    this.gdriveTokenExpiry = null;
+    store.updateSyncSettings({
+      googleUserEmail: null,
+      googleDriveFileId: null,
+      status: 'idle'
+    });
+    this.notify();
   }
 
   /**

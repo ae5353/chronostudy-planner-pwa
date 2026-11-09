@@ -327,10 +327,22 @@ export class ChronoUI {
 
     this.syncTabBtns = document.querySelectorAll('.sync-tab-btn');
     this.syncTabPanels = {
+      gdrive: document.getElementById('sync-tab-panel-gdrive'),
       supabase: document.getElementById('sync-tab-panel-supabase'),
       offline: document.getElementById('sync-tab-panel-offline'),
       devices: document.getElementById('sync-tab-panel-devices')
     };
+
+    // Google Drive Elements
+    this.gdriveStatusCard = document.getElementById('gdrive-status-card');
+    this.gdriveUserStatus = document.getElementById('gdrive-user-status');
+    this.gdriveFileStatus = document.getElementById('gdrive-file-status');
+    this.btnGdriveSignin = document.getElementById('btn-gdrive-signin');
+    this.btnGdriveDisconnect = document.getElementById('btn-gdrive-disconnect');
+    this.gdriveClientId = document.getElementById('gdrive-client-id');
+    this.gdrivePassphrase = document.getElementById('gdrive-passphrase');
+    this.gdriveAutoToggle = document.getElementById('gdrive-auto-toggle');
+    this.btnSaveGdriveConfig = document.getElementById('btn-save-gdrive-config');
 
     this.syncSupabaseUrl = document.getElementById('sync-supabase-url');
     this.syncSupabaseKey = document.getElementById('sync-supabase-key');
@@ -455,6 +467,27 @@ export class ChronoUI {
     if (this.btnModalSyncNow) {
       this.btnModalSyncNow.addEventListener('click', () => {
         this.triggerSyncNow();
+        playClickSound();
+      });
+    }
+
+    if (this.btnGdriveSignin) {
+      this.btnGdriveSignin.addEventListener('click', () => {
+        this.handleGoogleDriveSignIn();
+        playClickSound();
+      });
+    }
+
+    if (this.btnGdriveDisconnect) {
+      this.btnGdriveDisconnect.addEventListener('click', () => {
+        this.handleGoogleDriveDisconnect();
+        playClickSound();
+      });
+    }
+
+    if (this.btnSaveGdriveConfig) {
+      this.btnSaveGdriveConfig.addEventListener('click', () => {
+        this.handleGoogleDriveSave();
         playClickSound();
       });
     }
@@ -1438,6 +1471,10 @@ export class ChronoUI {
   openSyncModal() {
     if (!this.cloudSyncModal) return;
     const syncState = store.getState().sync || {};
+    if (this.gdriveClientId) this.gdriveClientId.value = syncState.googleClientId || '';
+    if (this.gdrivePassphrase) this.gdrivePassphrase.value = syncState.passphrase || '';
+    if (this.gdriveAutoToggle) this.gdriveAutoToggle.checked = syncState.autoSync !== false;
+
     if (this.syncSupabaseUrl) this.syncSupabaseUrl.value = syncState.supabaseUrl || '';
     if (this.syncSupabaseKey) this.syncSupabaseKey.value = syncState.supabaseKey || '';
     if (this.syncSupabaseRoom) this.syncSupabaseRoom.value = syncState.supabaseRoomId || '';
@@ -1552,12 +1589,116 @@ export class ChronoUI {
         this.modalSyncSubtitle.textContent = 'Changes queued locally; will auto-sync upon reconnection';
       } else if (status.lastError) {
         this.modalSyncSubtitle.textContent = status.lastError;
-      } else if (status.isConfigured) {
-        this.modalSyncSubtitle.textContent = `Room: ${status.roomId} • Encrypted End-to-End`;
+      } else if (status.provider === 'gdrive' && status.googleUserEmail) {
+        this.modalSyncSubtitle.textContent = `Google Drive: ${status.googleUserEmail} • chronostudy_sync.json`;
+      } else if (status.provider === 'supabase' && status.roomId) {
+        this.modalSyncSubtitle.textContent = `Supabase Room: ${status.roomId} • Encrypted End-to-End`;
       } else {
-        this.modalSyncSubtitle.textContent = 'Connect Supabase to keep PC & mobile in sync automatically';
+        this.modalSyncSubtitle.textContent = 'Connect Google Drive or Supabase to sync automatically across devices';
       }
     }
+
+    // Google Drive connection status card
+    if (this.gdriveUserStatus && this.gdriveFileStatus) {
+      if (status.googleUserEmail) {
+        this.gdriveUserStatus.textContent = `Connected: ${status.googleUserEmail}`;
+        this.gdriveFileStatus.textContent = 'Active • Syncing automatically to chronostudy_sync.json';
+        if (this.btnGdriveSignin) this.btnGdriveSignin.style.display = 'none';
+        if (this.btnGdriveDisconnect) this.btnGdriveDisconnect.style.display = 'inline-block';
+      } else {
+        this.gdriveUserStatus.textContent = 'Not Connected';
+        this.gdriveFileStatus.textContent = 'Sign in to sync your study logs to Google Drive';
+        if (this.btnGdriveSignin) {
+          this.btnGdriveSignin.style.display = 'flex';
+          this.btnGdriveSignin.disabled = false;
+          this.btnGdriveSignin.innerHTML = '<span>🔑</span> Sign in with Google Drive';
+        }
+        if (this.btnGdriveDisconnect) this.btnGdriveDisconnect.style.display = 'none';
+      }
+    }
+  }
+
+  async handleGoogleDriveSignIn() {
+    const clientId = this.gdriveClientId ? this.gdriveClientId.value.trim() : '';
+    const pass = this.gdrivePassphrase ? this.gdrivePassphrase.value.trim() : '';
+    const auto = this.gdriveAutoToggle ? this.gdriveAutoToggle.checked : true;
+
+    if (!clientId) {
+      await this.showInAppAlert({
+        title: 'Google Client ID Required',
+        message: 'Please paste your Google OAuth Client ID into the field below. Click "How to get your free Google Client ID" for simple 2-minute steps.'
+      });
+      if (this.gdriveClientId) this.gdriveClientId.focus();
+      return;
+    }
+
+    store.updateSyncSettings({
+      provider: 'gdrive',
+      googleClientId: clientId,
+      passphrase: pass,
+      autoSync: auto
+    });
+
+    try {
+      if (this.btnGdriveSignin) {
+        this.btnGdriveSignin.disabled = true;
+        this.btnGdriveSignin.textContent = 'Connecting with Google...';
+      }
+
+      await syncManager.requestGoogleAccessToken({ clientId, interactive: true });
+      await this.triggerSyncNow();
+
+      if (this.btnGdriveSignin) {
+        this.btnGdriveSignin.disabled = false;
+        this.btnGdriveSignin.innerHTML = '<span>🔑</span> Sign in with Google Drive';
+      }
+    } catch (err) {
+      if (this.btnGdriveSignin) {
+        this.btnGdriveSignin.disabled = false;
+        this.btnGdriveSignin.innerHTML = '<span>🔑</span> Sign in with Google Drive';
+      }
+      await this.showInAppAlert({
+        title: 'Google Sign-In Alert',
+        message: err.message || 'Failed to authenticate with Google.'
+      });
+    }
+  }
+
+  async handleGoogleDriveDisconnect() {
+    const confirmed = await this.showInAppConfirm({
+      title: 'Disconnect Google Drive',
+      message: 'Are you sure you want to disconnect Google Drive synchronization? Your local study data will remain completely intact.'
+    });
+    if (!confirmed) return;
+
+    syncManager.disconnectGoogleDrive();
+    await this.showInAppAlert({
+      title: 'Disconnected',
+      message: 'Google Drive has been disconnected. You are now in local offline mode.'
+    });
+  }
+
+  async handleGoogleDriveSave() {
+    const clientId = this.gdriveClientId ? this.gdriveClientId.value.trim() : '';
+    const pass = this.gdrivePassphrase ? this.gdrivePassphrase.value.trim() : '';
+    const auto = this.gdriveAutoToggle ? this.gdriveAutoToggle.checked : true;
+
+    if (!clientId) {
+      await this.showInAppAlert({
+        title: 'Missing Client ID',
+        message: 'Please enter your Google OAuth Client ID to connect with Google Drive.'
+      });
+      return;
+    }
+
+    store.updateSyncSettings({
+      provider: 'gdrive',
+      googleClientId: clientId,
+      passphrase: pass,
+      autoSync: auto
+    });
+
+    await this.triggerSyncNow();
   }
 
   async saveCloudConfig() {

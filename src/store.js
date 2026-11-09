@@ -277,10 +277,14 @@ const INITIAL_STATE = {
   },
   sync: {
     enabled: false,
-    provider: 'supabase', // 'supabase' | 'gdrive' | 'qr'
+    provider: 'gdrive', // 'gdrive' | 'supabase' | 'offline' | 'none'
+    googleClientId: '',
+    googleUserEmail: '',
+    googleDriveFileId: null,
     supabaseUrl: '',
-    supabaseAnonKey: '',
-    syncPassphrase: '',
+    supabaseKey: '',
+    supabaseRoomId: '',
+    passphrase: '',
     lastSyncedAt: null,
     status: 'idle', // 'idle' | 'syncing' | 'synced' | 'offline' | 'error'
     lastError: null,

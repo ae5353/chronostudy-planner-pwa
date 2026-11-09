@@ -16,6 +16,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./src/styles.css" />
+  <!-- Google Identity Services for 1-Click Google Drive Sync -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -1345,14 +1347,101 @@
 
       <!-- Provider Navigation Tabs -->
       <div class="sync-tab-bar">
-        <button type="button" class="sync-tab-btn active" data-sync-tab="supabase">Supabase Cloud (Free)</button>
-        <button type="button" class="sync-tab-btn" data-sync-tab="offline">Offline Snapshot & QR</button>
-        <button type="button" class="sync-tab-btn" data-sync-tab="devices">App Mode & Lock Screen</button>
+        <button type="button" class="sync-tab-btn active" data-sync-tab="gdrive">Google Drive (Recommended)</button>
+        <button type="button" class="sync-tab-btn" data-sync-tab="supabase">Supabase</button>
+        <button type="button" class="sync-tab-btn" data-sync-tab="offline">Offline Snapshot</button>
+        <button type="button" class="sync-tab-btn" data-sync-tab="devices">App Mode & Timer</button>
       </div>
 
       <div class="modal-body modal-scroll-body" style="max-height: 440px;">
+        <!-- TAB 0: Google Drive Sync (Recommended) -->
+        <div id="sync-tab-panel-gdrive" class="sync-tab-panel active">
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.75rem;">
+            Synchronize your courses, tasks, and logged hours with your personal Google Drive. 100% private, free, and works across Android, PC, and Mac anywhere on Earth.
+          </p>
+
+          <!-- Google Account Connection Card -->
+          <div class="sync-gdrive-card" id="gdrive-status-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.65rem;">
+              <div style="display: flex; align-items: center; gap: 0.55rem;">
+                <svg width="22" height="22" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                </svg>
+                <div>
+                  <div id="gdrive-user-status" style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);">
+                    Not Connected
+                  </div>
+                  <div id="gdrive-file-status" style="font-size: 0.72rem; color: var(--text-dim);">
+                    Sign in to sync your study logs to Google Drive
+                  </div>
+                </div>
+              </div>
+              <button type="button" id="btn-gdrive-disconnect" class="btn btn-secondary btn-sm" style="display: none; font-size: 0.72rem;">
+                Disconnect
+              </button>
+            </div>
+
+            <!-- Sign in button -->
+            <button type="button" id="btn-gdrive-signin" class="btn btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.55rem 1rem;">
+              <span>🔑</span> Sign in with Google Drive
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-top: 0.75rem; margin-bottom: 0.65rem;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Google OAuth Client ID
+            </label>
+            <input type="text" id="gdrive-client-id" class="input-text" placeholder="xxxx-xxxx.apps.googleusercontent.com" autocomplete="off" />
+            <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.25rem;">
+              Saved securely in your browser. Used to communicate with the Google Drive API.
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Secret Passphrase (Optional End-to-End Encryption)
+            </label>
+            <input type="password" id="gdrive-passphrase" class="input-text" placeholder="Optional passphrase for AES-GCM encryption on Drive" autocomplete="off" />
+            <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.25rem;">
+              When set, your study file is encrypted before upload. Use the same key on all devices.
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;">
+            <input type="checkbox" id="gdrive-auto-toggle" checked style="accent-color: var(--primary); width: 16px; height: 16px;" />
+            <label for="gdrive-auto-toggle" style="font-size: 0.82rem; color: var(--text-main); cursor: pointer;">
+              Automatically sync changes in background when online
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.85rem;">
+            <button type="button" id="btn-save-gdrive-config" class="btn btn-primary" style="flex: 1;">
+              Save & Sync with Drive
+            </button>
+          </div>
+
+          <!-- Quick Setup Guide Collapsible -->
+          <details style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; font-size: 0.76rem; color: var(--text-muted);">
+            <summary style="font-weight: 600; color: var(--primary); cursor: pointer; user-select: none;">
+              📖 How to get your free Google Client ID in 2 minutes
+            </summary>
+            <ol style="margin-top: 0.5rem; padding-left: 1.25rem; line-height: 1.55;">
+              <li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;">Google Cloud Console Credentials</a> (free).</li>
+              <li>Click <strong>Create Credentials</strong> $\rightarrow$ <strong>OAuth client ID</strong> $\rightarrow$ Choose <strong>Web application</strong>.</li>
+              <li>Under <strong>Authorized JavaScript origins</strong>, add:
+                <br><code style="font-size: 0.75rem;">https://ae5353.github.io</code>
+                <br><code style="font-size: 0.75rem;">http://localhost:3000</code>
+              </li>
+              <li>Click <strong>Create</strong>, copy the Client ID, and paste it into the field above!</li>
+            </ol>
+          </details>
+        </div>
+
         <!-- TAB 1: Supabase Cloud Sync -->
-        <div id="sync-tab-panel-supabase" class="sync-tab-panel active">
+        <div id="sync-tab-panel-supabase" class="sync-tab-panel" style="display: none;">
           <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.75rem;">
             Sync your study tasks, calendar, and sessions instantly across your laptop, phone, and tablet anywhere on Earth using Supabase's generous 100% free tier.
           </p>

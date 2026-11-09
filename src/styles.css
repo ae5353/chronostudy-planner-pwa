@@ -4032,6 +4032,13 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   padding: 0.85rem;
 }
 
+.sync-gdrive-card {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+}
+
 @media (max-width: 600px) {
   .sync-meta-grid {
     grid-template-columns: 1fr;

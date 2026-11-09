@@ -362,7 +362,7 @@ test('7. v3.0 Google Calendar .ICS Import, Plain-Text Schedule Parser, Goal Pace
     s.startBlankSlate();
     assert.equal(s.state.tasks.length, 0);
     assert.equal(s.state.scheduleBlocks.length, 0);
-    assert.equal(s.state.subjects.length, 3);
+    assert.equal(s.state.subjects.length, 1);
   });
 
   await t.test('normalizeCalendarFeedUrl, fetchLiveCalendarFeed, and fetchGoogleCalendarEventsAPI auto-sync university & Google feeds', async () => {

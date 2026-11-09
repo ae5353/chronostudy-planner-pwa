@@ -615,6 +615,45 @@ export function createDefaultState() {
   };
 }
 
+// Empty workspace: one neutral "General" track (UI needs at least one), no invented
+// categories, tasks, or routines. Everything else comes from the user or their calendars.
+export function applyBlankSlate(s) {
+  const today = getTodayISO();
+  s.profileMode = 'blank';
+  s.subjects = [
+    {
+      id: 'subj-main',
+      name: 'General',
+      code: 'GEN',
+      category: 'General',
+      color: '#C85A32',
+      examDate: addDaysISO(today, 30),
+      milestoneLabel: 'Milestone',
+      targetHoursPerWeek: 5,
+      loggedMinutes: 0,
+      currentGrade: 90,
+      examWeight: 30,
+      targetCourseGrade: 90
+    }
+  ];
+  s.tasks = [];
+  s.scheduleBlocks = [];
+  s.weeklyProgram = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+  s.flashcards = [];
+  s.cornellNotes = [];
+  s.syllabusTopics = [];
+  s.habits = [];
+  s.stats = {
+    totalFocusMinutes: 0,
+    todayFocusMinutes: 0,
+    completedPomodoros: 0,
+    currentStreakDays: 1,
+    lastActiveDate: today,
+    weeklyDailyMinutes: [0, 0, 0, 0, 0, 0, 0]
+  };
+  return s;
+}
+
 export class Store {
   constructor() {
     this.listeners = new Set();
@@ -628,7 +667,7 @@ export class Store {
         localStorage.getItem(STORAGE_KEY) ||
         localStorage.getItem('chronostudy_state_v2') ||
         localStorage.getItem('chronostudy_state_v1');
-      if (!raw) return createDefaultState();
+      if (!raw) return applyBlankSlate(createDefaultState());
       const parsed = JSON.parse(raw);
       const def = createDefaultState();
       return {

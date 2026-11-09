@@ -7,6 +7,16 @@ import {
   calculateRequiredExamScore
 } from './store.js';
 import { soundEngine } from './audio.js';
+import {
+  loadSyncConfig,
+  saveSyncConfig,
+  pushToGitHubGist,
+  pullFromGitHubGist,
+  pushToSyncServer,
+  pullFromSyncServer,
+  createShareableSyncLink,
+  checkUrlSyncSnapshot
+} from './cloud-sync.js';
 
 let timerInterval = null;
 let revealedCardId = null;
@@ -1311,29 +1321,55 @@ function openModal(type) {
       </form>
     `;
   } else if (type === 'backup') {
+    const cfg = loadSyncConfig();
     content = `
-      <h2 class="card-title">Multi-Platform Sync, Mobile PWA & Cloud Backup</h2>
-      <p style="font-size:0.86rem; color:var(--text-secondary);">
-        ChronoStudy v2.0 runs across Mobile PWA, Portable Single-File HTML, Capacitor iOS/Android, Node CLI, and Self-Hosted LAN Sync Server.
+      <h2 class="card-title">PC ↔ Mobile Cross-Device Synchronization</h2>
+      <p style="font-size:0.84rem; color:var(--text-secondary);">
+        Synchronize your tasks, schedule, SM-2 deck, and Cornell notes between your <strong>PC</strong> and <strong>Mobile Phone</strong> using any of the 3 built-in sync methods below:
       </p>
-      <div style="display:flex; flex-wrap:wrap; gap:8px;">
-        <button class="btn btn-primary btn-sm" data-action="download-json-backup">Export JSON Backup</button>
-        <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
-          Import JSON Backup
-          <input type="file" id="import-json-input" accept=".json" style="display:none;" />
-        </label>
-        <button class="btn btn-secondary btn-sm" data-action="sync-to-lan-server">Sync with Local Server</button>
-        <button class="btn btn-secondary btn-sm" data-action="reset-demo-data">Reset Demo Data</button>
+
+      <!-- Method 1: GitHub Gist 2-Way Cloud Sync (Works Everywhere over 4G/5G/Wi-Fi) -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:9px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:0.85rem;">1. GitHub Gist Cloud Sync (PC ↔ Mobile Anywhere)</strong>
+          <span class="badge badge-sage">${cfg.gistId ? 'Gist Linked' : 'Serverless'}</span>
+        </div>
+        <div class="grid-2" style="gap:8px;">
+          <input type="password" class="form-input" id="sync-gh-token" placeholder="GitHub Token (gist scope)" value="${escapeHTML(cfg.githubToken || '')}" />
+          <input type="text" class="form-input" id="sync-gist-id" placeholder="Gist ID (leave blank on 1st Push)" value="${escapeHTML(cfg.gistId || '')}" />
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="btn btn-primary btn-sm" data-action="cloud-gist-push">☁️ Push to GitHub Cloud</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="cloud-gist-pull">⬇️ Pull from GitHub Cloud</button>
+        </div>
       </div>
-      <div style="background:var(--bg-elevated); padding:14px; border-radius:var(--radius-md); font-size:0.82rem; color:var(--text-secondary);">
-        <strong style="color:var(--text-primary);">Platform Guide & Keyboard Shortcuts:</strong>
-        <ul style="margin-left:18px; margin-top:6px; display:flex; flex-direction:column; gap:4px;">
-          <li><strong>Mobile PWA (iOS/Android):</strong> Tap <em>Share → Add to Home Screen</em> for full-screen offline mode + Screen WakeLock.</li>
-          <li><strong>Terminal CLI (Linux/macOS/Termux):</strong> Run <code>node cli/chronostudy-cli.mjs dashboard</code></li>
-          <li><strong>Smart Capture Syntax:</strong> Use <code>#CS-301 !Q1 ~3p @tomorrow</code> in the quick-add bar.</li>
-        </ul>
+
+      <!-- Method 2: Instant Shareable Sync Link (#sync=...) -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <strong style="font-size:0.85rem;">2. Instant Device Handoff Link (Zero Account Needed)</strong>
+        <p style="font-size:0.78rem; color:var(--text-muted);">Encodes your current tasks & schedule directly into a single URL link to send between PC and phone.</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="copy-sync-link">🔗 Copy Instant Sync Link</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="download-json-backup">💾 Export JSON File</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+            📂 Import JSON File
+            <input type="file" id="import-json-input" accept=".json" style="display:none;" />
+          </label>
+        </div>
       </div>
-      <div style="display:flex; justify-content:flex-end;">
+
+      <!-- Method 3: Local PC Sync Server -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <strong style="font-size:0.85rem;">3. Self-Hosted PC Sync Server (<code>npm start</code>)</strong>
+        <div style="display:flex; gap:8px;">
+          <input type="text" class="form-input" id="sync-server-url" placeholder="http://localhost:4173" value="${escapeHTML(cfg.serverUrl || '')}" />
+          <button type="button" class="btn btn-secondary btn-sm" data-action="sync-to-lan-server">Push</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="pull-from-lan-server">Pull</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button type="button" class="btn btn-ghost btn-sm" data-action="reset-demo-data">Reset Demo Data</button>
         <button type="button" class="btn btn-secondary" data-action="close-modal">Done</button>
       </div>
     `;
@@ -1583,17 +1619,66 @@ document.addEventListener('click', async (e) => {
     a.click();
     URL.revokeObjectURL(url);
     showToast('Backup JSON downloaded!');
-  } else if (action === 'sync-to-lan-server') {
+  } else if (action === 'cloud-gist-push') {
+    const githubToken = document.getElementById('sync-gh-token')?.value?.trim() || '';
+    const gistId = document.getElementById('sync-gist-id')?.value?.trim() || '';
+    const cfg = { ...loadSyncConfig(), provider: 'gist', githubToken, gistId };
+    saveSyncConfig(cfg);
     try {
-      const res = await fetch('/api/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(store.state)
+      const res = await pushToGitHubGist(store.state, cfg);
+      saveSyncConfig({ ...cfg, gistId: res.gistId, lastSyncedAt: res.syncedAt });
+      const gistInput = document.getElementById('sync-gist-id');
+      if (gistInput) gistInput.value = res.gistId;
+      showToast(`☁️ Synced to GitHub Gist (${res.gistId.slice(0, 8)}...)!`);
+    } catch (err) {
+      showToast(err.message || 'GitHub Sync failed');
+    }
+  } else if (action === 'cloud-gist-pull') {
+    const githubToken = document.getElementById('sync-gh-token')?.value?.trim() || '';
+    const gistId = document.getElementById('sync-gist-id')?.value?.trim() || '';
+    const cfg = { ...loadSyncConfig(), provider: 'gist', githubToken, gistId };
+    saveSyncConfig(cfg);
+    try {
+      const remoteState = await pullFromGitHubGist(cfg);
+      store.update((s) => {
+        Object.assign(s, remoteState);
       });
-      if (res.ok) showToast('Synced state to ChronoStudy Sync Server!');
-      else showToast('Local static mode active (saved in localStorage)');
+      closeModal();
+      showToast('⬇️ Pulled latest planner state from GitHub Cloud!');
+    } catch (err) {
+      showToast(err.message || 'GitHub Pull failed');
+    }
+  } else if (action === 'copy-sync-link') {
+    const url = createShareableSyncLink(store.state);
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast('🔗 Copied Instant Sync URL! Open it on your PC or Phone.');
     } catch (_) {
-      showToast('Saved locally (Sync server not detected on current host)');
+      prompt('Copy this Instant Sync URL:', url);
+    }
+  } else if (action === 'sync-to-lan-server') {
+    const serverUrl = document.getElementById('sync-server-url')?.value?.trim() || '';
+    const cfg = { ...loadSyncConfig(), serverUrl };
+    saveSyncConfig(cfg);
+    try {
+      await pushToSyncServer(store.state, cfg);
+      showToast('Synced state to PC Sync Server!');
+    } catch (_) {
+      showToast('Could not reach PC Sync Server (check URL or run npm start)');
+    }
+  } else if (action === 'pull-from-lan-server') {
+    const serverUrl = document.getElementById('sync-server-url')?.value?.trim() || '';
+    const cfg = { ...loadSyncConfig(), serverUrl };
+    saveSyncConfig(cfg);
+    try {
+      const remote = await pullFromSyncServer(cfg);
+      store.update((s) => {
+        Object.assign(s, remote);
+      });
+      closeModal();
+      showToast('Pulled latest state from PC Sync Server!');
+    } catch (_) {
+      showToast('Could not reach PC Sync Server');
     }
   } else if (action === 'reset-demo-data') {
     store.resetToDemo();
@@ -1814,6 +1899,14 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
+}
+
+const incomingSnapshot = checkUrlSyncSnapshot();
+if (incomingSnapshot) {
+  store.update((s) => {
+    Object.assign(s, incomingSnapshot);
+  });
+  setTimeout(() => showToast('🔗 Imported state from Instant Sync Link!'), 300);
 }
 
 store.subscribe(renderApp);

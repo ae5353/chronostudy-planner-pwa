@@ -4,7 +4,8 @@ import {
   daysUntil,
   parseSmartTaskInput,
   detectScheduleConflicts,
-  calculateRequiredExamScore
+  calculateRequiredExamScore,
+  calculateGoalPace
 } from './store.js';
 import { soundEngine } from './audio.js';
 import {
@@ -17,6 +18,11 @@ import {
   createShareableSyncLink,
   checkUrlSyncSnapshot
 } from './cloud-sync.js';
+import {
+  parseICSCalendar,
+  parseScheduleText,
+  buildGoogleCalendarUrl
+} from './calendar-sync.js';
 
 let timerInterval = null;
 let revealedCardId = null;
@@ -38,10 +44,12 @@ function escapeHTML(str = '') {
 
 function getSubject(subjectId) {
   return (
-    store.state.subjects.find((s) => s.id === subjectId) || {
+    store.state.subjects.find((s) => s.id === subjectId) ||
+    store.state.subjects[0] || {
       id: 'default',
-      name: 'General',
+      name: 'General Focus',
       code: 'GEN',
+      category: 'General',
       color: '#C85A32'
     }
   );
@@ -67,7 +75,7 @@ function applyTheme(theme) {
   }
 }
 
-// Mobile Screen WakeLock & MediaSession API Integration for Focus Studio
+// Mobile Screen WakeLock & MediaSession API Integration
 async function syncMobileWakeLock(isRunning) {
   if (typeof navigator === 'undefined') return;
   try {
@@ -138,10 +146,10 @@ function renderNavigation() {
   const navItems = [
     { id: 'today', label: 'Today Hub', badge: null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>` },
     { id: 'tasks', label: 'Tasks & Matrix', badge: openTasksCount, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
-    { id: 'program', label: 'Weekly Program', badge: '7d', icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>` },
-    { id: 'study', label: 'Study & Notes', badge: dueCardsCount || null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>` },
+    { id: 'program', label: 'Weekly Routine', badge: '7d', icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>` },
+    { id: 'study', label: 'Knowledge & Notes', badge: dueCardsCount || null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>` },
     { id: 'focus', label: 'Focus Studio', badge: s.focusSession.isRunning ? 'LIVE' : null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
-    { id: 'analytics', label: 'Analytics & GPA', badge: null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` }
+    { id: 'analytics', label: 'Goals & Insights', badge: null, icon: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` }
   ];
 
   const sidebar = document.getElementById('sidebar-nav');
@@ -151,7 +159,7 @@ function renderNavigation() {
         <div class="brand-mark">CS</div>
         <div>
           <div class="brand-title">ChronoStudy</div>
-          <div class="brand-subtitle">v2.0 · Mobile & Desktop Suite</div>
+          <div class="brand-subtitle">v3.0 · Life, Study & Time Suite</div>
         </div>
       </div>
 
@@ -171,7 +179,10 @@ function renderNavigation() {
       </ul>
 
       <div style="margin-top: 4px;">
-        <div class="metric-label" style="padding: 0 8px 6px;">Course Readiness</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 8px 6px;">
+          <span class="metric-label">Active Life & Study Tracks</span>
+          <button class="btn-ghost" style="font-size:0.75rem; padding:2px 6px;" data-action="open-subject-modal" title="Add New Track or Goal">+ Add</button>
+        </div>
         <div style="display:flex; flex-direction:column; gap:5px;">
           ${s.subjects
             .map((sub) => {
@@ -180,9 +191,9 @@ function renderNavigation() {
               <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-radius:8px; background:var(--bg-elevated); font-size:0.79rem;">
                 <span style="display:flex; align-items:center; gap:7px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                   <span class="subject-dot" style="background:${sub.color}"></span>
-                  ${escapeHTML(sub.code)}
+                  ${escapeHTML(sub.name)}
                 </span>
-                <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">${d >= 0 ? `T-${d}d` : 'Done'}</span>
+                <span style="font-family:var(--font-mono); font-size:0.73rem; color:var(--text-muted); flex-shrink:0;">${d >= 0 ? `${d}d` : 'Done'}</span>
               </div>
             `;
             })
@@ -213,18 +224,19 @@ function renderNavigation() {
       month: 'short',
       day: 'numeric'
     });
+    const syncCfg = loadSyncConfig();
     topBar.innerHTML = `
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span style="font-weight:700; font-size:0.93rem;">${dateFormatted}</span>
-        <span class="badge badge-q2" title="Current Daily Study Streak">Streak: ${s.stats.currentStreakDays}d</span>
-        <span class="badge badge-q4" style="font-family:var(--font-mono);">${s.stats.todayFocusMinutes}m today</span>
+        <span class="badge badge-q2" title="Current Daily Consistency Streak">Streak: ${s.stats.currentStreakDays}d</span>
+        <span class="badge badge-q4" style="font-family:var(--font-mono);">${s.stats.todayFocusMinutes}m focused</span>
       </div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <button class="btn btn-secondary btn-sm" data-action="export-ics" id="btn-export-ics" title="Export Schedule & Exams to Mobile Calendar (.ics)">
-          .ICS Calendar
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" data-action="open-calendar-modal" id="btn-open-calendar-sync" title="Import/Export Google Calendar, Apple Calendar & Activity Schedules">
+          📅 Google Calendar & Schedule Sync
         </button>
         <button class="btn btn-secondary btn-sm" data-action="open-backup-modal" id="btn-open-backup">
-          Sync & Platforms
+          ${syncCfg.gistId ? '🟢 Cloud Sync' : '☁️ PC ↔ Mobile Sync'}
         </button>
         <button class="icon-btn" data-action="toggle-theme" id="btn-toggle-theme" title="Toggle Light/Dark Mode" aria-label="Toggle Theme">
           ${s.theme === 'dark' ? '☀️' : '🌙'}
@@ -248,7 +260,7 @@ function renderNavigation() {
   }
 }
 
-// VIEW 1: TODAY HUB (Unified Daily Command Center + Natural Language Capture + Smart Auto-Scheduler)
+// VIEW 1: TODAY HUB (Universal Daily Command Center + Google Calendar Links + Smart Auto-Scheduler)
 function renderTodayView() {
   const s = store.state;
   const today = getTodayISO();
@@ -259,18 +271,21 @@ function renderTodayView() {
   const priorityTasks = s.tasks.filter((t) => !t.completed).slice(0, 5);
   const dueCards = s.flashcards.filter((c) => c.dueDate <= today);
   const completedTasksCount = s.tasks.filter((t) => t.completed).length;
+  const nearestDays = s.subjects.length
+    ? Math.min(...s.subjects.map((sub) => Math.max(0, daysUntil(sub.examDate))))
+    : 0;
 
   return `
     <section aria-labelledby="heading-today">
       <div class="page-header">
         <div>
           <h1 class="page-title" id="heading-today">Daily Command Center</h1>
-          <p class="page-subtitle">Time-blocking, smart auto-scheduling, natural-language task capture, and daily study habits.</p>
+          <p class="page-subtitle">Unified daily time-blocking, self-directed study, work projects, fitness, and Google Calendar sync.</p>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
           <input type="date" class="input-pill" id="today-date-picker" value="${s.selectedDate}" aria-label="Selected Schedule Date" />
           <button class="btn btn-secondary btn-sm" data-action="smart-auto-schedule" id="btn-smart-schedule" title="Automatically schedule top Q1/Q2 tasks into open time gaps">
-            ⚡ Auto-Schedule Free Gaps
+            ⚡ Auto-Fill Free Gaps
           </button>
           <button class="btn btn-primary btn-sm" data-action="open-block-modal" id="btn-add-timeblock">+ Time Block</button>
         </div>
@@ -282,18 +297,18 @@ function renderTodayView() {
           type="text"
           class="quick-capture-input"
           id="quick-task-title"
-          placeholder="Smart Capture: e.g. 'Prove SVD theorem #MATH-204 !Q1 ~3p @tomorrow' or plain text..."
+          placeholder="Quick Capture: e.g. 'Practice Spanish conversation #PSYC-210 !Q1 ~2p @tomorrow' or any task..."
           required
         />
         <div class="quick-capture-controls">
-          <select class="select-pill" id="quick-task-subject" aria-label="Task Subject">
+          <select class="select-pill" id="quick-task-subject" aria-label="Focus Track">
             ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
           </select>
           <select class="select-pill" id="quick-task-quadrant" aria-label="Eisenhower Priority">
             <option value="Q1">Q1 · Urgent & Important</option>
-            <option value="Q2" selected>Q2 · Important / Deep Work</option>
-            <option value="Q3">Q3 · Quick / Urgent</option>
-            <option value="Q4">Q4 · Later</option>
+            <option value="Q2" selected>Q2 · Deep Focus / Core Goal</option>
+            <option value="Q3">Q3 · Quick Task / Errand</option>
+            <option value="Q4">Q4 · Someday / Idea</option>
           </select>
           <button type="submit" class="btn btn-primary btn-sm" id="btn-quick-add-submit">Add Task</button>
         </div>
@@ -302,39 +317,42 @@ function renderTodayView() {
       <!-- Metric Strip -->
       <div class="metric-strip">
         <div class="metric-tile">
-          <span class="metric-label">Focus Logged</span>
+          <span class="metric-label">Deep Focus Today</span>
           <span class="metric-value">${s.stats.todayFocusMinutes}m</span>
-          <span class="metric-sub">${s.stats.completedPomodoros} total Pomodoros</span>
+          <span class="metric-sub">${s.stats.completedPomodoros} sessions completed</span>
         </div>
         <div class="metric-tile">
-          <span class="metric-label">Tasks Completed</span>
+          <span class="metric-label">Action Items</span>
           <span class="metric-value">${completedTasksCount}/${s.tasks.length}</span>
-          <span class="metric-sub">${s.tasks.filter((t) => !t.completed && t.quadrant === 'Q1').length} Q1 critical remaining</span>
+          <span class="metric-sub">${s.tasks.filter((t) => !t.completed && t.quadrant === 'Q1').length} Q1 priority open</span>
         </div>
         <div class="metric-tile">
-          <span class="metric-label">SM-2 Cards Due</span>
+          <span class="metric-label">Recall Queue (SM-2)</span>
           <span class="metric-value">${dueCards.length}</span>
-          <span class="metric-sub">${s.cornellNotes.length} Cornell notes linked</span>
+          <span class="metric-sub">${s.cornellNotes.length} synthesis notes saved</span>
         </div>
         <div class="metric-tile">
-          <span class="metric-label">Nearest Exam</span>
-          <span class="metric-value">${Math.min(...s.subjects.map((sub) => Math.max(0, daysUntil(sub.examDate))))}d</span>
-          <span class="metric-sub">Countdown readiness</span>
+          <span class="metric-label">Next Milestone</span>
+          <span class="metric-value">${nearestDays}d</span>
+          <span class="metric-sub">${s.subjects.length} active life/study tracks</span>
         </div>
       </div>
 
       <!-- Two-Column Workspace -->
       <div class="grid-2">
-        <!-- Left: Time-Blocked Schedule with Conflict Detection & Auto-Fill -->
+        <!-- Left: Time-Blocked Schedule with Google Calendar Deep Links & Quick Shift -->
         <div class="surface-card">
           <div class="card-header">
             <h2 class="card-title">
-              <span>Time-Blocked Schedule (${s.selectedDate})</span>
-              ${conflictIds.size > 0 ? `<span class="badge badge-q1">${conflictIds.size} Overlap Conflict</span>` : ''}
+              <span>Day Timeline (${s.selectedDate})</span>
+              ${conflictIds.size > 0 ? `<span class="badge badge-q1">${conflictIds.size} Overlap</span>` : ''}
             </h2>
-            <div style="display:flex; gap:6px;">
-              <button class="btn btn-secondary btn-sm" data-action="apply-today-template" id="btn-apply-template" title="Populate from Weekly Program">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" data-action="apply-today-template" id="btn-apply-template" title="Populate from Weekly Routine">
                 Load Routine
+              </button>
+              <button class="btn btn-secondary btn-sm" data-action="open-calendar-modal" title="Import from Google Calendar or Paste Schedule">
+                Import Schedule
               </button>
             </div>
           </div>
@@ -342,25 +360,34 @@ function renderTodayView() {
           <div class="timeline-container">
             ${
               todayBlocks.length === 0
-                ? `<p style="color:var(--text-muted); font-size:0.88rem; padding:16px 0;">No time blocks scheduled for this date. Tap <strong>Load Routine</strong> or <strong>⚡ Auto-Schedule Free Gaps</strong>.</p>`
+                ? `<p style="color:var(--text-muted); font-size:0.88rem; padding:16px 0;">No blocks scheduled for this date. Tap <strong>Load Routine</strong>, <strong>⚡ Auto-Fill Free Gaps</strong>, or <strong>Import Schedule</strong>.</p>`
                 : todayBlocks
                     .map((blk) => {
                       const subj = getSubject(blk.subjectId);
                       const isConflict = conflictIds.has(blk.id);
+                      const gcalUrl = buildGoogleCalendarUrl({
+                        title: blk.title,
+                        date: blk.date,
+                        startTime: blk.startTime,
+                        endTime: blk.endTime,
+                        details: `Track: ${subj.name} (${subj.code})`
+                      });
                       return `
                       <div class="time-block-row">
                         <div class="time-slot-label">${blk.startTime}<br/><span style="font-size:0.75rem; opacity:0.75;">${blk.endTime}</span></div>
                         <div class="time-block-card ${isConflict ? 'conflict' : ''}" style="border-left-color:${subj.color}; ${blk.done ? 'opacity:0.58;' : ''}">
-                          <div>
+                          <div style="min-width:0; flex:1;">
                             <div style="font-weight:600; font-size:0.9rem; ${blk.done ? 'text-decoration:line-through;' : ''}">${escapeHTML(blk.title)}</div>
-                            <div style="display:flex; flex-wrap:wrap; gap:7px; align-items:center; margin-top:4px;">
-                              <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
-                              <span style="font-size:0.75rem; color:var(--text-muted);">${escapeHTML(blk.category.replace('_', ' '))}</span>
+                            <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:5px;">
+                              <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.name)}</span>
                               ${blk.autoScheduled ? `<span class="badge badge-sage">Auto-Scheduled</span>` : ''}
-                              ${isConflict ? `<span class="badge badge-q1">Time Overlap</span>` : ''}
+                              ${isConflict ? `<span class="badge badge-q1">Overlap</span>` : ''}
+                              <a href="${gcalUrl}" target="_blank" rel="noopener noreferrer" class="badge badge-q4" style="text-decoration:none;" title="Add this block directly to Google Calendar">📅 +GCal</a>
                             </div>
                           </div>
-                          <div style="display:flex; align-items:center; gap:6px;">
+                          <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+                            <button class="btn-ghost btn-sm" style="font-family:var(--font-mono); font-size:0.72rem; padding:3px 5px;" data-action="shift-block" data-id="${blk.id}" data-delta="-15" title="Shift 15m earlier">-15m</button>
+                            <button class="btn-ghost btn-sm" style="font-family:var(--font-mono); font-size:0.72rem; padding:3px 5px;" data-action="shift-block" data-id="${blk.id}" data-delta="15" title="Shift 15m later">+15m</button>
                             <button class="check-circle ${blk.done ? 'checked' : ''}" data-action="toggle-block" data-id="${blk.id}" aria-label="Mark block complete">
                               ${blk.done ? '✓' : ''}
                             </button>
@@ -383,14 +410,18 @@ function renderTodayView() {
               <button class="btn btn-ghost btn-sm" data-nav="tasks">Matrix & Kanban →</button>
             </div>
             <div class="task-list">
-              ${priorityTasks.map((t) => renderTaskItemHTML(t)).join('')}
+              ${
+                priorityTasks.length === 0
+                  ? `<p style="color:var(--text-muted); font-size:0.86rem;">All tasks complete! Add a new goal above.</p>`
+                  : priorityTasks.map((t) => renderTaskItemHTML(t)).join('')
+              }
             </div>
           </div>
 
           <!-- Daily Habits & Routine Tracker -->
           <div class="surface-card">
             <div class="card-header">
-              <h2 class="card-title">Daily Study & Wellness Habits</h2>
+              <h2 class="card-title">Daily Habits & Non-Negotiables</h2>
               <button class="btn btn-secondary btn-sm" data-action="add-habit-prompt" id="btn-add-habit">+ Habit</button>
             </div>
             <div class="habit-grid">
@@ -429,7 +460,7 @@ function renderTaskItemHTML(t) {
           <div class="task-title">${escapeHTML(t.title)}</div>
           <div class="task-meta">
             <span class="badge badge-${t.quadrant.toLowerCase()}">${t.quadrant}</span>
-            <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
+            <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.name)}</span>
             <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">🍅 ${t.completedPomodoros || 0}/${t.estimatedPomodoros || 1}</span>
             <span style="font-size:0.75rem; color:var(--text-muted);">Due ${t.dueDate}</span>
           </div>
@@ -473,10 +504,10 @@ function renderTasksView() {
   let bodyContent = '';
   if (s.taskViewMode === 'matrix') {
     const quadrants = [
-      { id: 'Q1', title: 'Q1 · Urgent & Important', subtitle: 'Do Immediately — Deadlines & Crises', badge: 'badge-q1' },
-      { id: 'Q2', title: 'Q2 · Important, Not Urgent', subtitle: 'Schedule Deep Study & Long-Term Mastery', badge: 'badge-q2' },
-      { id: 'Q3', title: 'Q3 · Urgent, Less Important', subtitle: 'Quick Batch / Administrative Tasks', badge: 'badge-q3' },
-      { id: 'Q4', title: 'Q4 · Someday / Low Priority', subtitle: 'Backlog & Optional Exploration', badge: 'badge-q4' }
+      { id: 'Q1', title: 'Q1 · Urgent & Important', subtitle: 'Do First — Critical Deadlines & High-Impact Actions', badge: 'badge-q1' },
+      { id: 'Q2', title: 'Q2 · Important, Not Urgent', subtitle: 'Deep Focus — Self-Study, Skill Mastery & Core Projects', badge: 'badge-q2' },
+      { id: 'Q3', title: 'Q3 · Urgent, Less Important', subtitle: 'Quick Batch — Admin, Errands & Messages', badge: 'badge-q3' },
+      { id: 'Q4', title: 'Q4 · Someday / Low Priority', subtitle: 'Backlog & Optional Ideas', badge: 'badge-q4' }
     ];
     bodyContent = `
       <div class="matrix-grid">
@@ -540,8 +571,8 @@ function renderTasksView() {
     <section aria-labelledby="heading-tasks">
       <div class="page-header">
         <div>
-          <h1 class="page-title" id="heading-tasks">Tasks & Eisenhower Matrix</h1>
-          <p class="page-subtitle">Prioritize assignments across List, Eisenhower 2×2 Matrix, and Kanban views.</p>
+          <h1 class="page-title" id="heading-tasks">Tasks, Projects & Priority Matrix</h1>
+          <p class="page-subtitle">Organize self-study goals, work projects, and life errands across List, Eisenhower 2×2, and Kanban views.</p>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
           <div class="filter-tabs" role="tablist">
@@ -549,16 +580,16 @@ function renderTasksView() {
             <button class="filter-tab ${s.taskViewMode === 'matrix' ? 'active' : ''}" data-action="set-task-view" data-view="matrix">Eisenhower 2×2</button>
             <button class="filter-tab ${s.taskViewMode === 'kanban' ? 'active' : ''}" data-action="set-task-view" data-view="kanban">Kanban Board</button>
           </div>
-          <select class="select-pill" id="filter-task-subject" aria-label="Filter by Subject">
-            <option value="all" ${s.taskSubjectFilter === 'all' ? 'selected' : ''}>All Courses (${s.tasks.length})</option>
+          <select class="select-pill" id="filter-task-subject" aria-label="Filter by Track">
+            <option value="all" ${s.taskSubjectFilter === 'all' ? 'selected' : ''}>All Tracks (${s.tasks.length})</option>
             ${s.subjects
               .map(
                 (sub) =>
-                  `<option value="${sub.id}" ${s.taskSubjectFilter === sub.id ? 'selected' : ''}>${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`
+                  `<option value="${sub.id}" ${s.taskSubjectFilter === sub.id ? 'selected' : ''}>${escapeHTML(sub.name)}</option>`
               )
               .join('')}
           </select>
-          <button class="btn btn-primary btn-sm" data-action="open-task-modal" id="btn-new-detailed-task">+ Detailed Task</button>
+          <button class="btn btn-primary btn-sm" data-action="open-task-modal" id="btn-new-detailed-task">+ New Task</button>
         </div>
       </div>
 
@@ -567,7 +598,7 @@ function renderTasksView() {
   `;
 }
 
-// VIEW 3: WEEKLY PROGRAM & ROUTINE ARCHITECT
+// VIEW 3: WEEKLY ROUTINE & SCHEDULE ARCHITECT
 function renderProgramView() {
   const s = store.state;
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -581,12 +612,15 @@ function renderProgramView() {
     <section aria-labelledby="heading-program">
       <div class="page-header">
         <div>
-          <h1 class="page-title" id="heading-program">Weekly Program Blueprint</h1>
-          <p class="page-subtitle">Design your recurring 7-day academic & personal timetable. Push any day's template directly to your live schedule.</p>
+          <h1 class="page-title" id="heading-program">Weekly Routine & Program Blueprint</h1>
+          <p class="page-subtitle">Design your recurring 7-day schedule for study blocks, work, workouts, and classes — or import from Google Calendar.</p>
         </div>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button class="btn btn-secondary btn-sm" data-action="open-calendar-modal">
+            📅 Import Schedule / .ICS
+          </button>
           <button class="btn btn-secondary btn-sm" data-action="push-program-to-today" id="btn-push-program">
-            Apply ${shortDays[currentDayIdx]} Template to Today
+            Apply ${shortDays[currentDayIdx]} to Today
           </button>
           <button class="btn btn-primary btn-sm" data-action="open-program-modal" id="btn-add-program-slot">
             + Add Recurring Slot
@@ -609,14 +643,14 @@ function renderProgramView() {
 
       <div class="surface-card">
         <div class="card-header">
-          <h2 class="card-title">${dayNames[currentDayIdx]} Recurring Timetable</h2>
-          <span class="badge badge-q2">${dayBlocks.length} recurring sessions</span>
+          <h2 class="card-title">${dayNames[currentDayIdx]} Recurring Blueprint</h2>
+          <span class="badge badge-q2">${dayBlocks.length} recurring blocks</span>
         </div>
 
         <div class="timeline-container">
           ${
             dayBlocks.length === 0
-              ? `<p style="color:var(--text-muted); padding:14px 0;">No recurring slots for ${dayNames[currentDayIdx]}. Click <strong>+ Add Recurring Slot</strong> to build your template.</p>`
+              ? `<p style="color:var(--text-muted); padding:14px 0;">No recurring blocks for ${dayNames[currentDayIdx]}. Click <strong>+ Add Recurring Slot</strong> or <strong>📅 Import Schedule / .ICS</strong>.</p>`
               : dayBlocks
                   .map((slot) => {
                     const subj = getSubject(slot.subjectId);
@@ -644,7 +678,7 @@ function renderProgramView() {
   `;
 }
 
-// VIEW 4: STUDY, SM-2 SPACED REPETITION & CORNELL NOTES HUB
+// VIEW 4: KNOWLEDGE, SM-2 SPACED REPETITION & CORNELL NOTES HUB
 function renderStudyView() {
   const s = store.state;
   const today = getTodayISO();
@@ -655,17 +689,17 @@ function renderStudyView() {
     <section aria-labelledby="heading-study">
       <div class="page-header">
         <div>
-          <h1 class="page-title" id="heading-study">Study, SM-2 Recall & Cornell Notes</h1>
-          <p class="page-subtitle">SuperMemo-2 active recall deck, structured Cornell Notes with 1-click Flashcard synthesis, and syllabus mastery.</p>
+          <h1 class="page-title" id="heading-study">Knowledge, SM-2 Recall & Synthesis Notes</h1>
+          <p class="page-subtitle">Master any self-taught skill, language, book, or course using SuperMemo-2 spaced repetition and structured Cornell Notes.</p>
         </div>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
-          <button class="btn btn-secondary btn-sm" data-action="open-cornell-modal" id="btn-add-cornell">+ Cornell Note</button>
-          <button class="btn btn-secondary btn-sm" data-action="open-subject-modal" id="btn-add-subject">+ Course</button>
-          <button class="btn btn-primary btn-sm" data-action="open-flashcard-modal" id="btn-add-flashcard">+ SM-2 Card</button>
+          <button class="btn btn-secondary btn-sm" data-action="open-cornell-modal" id="btn-add-cornell">+ Synthesis Note</button>
+          <button class="btn btn-secondary btn-sm" data-action="open-subject-modal" id="btn-add-subject">+ Life / Study Track</button>
+          <button class="btn btn-primary btn-sm" data-action="open-flashcard-modal" id="btn-add-flashcard">+ SM-2 Recall Card</button>
         </div>
       </div>
 
-      <!-- Course & Exam Countdown Strip -->
+      <!-- Active Tracks & Milestone Strip -->
       <div class="grid-3" style="margin-bottom:22px;">
         ${s.subjects
           .map((sub) => {
@@ -675,14 +709,14 @@ function renderStudyView() {
             <div class="surface-card" style="border-top: 4px solid ${sub.color};">
               <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
                 <div>
-                  <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">${escapeHTML(sub.code)}</span>
+                  <span style="font-family:var(--font-mono); font-size:0.74rem; color:var(--text-muted);">${escapeHTML(sub.category || sub.code)}</span>
                   <h3 style="font-size:0.98rem; font-weight:700; margin-top:2px;">${escapeHTML(sub.name)}</h3>
                 </div>
-                <span class="badge ${d <= 7 ? 'badge-q1' : 'badge-q2'}">${d >= 0 ? `Exam in ${d}d` : 'Completed'}</span>
+                <span class="badge ${d <= 7 ? 'badge-q1' : 'badge-q2'}">${d >= 0 ? `Goal in ${d}d` : 'Reached'}</span>
               </div>
               <div style="margin-top:12px;">
                 <div style="display:flex; justify-content:space-between; font-size:0.77rem; color:var(--text-secondary); margin-bottom:5px;">
-                  <span>Weekly Target (${sub.targetHoursPerWeek}h)</span>
+                  <span>Weekly Focus Target (${sub.targetHoursPerWeek}h)</span>
                   <span style="font-family:var(--font-mono);">${Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10}h (${pct}%)</span>
                 </div>
                 <div class="progress-track">
@@ -695,7 +729,6 @@ function renderStudyView() {
           .join('')}
       </div>
 
-      <!-- Study Sub-Navigation -->
       <div class="grid-2" style="margin-bottom:22px;">
         <!-- Left: SM-2 Active Recall Reviewer -->
         <div class="review-stage">
@@ -719,11 +752,11 @@ function renderStudyView() {
                     isRevealed
                       ? `
                     <div class="flashcard-answer">
-                      <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-sage); font-weight:700; margin-bottom:4px;">Verified Answer</div>
+                      <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent-sage); font-weight:700; margin-bottom:4px;">Answer / Key Insight</div>
                       ${escapeHTML(activeCard.answer)}
                     </div>
                     <div>
-                      <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">Rate recall quality to schedule next SM-2 interval:</div>
+                      <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:8px; text-align:center;">Rate recall confidence to schedule next SM-2 interval:</div>
                       <div class="sm2-rating-row">
                         <button class="sm2-btn" data-action="grade-card" data-id="${activeCard.id}" data-quality="0">
                           <span style="color:var(--accent-crimson);">Again</span>
@@ -752,15 +785,15 @@ function renderStudyView() {
                   }
                 `;
                 })()
-              : `<p style="color:var(--text-muted);">No flashcards in deck yet. Add a card above!</p>`
+              : `<p style="color:var(--text-muted);">No recall cards in deck yet. Click <strong>+ SM-2 Recall Card</strong> above to create one!</p>`
           }
         </div>
 
-        <!-- Right: Syllabus Topic Mastery Matrix -->
+        <!-- Right: Skill & Topic Mastery Matrix -->
         <div class="surface-card">
           <div class="card-header">
-            <h2 class="card-title">Syllabus Topic Mastery</h2>
-            <button class="btn btn-secondary btn-sm" data-action="add-syllabus-topic" id="btn-add-topic">+ Topic</button>
+            <h2 class="card-title">Skill & Topic Mastery Tracker</h2>
+            <button class="btn btn-secondary btn-sm" data-action="add-syllabus-topic" id="btn-add-topic">+ Skill / Topic</button>
           </div>
           <div class="task-list">
             ${s.syllabusTopics
@@ -771,11 +804,11 @@ function renderStudyView() {
                   <div>
                     <div style="font-weight:600; font-size:0.89rem;">${escapeHTML(topic.title)}</div>
                     <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
-                      <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
-                      <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">Confidence: ${topic.confidence}%</span>
+                      <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.name)}</span>
+                      <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">Mastery: ${topic.confidence}%</span>
                     </div>
                   </div>
-                  <select class="select-pill" data-action="change-topic-status" data-id="${topic.id}" aria-label="Topic Mastery Status">
+                  <select class="select-pill" data-action="change-topic-status" data-id="${topic.id}" aria-label="Skill Mastery Status">
                     ${['Not Started', 'Learning', 'Reviewing', 'Mastered']
                       .map((st) => `<option value="${st}" ${topic.status === st ? 'selected' : ''}>${st}</option>`)
                       .join('')}
@@ -792,10 +825,10 @@ function renderStudyView() {
       <div class="surface-card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Cornell Study Notes (Cue · Notes · Synthesis Summary)</h2>
-            <p style="font-size:0.8rem; color:var(--text-muted);">Convert any Cornell Note directly into an SM-2 active recall flashcard with one click.</p>
+            <h2 class="card-title">Structured Synthesis & Reading Notes (Cornell Method)</h2>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Capture book insights, language grammar, or technical notes — and convert any note into an SM-2 card in 1 click.</p>
           </div>
-          <button class="btn btn-primary btn-sm" data-action="open-cornell-modal">+ New Cornell Sheet</button>
+          <button class="btn btn-primary btn-sm" data-action="open-cornell-modal">+ New Note Sheet</button>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:14px;">
@@ -806,7 +839,7 @@ function renderStudyView() {
               <div class="cornell-card">
                 <div style="padding:12px 14px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px;">
                   <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.code)}</span>
+                    <span class="subject-tag"><span class="subject-dot" style="background:${subj.color}"></span>${escapeHTML(subj.name)}</span>
                     <strong style="font-size:0.94rem;">${escapeHTML(note.title)}</strong>
                   </div>
                   <div style="display:flex; gap:6px;">
@@ -818,13 +851,13 @@ function renderStudyView() {
                 </div>
                 <div class="cornell-grid">
                   <div class="cornell-cue-col">
-                    <div style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Cue / Recall Question</div>
+                    <div style="font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:4px;">Cue / Recall Prompt</div>
                     ${escapeHTML(note.cue)}
                   </div>
                   <div class="cornell-notes-col">${escapeHTML(note.notes)}</div>
                 </div>
                 <div class="cornell-summary-row">
-                  <strong>Synthesis Summary:</strong> ${escapeHTML(note.summary)}
+                  <strong>Key Takeaway:</strong> ${escapeHTML(note.summary)}
                 </div>
               </div>
             `;
@@ -836,7 +869,7 @@ function renderStudyView() {
   `;
 }
 
-// VIEW 5: DEEP FOCUS STUDIO (Pomodoro + WakeLock + MediaSession + Web Audio Synthesizer)
+// VIEW 5: DEEP FOCUS STUDIO
 function renderFocusView() {
   const s = store.state;
   const fs = s.focusSession;
@@ -904,7 +937,7 @@ function renderFocusView() {
           </div>
         </div>
 
-        <!-- Linked Task & Subject Selectors -->
+        <!-- Linked Task & Track Selectors -->
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; width:100%; max-width:520px;">
           <div class="form-group" style="text-align:left;">
             <label class="form-label" for="focus-task-select">Active Task</label>
@@ -916,10 +949,10 @@ function renderFocusView() {
             </select>
           </div>
           <div class="form-group" style="text-align:left;">
-            <label class="form-label" for="focus-subject-select">Course Log Target</label>
+            <label class="form-label" for="focus-subject-select">Focus Track Target</label>
             <select class="select-pill" id="focus-subject-select">
               ${s.subjects
-                .map((sub) => `<option value="${sub.id}" ${fs.linkedSubjectId === sub.id ? 'selected' : ''}>${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`)
+                .map((sub) => `<option value="${sub.id}" ${fs.linkedSubjectId === sub.id ? 'selected' : ''}>${escapeHTML(sub.name)}</option>`)
                 .join('')}
             </select>
           </div>
@@ -968,7 +1001,7 @@ function renderFocusView() {
   `;
 }
 
-// VIEW 6: ANALYTICS, 7-DAY FOCUS TRENDS & FINAL EXAM GRADE TARGET CALCULATOR
+// VIEW 6: GOALS, PACE INSIGHTS & OPTIONAL SCORE CALCULATOR
 function renderAnalyticsView() {
   const s = store.state;
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -979,9 +1012,10 @@ function renderAnalyticsView() {
     <section aria-labelledby="heading-analytics">
       <div class="page-header">
         <div>
-          <h1 class="page-title" id="heading-analytics">Analytics & Final Exam Target Calculator</h1>
-          <p class="page-subtitle">7-day deep focus velocity, course time investment breakdown, and weighted final exam grade calculator.</p>
+          <h1 class="page-title" id="heading-analytics">Goals, Pace Insights & Analytics</h1>
+          <p class="page-subtitle">7-day deep focus velocity, weekly goal pace calculator for self-study/projects/fitness, and optional exam score calculator.</p>
         </div>
+        <button class="btn btn-secondary btn-sm" data-action="open-subject-modal">+ Add New Life / Study Track</button>
       </div>
 
       <div class="grid-2" style="margin-bottom:22px;">
@@ -1007,24 +1041,27 @@ function renderAnalyticsView() {
           </div>
         </div>
 
-        <!-- Course Time Allocation Breakdown -->
+        <!-- Universal Goal Pace & Daily Target Advisor -->
         <div class="surface-card">
           <div class="card-header">
-            <h2 class="card-title">Course Focus Allocation vs. Weekly Target</h2>
+            <h2 class="card-title">Weekly Goal Pace Advisor</h2>
+            <span style="font-size:0.76rem; color:var(--text-muted);">Required daily minutes to hit your weekly target</span>
           </div>
           <div style="display:flex; flex-direction:column; gap:12px;">
             ${s.subjects
               .map((sub) => {
+                const pace = calculateGoalPace(sub.loggedMinutes || 0, sub.targetHoursPerWeek || 6, 4);
                 const loggedH = Math.round(((sub.loggedMinutes || 0) / 60) * 10) / 10;
-                const pct = Math.min(100, Math.round(((sub.loggedMinutes || 0) / (sub.targetHoursPerWeek * 60)) * 100));
                 return `
                 <div>
-                  <div style="display:flex; justify-content:space-between; font-size:0.83rem; margin-bottom:4px;">
-                    <span style="font-weight:600;">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</span>
-                    <span style="font-family:var(--font-mono); color:var(--text-secondary);">${loggedH}h / ${sub.targetHoursPerWeek}h (${pct}%)</span>
+                  <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.83rem; margin-bottom:4px;">
+                    <span style="font-weight:600;">${escapeHTML(sub.name)}</span>
+                    <span style="font-family:var(--font-mono); font-size:0.76rem; color:var(--text-secondary);">
+                      ${loggedH}h / ${sub.targetHoursPerWeek}h · <strong>${pace.dailyMinutesNeeded}m/day needed</strong>
+                    </span>
                   </div>
                   <div class="progress-track">
-                    <div class="progress-fill" style="width:${pct}%; background:${sub.color};"></div>
+                    <div class="progress-fill" style="width:${pace.completionPct}%; background:${sub.color};"></div>
                   </div>
                 </div>
               `;
@@ -1034,23 +1071,23 @@ function renderAnalyticsView() {
         </div>
       </div>
 
-      <!-- Interactive Final Exam Score & GPA Target Calculator -->
+      <!-- Optional Certification / Course Assessment Target Calculator -->
       <div class="surface-card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Weighted Final Exam Target Score Calculator</h2>
-            <p style="font-size:0.82rem; color:var(--text-muted);">Adjust your current coursework grade, exam weight %, and target course grade to compute the exact exam score needed.</p>
+            <h2 class="card-title">Milestone & Certification Score Calculator (Optional)</h2>
+            <p style="font-size:0.82rem; color:var(--text-muted);">Taking a certification, language test, or course exam? Compute the exact final score needed to hit your target.</p>
           </div>
         </div>
         <div style="overflow-x:auto;">
           <table style="width:100%; border-collapse:collapse; font-size:0.86rem;">
             <thead>
               <tr style="border-bottom:1px solid var(--border-subtle); text-align:left; color:var(--text-muted);">
-                <th style="padding:10px 8px;">Course</th>
-                <th style="padding:10px 8px;">Current Grade (%)</th>
-                <th style="padding:10px 8px;">Final Exam Weight (%)</th>
-                <th style="padding:10px 8px;">Target Grade (%)</th>
-                <th style="padding:10px 8px;">Required Exam Score</th>
+                <th style="padding:10px 8px;">Track / Goal</th>
+                <th style="padding:10px 8px;">Current Score (%)</th>
+                <th style="padding:10px 8px;">Final Assessment Weight (%)</th>
+                <th style="padding:10px 8px;">Target Score (%)</th>
+                <th style="padding:10px 8px;">Required Score</th>
               </tr>
             </thead>
             <tbody>
@@ -1066,7 +1103,7 @@ function renderAnalyticsView() {
                   <tr style="border-bottom:1px solid var(--border-subtle);">
                     <td style="padding:10px 8px; font-weight:600;">
                       <span class="subject-dot" style="background:${sub.color}; display:inline-block; margin-right:6px;"></span>
-                      ${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}
+                      ${escapeHTML(sub.name)}
                     </td>
                     <td style="padding:10px 8px;">
                       <input type="number" class="input-pill" style="width:78px;" step="0.5" value="${sub.currentGrade ?? 90}" data-action="grade-input" data-field="currentGrade" data-id="${sub.id}" />
@@ -1099,44 +1136,98 @@ function openModal(type) {
   const s = store.state;
 
   let content = '';
-  if (type === 'task') {
+  if (type === 'calendar-sync') {
     content = `
-      <h2 class="card-title">New Detailed Study Task</h2>
+      <h2 class="card-title">📅 Google Calendar & External Schedule Sync</h2>
+      <p style="font-size:0.84rem; color:var(--text-secondary);">
+        Synchronize your Google Calendar, Apple Calendar, workout plan, work shifts, or course timetable with ChronoStudy in both directions:
+      </p>
+
+      <!-- 1. Import .ICS File from Google Calendar / Apple Calendar -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:0.86rem;">1. Import from Google / Apple / Outlook Calendar (.ICS)</strong>
+          <span class="badge badge-sage">Supports Recurring Events</span>
+        </div>
+        <p style="font-size:0.78rem; color:var(--text-muted);">
+          Upload any <code>.ics</code> file exported from Google Calendar or your schedule app. Single events go to your Day Timeline and weekly recurring events populate your 7-Day Routine!
+        </p>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <select class="select-pill" id="ics-import-subject">
+            ${s.subjects.map((sub) => `<option value="${sub.id}">Tag as: ${escapeHTML(sub.name)}</option>`).join('')}
+          </select>
+          <label class="btn btn-primary btn-sm" style="cursor:pointer;">
+            📂 Upload .ICS Calendar File
+            <input type="file" id="import-ics-input" accept=".ics,text/calendar" style="display:none;" />
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. Smart Paste Plain-Text Schedule -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <strong style="font-size:0.86rem;">2. Smart Paste Any Schedule or Routine (Plain Text)</strong>
+        <p style="font-size:0.78rem; color:var(--text-muted);">
+          Paste lines from an email, workout plan, or timetable (e.g. <code>Mon 18:00-19:15 Boxing & Conditioning</code> or <code>09:00-10:30 Spanish Practice</code>):
+        </p>
+        <textarea class="form-textarea" id="paste-schedule-textarea" rows="4" placeholder="Mon 09:00-10:30 Deep Work: AI Project&#10;Wed 18:00-19:15 Strength & Conditioning&#10;14:00-15:00 Spanish Conversation Practice"></textarea>
+        <div style="display:flex; justify-content:flex-end;">
+          <button type="button" class="btn btn-primary btn-sm" data-action="import-pasted-schedule">⚡ Parse & Import Schedule</button>
+        </div>
+      </div>
+
+      <!-- 3. Export to Google Calendar / Apple Calendar -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <strong style="font-size:0.86rem;">3. Export to Google Calendar / Apple Calendar</strong>
+        <p style="font-size:0.78rem; color:var(--text-muted);">
+          Tap <strong>📅 +GCal</strong> on any time block to add it directly to Google Calendar online, or download a master <code>.ics</code> file for all blocks & milestones:
+        </p>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="export-ics">📥 Download Full .ICS Calendar</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" data-action="close-modal">Done</button>
+      </div>
+    `;
+  } else if (type === 'task') {
+    content = `
+      <h2 class="card-title">New Action Item or Study Task</h2>
       <form id="modal-task-form" style="display:flex; flex-direction:column; gap:12px;">
         <div class="form-group">
-          <label class="form-label">Task Title</label>
-          <input type="text" class="form-input" name="title" required placeholder="e.g., Derive backpropagation matrix gradients" />
+          <label class="form-label">Task / Goal Title</label>
+          <input type="text" class="form-input" name="title" required placeholder="e.g., Build API integration, Practice Spanish, or Complete workout" />
         </div>
         <div class="grid-2">
           <div class="form-group">
-            <label class="form-label">Course / Subject</label>
+            <label class="form-label">Life / Study Track</label>
             <select class="form-select" name="subjectId">
-              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.name)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Eisenhower Quadrant</label>
             <select class="form-select" name="quadrant">
               <option value="Q1">Q1 · Urgent & Important</option>
-              <option value="Q2" selected>Q2 · Important, Not Urgent</option>
-              <option value="Q3">Q3 · Urgent, Quick Batch</option>
+              <option value="Q2" selected>Q2 · Important / Core Focus</option>
+              <option value="Q3">Q3 · Urgent / Quick Errand</option>
               <option value="Q4">Q4 · Later / Backlog</option>
             </select>
           </div>
         </div>
         <div class="grid-2">
           <div class="form-group">
-            <label class="form-label">Due Date</label>
+            <label class="form-label">Target Date</label>
             <input type="date" class="form-input" name="dueDate" value="${getTodayISO()}" required />
           </div>
           <div class="form-group">
-            <label class="form-label">Estimated Pomodoros (25m)</label>
+            <label class="form-label">Estimated Focus Blocks (25m)</label>
             <input type="number" class="form-input" name="estimatedPomodoros" value="2" min="1" max="16" />
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Subtasks (one per line)</label>
-          <textarea class="form-textarea" name="subtasks" rows="3" placeholder="Read lecture notes&#10;Solve practice problems 1-5&#10;Verify solutions"></textarea>
+          <label class="form-label">Sub-steps / Checklist (one per line)</label>
+          <textarea class="form-textarea" name="subtasks" rows="3" placeholder="Step 1&#10;Step 2&#10;Step 3"></textarea>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
           <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
@@ -1150,7 +1241,7 @@ function openModal(type) {
       <form id="modal-block-form" style="display:flex; flex-direction:column; gap:12px;">
         <div class="form-group">
           <label class="form-label">Session / Activity Title</label>
-          <input type="text" class="form-input" name="title" required placeholder="e.g., Deep Work: Linear Algebra Problem Set" />
+          <input type="text" class="form-input" name="title" required placeholder="e.g., Deep Work, Gym Session, Language Practice, or Meeting" />
         </div>
         <div class="grid-2">
           <div class="form-group">
@@ -1164,18 +1255,18 @@ function openModal(type) {
         </div>
         <div class="grid-2">
           <div class="form-group">
-            <label class="form-label">Course</label>
+            <label class="form-label">Track / Domain</label>
             <select class="form-select" name="subjectId">
-              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.name)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Category</label>
+            <label class="form-label">Activity Category</label>
             <select class="form-select" name="category">
-              <option value="deep_work">Deep Work</option>
-              <option value="lecture">Lecture / Seminar</option>
-              <option value="review">SM-2 Review</option>
-              <option value="wellness">Exercise / Break</option>
+              <option value="deep_work">Deep Work / Self-Study</option>
+              <option value="lecture">Meeting / Class / Appointment</option>
+              <option value="review">SM-2 Recall / Practice</option>
+              <option value="wellness">Fitness / Health / Break</option>
             </select>
           </div>
         </div>
@@ -1188,11 +1279,11 @@ function openModal(type) {
   } else if (type === 'program') {
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     content = `
-      <h2 class="card-title">Add Recurring Slot (${dayNames[s.selectedProgramDay || 0]})</h2>
+      <h2 class="card-title">Add Recurring Weekly Slot (${dayNames[s.selectedProgramDay || 0]})</h2>
       <form id="modal-program-form" style="display:flex; flex-direction:column; gap:12px;">
         <div class="form-group">
-          <label class="form-label">Recurring Block Title</label>
-          <input type="text" class="form-input" name="title" required placeholder="e.g., Algorithms Recitation & Lab" />
+          <label class="form-label">Recurring Activity Title</label>
+          <input type="text" class="form-input" name="title" required placeholder="e.g., Morning Deep Work, Boxing Class, or Piano Practice" />
         </div>
         <div class="grid-2">
           <div class="form-group">
@@ -1206,19 +1297,20 @@ function openModal(type) {
         </div>
         <div class="grid-2">
           <div class="form-group">
-            <label class="form-label">Course</label>
+            <label class="form-label">Track / Domain</label>
             <select class="form-select" name="subjectId">
-              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.name)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Session Type</label>
+            <label class="form-label">Activity Type</label>
             <select class="form-select" name="type">
-              <option value="Deep Study">Deep Study</option>
-              <option value="Lecture">Lecture</option>
-              <option value="Lab">Lab</option>
+              <option value="Deep Focus">Deep Focus</option>
+              <option value="Self-Study">Self-Study</option>
+              <option value="Project Work">Project Work</option>
+              <option value="Fitness & Health">Fitness & Health</option>
+              <option value="Session / Class">Session / Class</option>
               <option value="Review">Review</option>
-              <option value="Wellness">Wellness</option>
             </select>
           </div>
         </div>
@@ -1230,20 +1322,20 @@ function openModal(type) {
     `;
   } else if (type === 'flashcard') {
     content = `
-      <h2 class="card-title">Create SM-2 Spaced Repetition Flashcard</h2>
+      <h2 class="card-title">Create SM-2 Spaced Repetition Recall Card</h2>
       <form id="modal-flashcard-form" style="display:flex; flex-direction:column; gap:12px;">
         <div class="form-group">
-          <label class="form-label">Course</label>
+          <label class="form-label">Track / Skill Domain</label>
           <select class="form-select" name="subjectId">
-            ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+            ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.name)}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Question / Active Recall Prompt</label>
-          <textarea class="form-textarea" name="prompt" rows="3" required placeholder="State the theorem, complexity bound, or mechanism..."></textarea>
+          <label class="form-label">Question / Vocabulary / Active Recall Prompt</label>
+          <textarea class="form-textarea" name="prompt" rows="3" required placeholder="Enter a concept, language phrase, code pattern, or question..."></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Answer / Key Proof Idea</label>
+          <label class="form-label">Answer / Explanation</label>
           <textarea class="form-textarea" name="answer" rows="3" required placeholder="Concise verifiable answer..."></textarea>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
@@ -1254,46 +1346,46 @@ function openModal(type) {
     `;
   } else if (type === 'cornell') {
     content = `
-      <h2 class="card-title">New Cornell Study Note Sheet</h2>
+      <h2 class="card-title">New Synthesis Note Sheet (Cornell Method)</h2>
       <form id="modal-cornell-form" style="display:flex; flex-direction:column; gap:12px;">
         <div class="grid-2">
           <div class="form-group">
-            <label class="form-label">Course</label>
+            <label class="form-label">Track / Domain</label>
             <select class="form-select" name="subjectId">
-              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.code)} · ${escapeHTML(sub.name)}</option>`).join('')}
+              ${s.subjects.map((sub) => `<option value="${sub.id}">${escapeHTML(sub.name)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Topic Title</label>
-            <input type="text" class="form-input" name="title" required placeholder="e.g., Spectral Theorem & Orthogonal Diagonalization" />
+            <label class="form-label">Topic / Book / Session Title</label>
+            <input type="text" class="form-input" name="title" required placeholder="e.g., System Architecture Notes or Book Chapter 4" />
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Cue / Active Recall Question (Left Column)</label>
-          <input type="text" class="form-input" name="cue" required placeholder="Why is every real symmetric matrix orthogonally diagonalizable?" />
+          <label class="form-label">Cue / Recall Question (Left Column)</label>
+          <input type="text" class="form-input" name="cue" required placeholder="What is the core mental model or takeaway?" />
         </div>
         <div class="form-group">
-          <label class="form-label">Detailed Lecture / Reading Notes (Right Column)</label>
-          <textarea class="form-textarea" name="notes" rows="4" required placeholder="Key derivations, definitions, and examples..."></textarea>
+          <label class="form-label">Detailed Notes & Examples (Right Column)</label>
+          <textarea class="form-textarea" name="notes" rows="4" required placeholder="Key points, examples, or code snippets..."></textarea>
         </div>
         <div class="form-group">
           <label class="form-label">1-Sentence Synthesis Summary (Bottom Row)</label>
-          <input type="text" class="form-input" name="summary" required placeholder="Real symmetric matrices have real eigenvalues and orthogonal eigenvectors." />
+          <input type="text" class="form-input" name="summary" required placeholder="Distill the core lesson into one sentence." />
         </div>
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
           <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Cornell Note</button>
+          <button type="submit" class="btn btn-primary">Save Note Sheet</button>
         </div>
       </form>
     `;
   } else if (type === 'subject') {
     content = `
-      <h2 class="card-title">Add Course or Exam Goal</h2>
+      <h2 class="card-title">Add Life, Study, or Project Track</h2>
       <form id="modal-subject-form" style="display:flex; flex-direction:column; gap:12px;">
         <div class="grid-2">
           <div class="form-group">
-            <label class="form-label">Course Code</label>
-            <input type="text" class="form-input" name="code" required placeholder="e.g., BIO-202" />
+            <label class="form-label">Short Tag / Code</label>
+            <input type="text" class="form-input" name="code" required placeholder="e.g., SPANISH, AI, GYM" />
           </div>
           <div class="form-group">
             <label class="form-label">Color Tag</label>
@@ -1301,12 +1393,12 @@ function openModal(type) {
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Course / Program Name</label>
-          <input type="text" class="form-input" name="name" required placeholder="e.g., Molecular Genetics" />
+          <label class="form-label">Track / Goal Name</label>
+          <input type="text" class="form-input" name="name" required placeholder="e.g., Spanish B2 Fluency, Indie App Launch, Marathon Prep" />
         </div>
         <div class="grid-2">
           <div class="form-group">
-            <label class="form-label">Exam / Target Date</label>
+            <label class="form-label">Target Milestone Date</label>
             <input type="date" class="form-input" name="examDate" value="${getTodayISO()}" required />
           </div>
           <div class="form-group">
@@ -1316,19 +1408,31 @@ function openModal(type) {
         </div>
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
           <button type="button" class="btn btn-secondary" data-action="close-modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Course</button>
+          <button type="submit" class="btn btn-primary">Add Track</button>
         </div>
       </form>
     `;
   } else if (type === 'backup') {
     const cfg = loadSyncConfig();
     content = `
-      <h2 class="card-title">PC ↔ Mobile Cross-Device Synchronization</h2>
+      <h2 class="card-title">☁️ PC ↔ Mobile Cloud Sync & Workspace Setup</h2>
       <p style="font-size:0.84rem; color:var(--text-secondary);">
-        Synchronize your tasks, schedule, SM-2 deck, and Cornell notes between your <strong>PC</strong> and <strong>Mobile Phone</strong> using any of the 3 built-in sync methods below:
+        Synchronize your schedule, tasks, and notes between your <strong>PC</strong> and <strong>Mobile Phone</strong>, or switch between a Blank Slate and Sample Setup:
       </p>
 
-      <!-- Method 1: GitHub Gist 2-Way Cloud Sync (Works Everywhere over 4G/5G/Wi-Fi) -->
+      <!-- Workspace Personalization: Blank Slate vs Sample Data -->
+      <div style="background:var(--bg-elevated); padding:12px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+        <div>
+          <strong style="font-size:0.84rem;">Workspace Mode</strong>
+          <div style="font-size:0.76rem; color:var(--text-muted);">Start fresh from zero with your own tracks, or load the sample setup.</div>
+        </div>
+        <div style="display:flex; gap:6px;">
+          <button type="button" class="btn btn-secondary btn-sm" data-action="start-blank-slate">✨ Start Blank Slate</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="reset-demo-data">Load Sample Setup</button>
+        </div>
+      </div>
+
+      <!-- Method 1: GitHub Gist 2-Way Cloud Sync -->
       <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:9px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <strong style="font-size:0.85rem;">1. GitHub Gist Cloud Sync (PC ↔ Mobile Anywhere)</strong>
@@ -1347,12 +1451,11 @@ function openModal(type) {
       <!-- Method 2: Instant Shareable Sync Link (#sync=...) -->
       <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
         <strong style="font-size:0.85rem;">2. Instant Device Handoff Link (Zero Account Needed)</strong>
-        <p style="font-size:0.78rem; color:var(--text-muted);">Encodes your current tasks & schedule directly into a single URL link to send between PC and phone.</p>
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
           <button type="button" class="btn btn-secondary btn-sm" data-action="copy-sync-link">🔗 Copy Instant Sync Link</button>
-          <button type="button" class="btn btn-secondary btn-sm" data-action="download-json-backup">💾 Export JSON File</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-action="download-json-backup">💾 Export JSON Backup</button>
           <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
-            📂 Import JSON File
+            📂 Import JSON Backup
             <input type="file" id="import-json-input" accept=".json" style="display:none;" />
           </label>
         </div>
@@ -1368,8 +1471,7 @@ function openModal(type) {
         </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <button type="button" class="btn btn-ghost btn-sm" data-action="reset-demo-data">Reset Demo Data</button>
+      <div style="display:flex; justify-content:flex-end;">
         <button type="button" class="btn btn-secondary" data-action="close-modal">Done</button>
       </div>
     `;
@@ -1453,6 +1555,10 @@ document.addEventListener('click', async (e) => {
       const b = s.scheduleBlocks.find((x) => x.id === id);
       if (b) b.done = !b.done;
     });
+  } else if (action === 'shift-block') {
+    const delta = Number(actionEl.getAttribute('data-delta') || 15);
+    store.shiftBlockTime(id, delta);
+    showToast(`Shifted block ${delta > 0 ? '+15m' : '-15m'}`);
   } else if (action === 'delete-block') {
     store.update((s) => {
       s.scheduleBlocks = s.scheduleBlocks.filter((x) => x.id !== id);
@@ -1461,7 +1567,7 @@ document.addEventListener('click', async (e) => {
     const d = new Date(store.state.selectedDate + 'T12:00:00');
     const weekdayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1;
     const count = store.applyProgramToDate(weekdayIdx, store.state.selectedDate);
-    showToast(count > 0 ? `Added ${count} blocks from Weekly Program` : 'Routine blocks already in schedule');
+    showToast(count > 0 ? `Added ${count} blocks from Weekly Routine` : 'Routine blocks already in schedule');
   } else if (action === 'smart-auto-schedule') {
     const count = store.autoScheduleDate(store.state.selectedDate);
     showToast(
@@ -1478,7 +1584,7 @@ document.addEventListener('click', async (e) => {
       }
     });
   } else if (action === 'add-habit-prompt') {
-    const name = prompt('Enter daily study or wellness habit name:');
+    const name = prompt('Enter daily habit name:');
     if (name && name.trim()) {
       store.update((s) => {
         s.habits.push({
@@ -1505,7 +1611,7 @@ document.addEventListener('click', async (e) => {
       s.selectedDate = getTodayISO();
       s.activeTab = 'today';
     });
-    showToast(`Applied ${count} template slots to Today!`);
+    showToast(`Applied ${count} routine slots to Today!`);
   } else if (action === 'delete-program-slot') {
     store.update((s) => {
       const day = s.selectedProgramDay || 0;
@@ -1521,14 +1627,14 @@ document.addEventListener('click', async (e) => {
     showToast('SM-2 review interval updated!');
   } else if (action === 'cornell-to-flashcard') {
     const card = store.convertCornellNoteToFlashcard(id);
-    if (card) showToast('⚡ Converted Cornell Note into SM-2 Flashcard!');
+    if (card) showToast('⚡ Converted Note Sheet into SM-2 Recall Card!');
   } else if (action === 'delete-cornell') {
     store.update((s) => {
       s.cornellNotes = (s.cornellNotes || []).filter((n) => n.id !== id);
     });
-    showToast('Cornell note deleted');
+    showToast('Note deleted');
   } else if (action === 'add-syllabus-topic') {
-    const title = prompt('Enter syllabus topic or chapter title:');
+    const title = prompt('Enter skill, module, or topic title:');
     if (title && title.trim()) {
       store.update((s) => {
         s.syllabusTopics.push({
@@ -1576,13 +1682,15 @@ document.addEventListener('click', async (e) => {
       const subj = s.subjects.find((sub) => sub.id === s.focusSession.linkedSubjectId);
       if (subj) subj.loggedMinutes = (subj.loggedMinutes || 0) + elapsedMin;
     });
-    showToast(`Logged +${elapsedMin}m to course & task!`);
+    showToast(`Logged +${elapsedMin}m to track & task!`);
   } else if (action === 'toggle-sound') {
     const snd = actionEl.getAttribute('data-sound');
     const nextMode = soundEngine.play(snd);
     store.update((s) => {
       s.focusSession.soundscape = nextMode;
     });
+  } else if (action === 'open-calendar-modal') {
+    openModal('calendar-sync');
   } else if (action === 'open-task-modal') {
     openModal('task');
   } else if (action === 'open-block-modal') {
@@ -1599,6 +1707,20 @@ document.addEventListener('click', async (e) => {
     openModal('backup');
   } else if (action === 'close-modal' || (action === 'backdrop-close' && e.target === actionEl)) {
     closeModal();
+  } else if (action === 'import-pasted-schedule') {
+    const raw = document.getElementById('paste-schedule-textarea')?.value || '';
+    if (!raw.trim()) {
+      showToast('Paste schedule lines first');
+      return;
+    }
+    const parsed = parseScheduleText(
+      raw,
+      store.state.selectedDate || getTodayISO(),
+      store.state.subjects[0]?.id || 'subj-algo'
+    );
+    const res = store.importCalendarEvents(parsed);
+    closeModal();
+    showToast(`Imported ${res.addedBlocks} daily blocks & ${res.addedWeekly} recurring routine slots!`);
   } else if (action === 'export-ics') {
     const icsData = store.exportICS();
     const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' });
@@ -1680,10 +1802,14 @@ document.addEventListener('click', async (e) => {
     } catch (_) {
       showToast('Could not reach PC Sync Server');
     }
+  } else if (action === 'start-blank-slate') {
+    store.startBlankSlate();
+    closeModal();
+    showToast('✨ Started clean Blank Slate workspace!');
   } else if (action === 'reset-demo-data') {
     store.resetToDemo();
     closeModal();
-    showToast('Demo data restored');
+    showToast('Sample setup restored');
   }
 });
 
@@ -1733,6 +1859,20 @@ document.addEventListener('change', (e) => {
       const sub = s.subjects.find((x) => x.id === id);
       if (sub && field) sub[field] = Number(t.value);
     });
+  } else if (t.id === 'import-ics-input' && t.files?.[0]) {
+    const subjId = document.getElementById('ics-import-subject')?.value || store.state.subjects[0]?.id;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = parseICSCalendar(ev.target.result, subjId);
+        const res = store.importCalendarEvents(parsed);
+        closeModal();
+        showToast(`📅 Imported ${res.addedBlocks} events & ${res.addedWeekly} recurring slots from .ICS!`);
+      } catch (_) {
+        showToast('Could not parse .ICS file');
+      }
+    };
+    reader.readAsText(t.files[0]);
   } else if (t.id === 'import-json-input' && t.files?.[0]) {
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -1803,7 +1943,7 @@ document.addEventListener('submit', (e) => {
       });
     });
     closeModal();
-    showToast('Detailed task created!');
+    showToast('Task created!');
   } else if (form.id === 'modal-block-form') {
     e.preventDefault();
     const fd = new FormData(form);
@@ -1837,7 +1977,7 @@ document.addEventListener('submit', (e) => {
       });
     });
     closeModal();
-    showToast('Recurring slot added to Weekly Program!');
+    showToast('Recurring slot added to Weekly Routine!');
   } else if (form.id === 'modal-flashcard-form') {
     e.preventDefault();
     const fd = new FormData(form);
@@ -1854,7 +1994,7 @@ document.addEventListener('submit', (e) => {
       });
     });
     closeModal();
-    showToast('SM-2 Flashcard added!');
+    showToast('SM-2 Recall Card added!');
   } else if (form.id === 'modal-cornell-form') {
     e.preventDefault();
     const fd = new FormData(form);
@@ -1871,7 +2011,7 @@ document.addEventListener('submit', (e) => {
       });
     });
     closeModal();
-    showToast('Cornell Study Sheet saved!');
+    showToast('Synthesis Note saved!');
   } else if (form.id === 'modal-subject-form') {
     e.preventDefault();
     const fd = new FormData(form);
@@ -1890,7 +2030,7 @@ document.addEventListener('submit', (e) => {
       });
     });
     closeModal();
-    showToast('New course added!');
+    showToast('New life/study track added!');
   }
 });
 

@@ -1,8 +1,9 @@
-// ChronoStudy v2.0 Reactive State Store & Core Algorithms
-// Includes: SM-2 Spaced Repetition, Natural Language Task Parser, Smart Auto-Scheduler,
-// Schedule Conflict Detector, Cornell Notes -> Flashcard Converter, Grade Target Calculator, & RFC-5545 .ICS Exporter
+// ChronoStudy v3.0 — Universal Life, Self-Learning, Projects & Time Architect Store
+// Includes: Universal Life & Learning Tracks (Self-Study, Projects, Fitness, Life Admin, Courses),
+// SM-2 Active Recall, Natural Language Task Parser, Smart Auto-Scheduler, Conflict Detector,
+// Goal Pace & Milestone Calculator, Quick Time-Shift, and Two-Way Google Calendar / .ICS Integration
 
-const STORAGE_KEY = 'chronostudy_state_v2';
+const STORAGE_KEY = 'chronostudy_state_v3';
 
 const hasLocalStorage = typeof localStorage !== 'undefined';
 
@@ -39,7 +40,7 @@ export function minutesToTime(totalMin) {
 /**
  * Natural-Language Smart Task Parser
  * Supports tokens like:
- *   #CS-301 (matches subject code or name prefix)
+ *   #AI-DEV or #CS-301 (matches track/subject code or name)
  *   !Q1 / !Q2 / !Q3 / !Q4 (sets Eisenhower quadrant)
  *   ~3p or ~3 (sets estimated Pomodoros)
  *   @today / @tomorrow / @+3d / @2026-11-15 (sets due date)
@@ -51,21 +52,18 @@ export function parseSmartTaskInput(rawText, subjects = [], defaultDate = getTod
   let estimatedPomodoros = null;
   let dueDate = null;
 
-  // Match !Q1..Q4
   const qMatch = title.match(/(?:^|\s)!(Q[1-4])\b/i);
   if (qMatch) {
     quadrant = qMatch[1].toUpperCase();
     title = title.replace(qMatch[0], ' ').trim();
   }
 
-  // Match ~Np or ~Npomos
   const pMatch = title.match(/(?:^|\s)~(\d{1,2})p?(?:omos?)?\b/i);
   if (pMatch) {
     estimatedPomodoros = Math.max(1, Math.min(20, Number(pMatch[1])));
     title = title.replace(pMatch[0], ' ').trim();
   }
 
-  // Match @today, @tomorrow, @+Nd, @YYYY-MM-DD
   const dMatch = title.match(/(?:^|\s)@(today|tomorrow|\+\d+d|\d{4}-\d{2}-\d{2})\b/i);
   if (dMatch) {
     const tok = dMatch[1].toLowerCase();
@@ -80,7 +78,6 @@ export function parseSmartTaskInput(rawText, subjects = [], defaultDate = getTod
     title = title.replace(dMatch[0], ' ').trim();
   }
 
-  // Match #CourseCode
   const sMatch = title.match(/(?:^|\s)#([A-Za-z0-9_-]+)\b/);
   if (sMatch) {
     const query = sMatch[1].toLowerCase();
@@ -133,14 +130,13 @@ export function detectScheduleConflicts(blocks = []) {
  * and schedules top uncompleted Q1/Q2 tasks into available gaps.
  */
 export function computeAutoScheduleBlocks(existingBlocksForDate = [], openTasks = [], targetDate = getTodayISO()) {
-  const dayStart = 8 * 60; // 08:00
-  const dayEnd = 21 * 60 + 30; // 21:30
+  const dayStart = 8 * 60;
+  const dayEnd = 21 * 60 + 30;
   const occupied = existingBlocksForDate
     .map((b) => [timeToMinutes(b.startTime), timeToMinutes(b.endTime)])
     .filter(([s, e]) => e > s)
     .sort((a, b) => a[0] - b[0]);
 
-  // Merge occupied intervals
   const merged = [];
   for (const [s, e] of occupied) {
     if (!merged.length || s > merged[merged.length - 1][1]) {
@@ -150,20 +146,18 @@ export function computeAutoScheduleBlocks(existingBlocksForDate = [], openTasks 
     }
   }
 
-  // Compute free gaps >= 45m
   const gaps = [];
   let cursor = dayStart;
   for (const [s, e] of merged) {
     if (s - cursor >= 45) {
       gaps.push([cursor, s]);
     }
-    cursor = Math.max(cursor, e + 15); // 15m buffer after existing block
+    cursor = Math.max(cursor, e + 15);
   }
   if (dayEnd - cursor >= 45) {
     gaps.push([cursor, dayEnd]);
   }
 
-  // Rank tasks: Q1 first, then Q2, then Q3, then earliest due date
   const rankMap = { Q1: 1, Q2: 2, Q3: 3, Q4: 4 };
   const existingTitles = new Set(existingBlocksForDate.map((b) => b.title.toLowerCase()));
   const candidates = openTasks
@@ -195,7 +189,7 @@ export function computeAutoScheduleBlocks(existingBlocksForDate = [], openTasks 
         done: false,
         autoScheduled: true
       });
-      slotStart = actualEnd + 15; // 15m break between auto-scheduled blocks
+      slotStart = actualEnd + 15;
     }
   }
 
@@ -203,8 +197,25 @@ export function computeAutoScheduleBlocks(existingBlocksForDate = [], openTasks 
 }
 
 /**
- * Required Final Exam Score Calculator
- * currentGrade: 0-100, examWeightPercent: 0-100, targetGrade: e.g. 90 for A
+ * Universal Milestone Pace Calculator
+ * Calculates daily minutes required to reach a weekly/milestone hour target
+ */
+export function calculateGoalPace(loggedMinutes = 0, targetHoursPerWeek = 6, daysRemainingInWeek = 4) {
+  const targetMins = Math.max(30, Number(targetHoursPerWeek) * 60);
+  const remainingMins = Math.max(0, targetMins - Number(loggedMinutes));
+  const days = Math.max(1, Number(daysRemainingInWeek));
+  const dailyNeeded = Math.round(remainingMins / days);
+  const completionPct = Math.min(100, Math.round((Number(loggedMinutes) / targetMins) * 100));
+  return {
+    remainingMinutes: remainingMins,
+    dailyMinutesNeeded: dailyNeeded,
+    completionPct,
+    status: completionPct >= 80 ? 'Ahead / On Track' : dailyNeeded <= 60 ? 'Steady Pace' : 'High Focus Needed'
+  };
+}
+
+/**
+ * Required Assessment / Certification / Exam Score Calculator
  */
 export function calculateRequiredExamScore(currentGrade, examWeightPercent, targetGrade = 90) {
   const w = Math.max(1, Math.min(100, Number(examWeightPercent))) / 100;
@@ -219,12 +230,13 @@ export function createDefaultState() {
   const today = getTodayISO();
   return {
     theme: 'light',
+    profileMode: 'universal', // 'universal' | 'academic' | 'blank'
     activeTab: 'today', // 'today' | 'tasks' | 'program' | 'study' | 'focus' | 'analytics'
     selectedDate: today,
     selectedProgramDay: new Date().getDay() === 0 ? 6 : new Date().getDay() - 1,
     taskViewMode: 'list', // 'list' | 'matrix' | 'kanban'
     taskSubjectFilter: 'all',
-    studySubTab: 'cards', // 'cards' | 'cornell' | 'syllabus'
+    studySubTab: 'cards',
 
     stats: {
       totalFocusMinutes: 420,
@@ -232,16 +244,19 @@ export function createDefaultState() {
       completedPomodoros: 17,
       currentStreakDays: 6,
       lastActiveDate: today,
-      weeklyDailyMinutes: [65, 95, 80, 110, 50, 90, 75] // Mon..Sun
+      weeklyDailyMinutes: [65, 95, 80, 110, 50, 90, 75]
     },
 
+    // Universal Tracks / Focus Areas (Supports Self-Study, Personal Projects, Skills, Fitness, Life & Courses)
     subjects: [
       {
         id: 'subj-algo',
-        name: 'Algorithms & Data Structures',
+        name: 'AI, Coding & Technical Mastery',
         code: 'CS-301',
+        category: 'Self-Study & Tech',
         color: '#C85A32',
         examDate: addDaysISO(today, 12),
+        milestoneLabel: 'Portfolio Launch',
         targetHoursPerWeek: 8,
         loggedMinutes: 195,
         currentGrade: 91.5,
@@ -250,10 +265,12 @@ export function createDefaultState() {
       },
       {
         id: 'subj-linalg',
-        name: 'Linear Algebra & Matrix Theory',
+        name: 'Quantitative & Analytical Foundations',
         code: 'MATH-204',
+        category: 'Deep Skill Study',
         color: '#2B4C7E',
         examDate: addDaysISO(today, 19),
+        milestoneLabel: 'Module Mastery',
         targetHoursPerWeek: 6,
         loggedMinutes: 140,
         currentGrade: 88.0,
@@ -262,10 +279,12 @@ export function createDefaultState() {
       },
       {
         id: 'subj-cogpsy',
-        name: 'Cognitive Neuroscience',
+        name: 'Language, Reading & Synthesis',
         code: 'PSYC-210',
+        category: 'Language & Books',
         color: '#2E7D5B',
         examDate: addDaysISO(today, 8),
+        milestoneLabel: 'Book & Fluency Goal',
         targetHoursPerWeek: 5,
         loggedMinutes: 110,
         currentGrade: 94.0,
@@ -274,10 +293,12 @@ export function createDefaultState() {
       },
       {
         id: 'subj-sys',
-        name: 'Distributed Systems Lab',
+        name: 'Personal Projects & Career Build',
         code: 'CS-412',
+        category: 'Work & Projects',
         color: '#C6841D',
         examDate: addDaysISO(today, 5),
+        milestoneLabel: 'v1.0 Release',
         targetHoursPerWeek: 7,
         loggedMinutes: 165,
         currentGrade: 89.5,
@@ -286,10 +307,12 @@ export function createDefaultState() {
       },
       {
         id: 'subj-life',
-        name: 'Personal & Wellness',
+        name: 'Fitness, Training & Life Admin',
         code: 'LIFE',
+        category: 'Health & Lifestyle',
         color: '#7A5C43',
         examDate: addDaysISO(today, 30),
+        milestoneLabel: '10K & Conditioning',
         targetHoursPerWeek: 4,
         loggedMinutes: 60,
         currentGrade: 100,
@@ -301,7 +324,7 @@ export function createDefaultState() {
     tasks: [
       {
         id: 'task-1',
-        title: 'Implement Dijkstra & A* shortest-path benchmark report',
+        title: 'Build & benchmark graph search / AI agent workflow module',
         subjectId: 'subj-algo',
         quadrant: 'Q1',
         status: 'in_progress',
@@ -309,16 +332,16 @@ export function createDefaultState() {
         dueDate: today,
         estimatedPomodoros: 3,
         completedPomodoros: 1,
-        notes: 'Compare binary heap vs Fibonacci heap asymptotic & empirical runtime.',
+        notes: 'Compare heuristic performance and document architecture.',
         subtasks: [
-          { id: 'st-1', text: 'Write adjacency list graph generator', done: true },
-          { id: 'st-2', text: 'Run 100k-node benchmark suite', done: true },
-          { id: 'st-3', text: 'Plot latency curves & write conclusion', done: false }
+          { id: 'st-1', text: 'Set up core data structures & test harness', done: true },
+          { id: 'st-2', text: 'Run benchmark suite & profile bottlenecks', done: true },
+          { id: 'st-3', text: 'Write summary notes & commit clean build', done: false }
         ]
       },
       {
         id: 'task-2',
-        title: 'Complete Singular Value Decomposition (SVD) problem set #6',
+        title: 'Complete matrix transformations & PCA practice exercises',
         subjectId: 'subj-linalg',
         quadrant: 'Q1',
         status: 'todo',
@@ -326,31 +349,31 @@ export function createDefaultState() {
         dueDate: today,
         estimatedPomodoros: 2,
         completedPomodoros: 0,
-        notes: 'Focus on orthogonal projection proofs and low-rank matrix approximation.',
+        notes: 'Focus on intuition behind orthogonal projections and dimensionality reduction.',
         subtasks: [
-          { id: 'st-4', text: 'Solve problems 1-4 (eigenvalue decomposition)', done: true },
-          { id: 'st-5', text: 'Complete proof for pseudo-inverse stability', done: false }
+          { id: 'st-4', text: 'Work through 4 core practice problems', done: true },
+          { id: 'st-5', text: 'Create 2 SM-2 recall flashcards for key takeaways', done: false }
         ]
       },
       {
         id: 'task-3',
-        title: 'Synthesize literature review on Working Memory & Prefrontal Cortex',
+        title: 'Read 25 pages & synthesize notes on cognitive focus & memory',
         subjectId: 'subj-cogpsy',
         quadrant: 'Q2',
         status: 'todo',
         completed: false,
         dueDate: addDaysISO(today, 2),
-        estimatedPomodoros: 4,
+        estimatedPomodoros: 3,
         completedPomodoros: 1,
-        notes: 'Compare Baddeley model updates with modern fMRI findings.',
+        notes: 'Capture key insights in Cornell Notes and convert top cues to flashcards.',
         subtasks: [
-          { id: 'st-6', text: 'Annotate 5 primary journal articles', done: true },
-          { id: 'st-7', text: 'Draft methodology comparison section', done: false }
+          { id: 'st-6', text: 'Highlight primary chapters & concepts', done: true },
+          { id: 'st-7', text: 'Write 1-paragraph synthesis summary', done: false }
         ]
       },
       {
         id: 'task-4',
-        title: 'Debug Raft consensus leader election timeout edge case',
+        title: 'Ship Personal Project milestone & deploy live mobile build',
         subjectId: 'subj-sys',
         quadrant: 'Q1',
         status: 'in_progress',
@@ -358,25 +381,25 @@ export function createDefaultState() {
         dueDate: addDaysISO(today, 1),
         estimatedPomodoros: 3,
         completedPomodoros: 2,
-        notes: 'Check randomized election timer reset when AppendEntries heartbeat arrives.',
+        notes: 'Verify mobile responsiveness and Google Calendar sync.',
         subtasks: []
       },
       {
         id: 'task-5',
-        title: 'Submit lab partner peer-evaluation form & sync calendar',
-        subjectId: 'subj-sys',
+        title: 'Organize weekly calendar, bills & appointments',
+        subjectId: 'subj-life',
         quadrant: 'Q3',
         status: 'todo',
         completed: false,
         dueDate: today,
         estimatedPomodoros: 1,
         completedPomodoros: 0,
-        notes: 'Quick administrative form on course portal.',
+        notes: 'Quick life-admin batch block.',
         subtasks: []
       },
       {
         id: 'task-6',
-        title: '35-minute evening mobility & zone-2 run',
+        title: '40-minute strength & zone-2 cardio conditioning session',
         subjectId: 'subj-life',
         quadrant: 'Q2',
         status: 'done',
@@ -384,7 +407,7 @@ export function createDefaultState() {
         dueDate: today,
         estimatedPomodoros: 1,
         completedPomodoros: 1,
-        notes: 'Outdoor track or treadmill recovery pace.',
+        notes: 'Outdoor run + mobility work.',
         subtasks: []
       }
     ],
@@ -395,7 +418,7 @@ export function createDefaultState() {
         date: today,
         startTime: '08:30',
         endTime: '10:00',
-        title: 'Deep Study: Algorithms Graph Theory & A* Heuristics',
+        title: 'Deep Focus: AI & Technical Skill Mastery',
         subjectId: 'subj-algo',
         category: 'deep_work',
         done: true
@@ -405,7 +428,7 @@ export function createDefaultState() {
         date: today,
         startTime: '10:30',
         endTime: '12:00',
-        title: 'Lecture: Linear Algebra — Spectral Theorem & SVD',
+        title: 'Structured Study: Analytical Foundations & Practice',
         subjectId: 'subj-linalg',
         category: 'lecture',
         done: true
@@ -415,7 +438,7 @@ export function createDefaultState() {
         date: today,
         startTime: '13:30',
         endTime: '15:00',
-        title: 'Distributed Systems Lab: Raft Log Replication',
+        title: 'Project Build: Feature Implementation & Testing',
         subjectId: 'subj-sys',
         category: 'deep_work',
         done: false
@@ -425,8 +448,8 @@ export function createDefaultState() {
         date: today,
         startTime: '15:30',
         endTime: '16:30',
-        title: 'SM-2 Active Recall Flashcard Review + Problem Set #6',
-        subjectId: 'subj-linalg',
+        title: 'SM-2 Spaced Repetition Recall & Flashcard Deck',
+        subjectId: 'subj-cogpsy',
         category: 'review',
         done: false
       },
@@ -435,7 +458,7 @@ export function createDefaultState() {
         date: today,
         startTime: '17:30',
         endTime: '18:15',
-        title: 'Zone-2 Run & Mobility Reset',
+        title: 'Fitness: Zone-2 Run & Mobility Reset',
         subjectId: 'subj-life',
         category: 'wellness',
         done: false
@@ -445,7 +468,7 @@ export function createDefaultState() {
         date: today,
         startTime: '19:30',
         endTime: '21:00',
-        title: 'Cognitive Neuroscience Paper Synthesis',
+        title: 'Evening Reading, Language Practice & Synthesis',
         subjectId: 'subj-cogpsy',
         category: 'deep_work',
         done: false
@@ -454,37 +477,37 @@ export function createDefaultState() {
 
     weeklyProgram: {
       0: [
-        { id: 'wp-m1', startTime: '08:30', endTime: '10:00', title: 'Algorithms Deep Work Block', subjectId: 'subj-algo', type: 'Deep Study' },
-        { id: 'wp-m2', startTime: '10:30', endTime: '12:00', title: 'Linear Algebra Lecture', subjectId: 'subj-linalg', type: 'Lecture' },
-        { id: 'wp-m3', startTime: '14:00', endTime: '16:00', title: 'Distributed Systems Coding Lab', subjectId: 'subj-sys', type: 'Lab' },
-        { id: 'wp-m4', startTime: '17:30', endTime: '18:30', title: 'Strength & Mobility Conditioning', subjectId: 'subj-life', type: 'Wellness' }
+        { id: 'wp-m1', startTime: '08:30', endTime: '10:00', title: 'Morning Deep Focus: Technical Skill Study', subjectId: 'subj-algo', type: 'Deep Focus' },
+        { id: 'wp-m2', startTime: '10:30', endTime: '12:00', title: 'Analytical Foundations & Problem Solving', subjectId: 'subj-linalg', type: 'Structured Study' },
+        { id: 'wp-m3', startTime: '14:00', endTime: '16:00', title: 'Personal Project Build Session', subjectId: 'subj-sys', type: 'Project Work' },
+        { id: 'wp-m4', startTime: '17:30', endTime: '18:30', title: 'Strength & Mobility Conditioning', subjectId: 'subj-life', type: 'Fitness & Health' }
       ],
       1: [
-        { id: 'wp-tu1', startTime: '09:00', endTime: '10:30', title: 'Cognitive Neuroscience Seminar', subjectId: 'subj-cogpsy', type: 'Lecture' },
-        { id: 'wp-tu2', startTime: '11:00', endTime: '12:30', title: 'SM-2 Spaced Repetition & Problem Sets', subjectId: 'subj-linalg', type: 'Review' },
-        { id: 'wp-tu3', startTime: '15:00', endTime: '17:00', title: 'Algorithms Competitive Problem Solving', subjectId: 'subj-algo', type: 'Deep Study' }
+        { id: 'wp-tu1', startTime: '09:00', endTime: '10:30', title: 'Language Immersion & Reading Block', subjectId: 'subj-cogpsy', type: 'Self-Study' },
+        { id: 'wp-tu2', startTime: '11:00', endTime: '12:30', title: 'SM-2 Active Recall & Concept Practice', subjectId: 'subj-linalg', type: 'Review' },
+        { id: 'wp-tu3', startTime: '15:00', endTime: '17:00', title: 'Hands-On Coding & System Design', subjectId: 'subj-algo', type: 'Deep Focus' }
       ],
       2: [
-        { id: 'wp-w1', startTime: '08:30', endTime: '10:00', title: 'Algorithms Lecture & Recitation', subjectId: 'subj-algo', type: 'Lecture' },
-        { id: 'wp-w2', startTime: '10:30', endTime: '12:00', title: 'Linear Algebra Lecture', subjectId: 'subj-linalg', type: 'Lecture' },
-        { id: 'wp-w3', startTime: '14:00', endTime: '16:30', title: 'Distributed Systems Architecture Studio', subjectId: 'subj-sys', type: 'Deep Study' }
+        { id: 'wp-w1', startTime: '08:30', endTime: '10:00', title: 'Core Skill Deep Dive & Exercises', subjectId: 'subj-algo', type: 'Deep Focus' },
+        { id: 'wp-w2', startTime: '10:30', endTime: '12:00', title: 'Quantitative Study Session', subjectId: 'subj-linalg', type: 'Structured Study' },
+        { id: 'wp-w3', startTime: '14:00', endTime: '16:30', title: 'Project Architecture & Execution', subjectId: 'subj-sys', type: 'Project Work' }
       ],
       3: [
-        { id: 'wp-th1', startTime: '09:00', endTime: '10:30', title: 'Cognitive Neuroscience Seminar', subjectId: 'subj-cogpsy', type: 'Lecture' },
-        { id: 'wp-th2', startTime: '11:00', endTime: '13:00', title: 'Linear Algebra Proof Workshop', subjectId: 'subj-linalg', type: 'Deep Study' },
-        { id: 'wp-th3', startTime: '15:30', endTime: '17:00', title: 'Weekly Paper Reading & Synthesis', subjectId: 'subj-cogpsy', type: 'Review' }
+        { id: 'wp-th1', startTime: '09:00', endTime: '10:30', title: 'Reading, Synthesis & Note-Taking', subjectId: 'subj-cogpsy', type: 'Self-Study' },
+        { id: 'wp-th2', startTime: '11:00', endTime: '13:00', title: 'Applied Problem Solving Workshop', subjectId: 'subj-linalg', type: 'Deep Focus' },
+        { id: 'wp-th3', startTime: '17:30', endTime: '18:30', title: 'Cardio Conditioning & Recovery', subjectId: 'subj-life', type: 'Fitness & Health' }
       ],
       4: [
-        { id: 'wp-f1', startTime: '09:00', endTime: '11:00', title: 'Mock Exam & Timed Practice Set', subjectId: 'subj-algo', type: 'Review' },
-        { id: 'wp-f2', startTime: '11:30', endTime: '13:00', title: 'Systems Debugging & Code Review', subjectId: 'subj-sys', type: 'Lab' },
-        { id: 'wp-f3', startTime: '15:00', endTime: '16:00', title: 'Weekly Retrospective & Next Week Planning', subjectId: 'subj-life', type: 'Planning' }
+        { id: 'wp-f1', startTime: '09:00', endTime: '11:00', title: 'Weekly Skill Challenge & Timed Practice', subjectId: 'subj-algo', type: 'Review' },
+        { id: 'wp-f2', startTime: '11:30', endTime: '13:00', title: 'Project Ship & Code Polish', subjectId: 'subj-sys', type: 'Project Work' },
+        { id: 'wp-f3', startTime: '15:00', endTime: '16:00', title: 'Weekly Retrospective & Life Admin Batch', subjectId: 'subj-life', type: 'Planning' }
       ],
       5: [
-        { id: 'wp-sa1', startTime: '10:00', endTime: '12:00', title: 'Saturday Deep Synthesis & Project Build', subjectId: 'subj-sys', type: 'Deep Study' },
+        { id: 'wp-sa1', startTime: '10:00', endTime: '12:00', title: 'Saturday Creative Build & Exploration', subjectId: 'subj-sys', type: 'Project Work' },
         { id: 'wp-sa2', startTime: '14:00', endTime: '15:00', title: 'Full Deck SM-2 Spaced Repetition Catch-up', subjectId: 'subj-cogpsy', type: 'Review' }
       ],
       6: [
-        { id: 'wp-su1', startTime: '10:30', endTime: '12:00', title: 'Light Concept Review & Reading', subjectId: 'subj-linalg', type: 'Review' },
+        { id: 'wp-su1', startTime: '10:30', endTime: '12:00', title: 'Long-Form Reading & Reflection', subjectId: 'subj-cogpsy', type: 'Self-Study' },
         { id: 'wp-su2', startTime: '16:30', endTime: '17:30', title: 'Weekly Time-Block Blueprint & Reset', subjectId: 'subj-life', type: 'Planning' }
       ]
     },
@@ -513,7 +536,7 @@ export function createDefaultState() {
       {
         id: 'fc-3',
         subjectId: 'subj-sys',
-        prompt: 'In the Raft consensus algorithm, what guarantees the Leader Completeness Property?',
+        prompt: 'In distributed systems (Raft), what guarantees the Leader Completeness Property?',
         answer: 'RequestVote RPC restriction: a voter denies its vote if the candidate’s log is less up-to-date than its own (compared by lastLogTerm, then lastLogIndex).',
         interval: 2,
         repetitions: 1,
@@ -523,8 +546,8 @@ export function createDefaultState() {
       {
         id: 'fc-4',
         subjectId: 'subj-cogpsy',
-        prompt: 'How does the Episodic Buffer in Baddeley’s working memory model interact with long-term memory?',
-        answer: 'It acts as a limited-capacity multimodal interface binding visual, phonological, and semantic information into coherent episodes linked to LTM.',
+        prompt: 'How does spaced repetition (SM-2) counteract the Ebbinghaus Forgetting Curve?',
+        answer: 'By scheduling active recall right before memory decay crosses the forgetting threshold, flattening the decay curve and multiplying retention intervals.',
         interval: 3,
         repetitions: 2,
         efactor: 2.5,
@@ -542,7 +565,6 @@ export function createDefaultState() {
       }
     ],
 
-    // Cornell Note-Taking System Entries
     cornellNotes: [
       {
         id: 'cn-1',
@@ -555,30 +577,30 @@ export function createDefaultState() {
       },
       {
         id: 'cn-2',
-        subjectId: 'subj-sys',
-        title: 'Raft Split-Vote & Randomized Election Timeouts',
+        subjectId: 'subj-cogpsy',
+        title: 'Deliberate Practice vs. Passive Review',
         date: today,
-        cue: 'How does Raft prevent infinite split-vote livelocks during leader election?',
-        notes: 'Each server chooses a random election timeout in [150ms, 300ms]. The first node to time out increments currentTerm, transitions to Candidate, votes for itself, and broadcasts RequestVote RPCs.',
-        summary: 'Randomized election timeouts ensure that with high probability a single candidate requests votes before others time out.'
+        cue: 'Why does active recall + immediate feedback outperform re-reading by 3x?',
+        notes: 'Retrieval practice strengthens neural pathways and exposes illusion-of-competence gaps immediately, allowing targeted correction.',
+        summary: 'Always convert passive reading notes into testable cues and active problem-solving blocks.'
       }
     ],
 
     syllabusTopics: [
-      { id: 'syl-1', subjectId: 'subj-algo', title: 'Shortest Paths (Dijkstra, Bellman-Ford, A*)', status: 'Reviewing', confidence: 85 },
-      { id: 'syl-2', subjectId: 'subj-algo', title: 'Dynamic Programming & Memoization Proofs', status: 'Learning', confidence: 65 },
-      { id: 'syl-3', subjectId: 'subj-algo', title: 'Network Flow & Max-Flow Min-Cut Theorem', status: 'Not Started', confidence: 20 },
+      { id: 'syl-1', subjectId: 'subj-algo', title: 'Graph Search & Heuristic Optimization', status: 'Reviewing', confidence: 85 },
+      { id: 'syl-2', subjectId: 'subj-algo', title: 'Dynamic Programming & State Transitions', status: 'Learning', confidence: 65 },
+      { id: 'syl-3', subjectId: 'subj-sys', title: 'End-to-End Architecture & Cloud Deployment', status: 'Reviewing', confidence: 88 },
       { id: 'syl-4', subjectId: 'subj-linalg', title: 'Orthogonal Projections & Least Squares', status: 'Mastered', confidence: 95 },
       { id: 'syl-5', subjectId: 'subj-linalg', title: 'Singular Value Decomposition (SVD) & PCA', status: 'Learning', confidence: 70 },
-      { id: 'syl-6', subjectId: 'subj-sys', title: 'Raft Leader Election & Log Replication', status: 'Reviewing', confidence: 88 },
-      { id: 'syl-7', subjectId: 'subj-cogpsy', title: 'Prefrontal Executive Control & Attention Networks', status: 'Reviewing', confidence: 80 }
+      { id: 'syl-6', subjectId: 'subj-cogpsy', title: 'Active Recall & Spaced Repetition Systems', status: 'Mastered', confidence: 92 },
+      { id: 'syl-7', subjectId: 'subj-life', title: 'Aerobic Base & Progressive Overload Routine', status: 'Reviewing', confidence: 84 }
     ],
 
     habits: [
       { id: 'hab-1', name: '90m+ Deep Focus Block', streak: 6, completedToday: true },
-      { id: 'hab-2', name: 'Zero SM-2 Reviews Overdue', streak: 4, completedToday: false },
-      { id: 'hab-3', name: 'Plan Tomorrow Time-Blocks', streak: 9, completedToday: true },
-      { id: 'hab-4', name: '30m Movement / Zone-2 Cardio', streak: 5, completedToday: true }
+      { id: 'hab-2', name: 'Clear Daily SM-2 Recall Queue', streak: 4, completedToday: false },
+      { id: 'hab-3', name: 'Time-Block Tomorrow’s Plan', streak: 9, completedToday: true },
+      { id: 'hab-4', name: '30m+ Training / Movement', streak: 5, completedToday: true }
     ],
 
     focusSession: {
@@ -602,7 +624,10 @@ export class Store {
   load() {
     if (!hasLocalStorage) return createDefaultState();
     try {
-      const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('chronostudy_state_v1');
+      const raw =
+        localStorage.getItem(STORAGE_KEY) ||
+        localStorage.getItem('chronostudy_state_v2') ||
+        localStorage.getItem('chronostudy_state_v1');
       if (!raw) return createDefaultState();
       const parsed = JSON.parse(raw);
       const def = createDefaultState();
@@ -644,6 +669,126 @@ export class Store {
     this.notify();
   }
 
+  // Start a clean blank slate for users who want to build from zero
+  startBlankSlate() {
+    const today = getTodayISO();
+    this.update((s) => {
+      s.profileMode = 'blank';
+      s.subjects = [
+        {
+          id: 'subj-main',
+          name: 'Primary Study / Skill Goal',
+          code: 'STUDY',
+          category: 'Self-Study',
+          color: '#C85A32',
+          examDate: addDaysISO(today, 30),
+          milestoneLabel: 'Target Milestone',
+          targetHoursPerWeek: 7,
+          loggedMinutes: 0,
+          currentGrade: 90,
+          examWeight: 30,
+          targetCourseGrade: 90
+        },
+        {
+          id: 'subj-proj',
+          name: 'Work & Personal Projects',
+          code: 'WORK',
+          category: 'Projects',
+          color: '#2B4C7E',
+          examDate: addDaysISO(today, 14),
+          milestoneLabel: 'Project Deadline',
+          targetHoursPerWeek: 10,
+          loggedMinutes: 0,
+          currentGrade: 90,
+          examWeight: 30,
+          targetCourseGrade: 90
+        },
+        {
+          id: 'subj-health',
+          name: 'Health, Fitness & Life',
+          code: 'LIFE',
+          category: 'Lifestyle',
+          color: '#2E7D5B',
+          examDate: addDaysISO(today, 30),
+          milestoneLabel: 'Monthly Routine',
+          targetHoursPerWeek: 5,
+          loggedMinutes: 0,
+          currentGrade: 100,
+          examWeight: 10,
+          targetCourseGrade: 95
+        }
+      ];
+      s.tasks = [];
+      s.scheduleBlocks = [];
+      s.weeklyProgram = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+      s.flashcards = [];
+      s.cornellNotes = [];
+      s.syllabusTopics = [];
+      s.stats = {
+        totalFocusMinutes: 0,
+        todayFocusMinutes: 0,
+        completedPomodoros: 0,
+        currentStreakDays: 1,
+        lastActiveDate: today,
+        weeklyDailyMinutes: [0, 0, 0, 0, 0, 0, 0]
+      };
+    });
+  }
+
+  // Shift a time block earlier or later by deltaMinutes (e.g., -15 or +15)
+  shiftBlockTime(blockId, deltaMinutes = 15) {
+    this.update((s) => {
+      const blk = s.scheduleBlocks.find((b) => b.id === blockId);
+      if (!blk) return;
+      const newStart = Math.max(0, Math.min(23 * 60, timeToMinutes(blk.startTime) + deltaMinutes));
+      const duration = Math.max(15, timeToMinutes(blk.endTime) - timeToMinutes(blk.startTime));
+      const newEnd = Math.min(23 * 60 + 59, newStart + duration);
+      blk.startTime = minutesToTime(newStart);
+      blk.endTime = minutesToTime(newEnd);
+      s.scheduleBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    });
+  }
+
+  // Import parsed .ICS or plain-text schedule blocks and recurring weekly slots
+  importCalendarEvents({ scheduleBlocks = [], weeklySlots = [] }) {
+    let addedBlocks = 0;
+    let addedWeekly = 0;
+    this.update((s) => {
+      const existingBlockKeys = new Set(
+        s.scheduleBlocks.map((b) => `${b.date}-${b.startTime}-${b.title.toLowerCase()}`)
+      );
+      scheduleBlocks.forEach((blk) => {
+        const key = `${blk.date}-${blk.startTime}-${blk.title.toLowerCase()}`;
+        if (!existingBlockKeys.has(key)) {
+          s.scheduleBlocks.push(blk);
+          existingBlockKeys.add(key);
+          addedBlocks++;
+        }
+      });
+      s.scheduleBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+      weeklySlots.forEach((slot) => {
+        const day = slot.dayIndex ?? 0;
+        if (!s.weeklyProgram[day]) s.weeklyProgram[day] = [];
+        const exists = s.weeklyProgram[day].some(
+          (w) => w.startTime === slot.startTime && w.title.toLowerCase() === slot.title.toLowerCase()
+        );
+        if (!exists) {
+          s.weeklyProgram[day].push({
+            id: slot.id,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            title: slot.title,
+            subjectId: slot.subjectId || s.subjects[0]?.id || 'subj-algo',
+            type: slot.type || 'Deep Focus'
+          });
+          addedWeekly++;
+        }
+      });
+    });
+    return { addedBlocks, addedWeekly };
+  }
+
   // SuperMemo-2 (SM-2) Algorithm Implementation
   reviewFlashcard(cardId, quality) {
     this.update((s) => {
@@ -675,7 +820,6 @@ export class Store {
     });
   }
 
-  // Convert a Cornell Note Cue + Summary/Notes directly into an SM-2 Flashcard
   convertCornellNoteToFlashcard(noteId) {
     let created = null;
     this.update((s) => {
@@ -696,7 +840,6 @@ export class Store {
     return created;
   }
 
-  // Smart Auto-Schedule open tasks into today's free gaps
   autoScheduleDate(targetDateIso = this.state.selectedDate) {
     let added = [];
     this.update((s) => {
@@ -708,7 +851,6 @@ export class Store {
     return added.length;
   }
 
-  // Apply Weekly Program for a given weekday (0=Mon..6=Sun) to selectedDate
   applyProgramToDate(weekdayIndex, targetDateIso) {
     let addedCount = 0;
     this.update((s) => {
@@ -745,7 +887,7 @@ export class Store {
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//ChronoStudy Planner v2.0//EN',
+      'PRODID:-//ChronoStudy Planner v3.0//EN',
       'CALSCALE:GREGORIAN'
     ];
 
@@ -769,9 +911,9 @@ export class Store {
         const d = subj.examDate.replace(/-/g, '');
         lines.push(
           'BEGIN:VEVENT',
-          `UID:exam-${subj.id}@chronostudy.app`,
+          `UID:milestone-${subj.id}@chronostudy.app`,
           `DTSTART;VALUE=DATE:${d}`,
-          `SUMMARY:EXAM / MILESTONE: ${subj.name} (${subj.code})`,
+          `SUMMARY:MILESTONE: ${subj.name} (${subj.code})`,
           'END:VEVENT'
         );
       }

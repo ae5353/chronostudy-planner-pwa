@@ -9,9 +9,15 @@ import {
   detectScheduleConflicts,
   computeAutoScheduleBlocks,
   calculateRequiredExamScore,
+  calculateGoalPace,
   createDefaultState,
   Store
 } from '../src/store.js';
+import {
+  parseICSCalendar,
+  parseScheduleText,
+  buildGoogleCalendarUrl
+} from '../src/calendar-sync.js';
 
 const mockSubjects = createDefaultState().subjects;
 
@@ -276,3 +282,84 @@ test('6. Cornell Notes -> SM-2 Flashcard conversion & RFC-5545 .ICS export valid
     assert.ok(ics.endsWith('END:VCALENDAR'));
   });
 });
+
+test('7. v3.0 Google Calendar .ICS Import, Plain-Text Schedule Parser, Goal Pace & Blank Slate', async (t) => {
+  await t.test('parseICSCalendar parses dated events and recurring weekly RRULE events from Google Calendar', () => {
+    const sampleICS = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'DTSTART:20261110T090000',
+      'DTEND:20261110T103000',
+      'SUMMARY:Rust Async Runtime Deep Dive',
+      'LOCATION:Home Studio',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      'DTSTART:20261111T180000',
+      'DTEND:20261111T191500',
+      'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR',
+      'SUMMARY:Boxing & Conditioning',
+      'LOCATION:Metro Gym',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const parsed = parseICSCalendar(sampleICS, 'subj-algo');
+    assert.equal(parsed.scheduleBlocks.length, 2);
+    assert.equal(parsed.scheduleBlocks[0].title, 'Rust Async Runtime Deep Dive');
+    assert.equal(parsed.scheduleBlocks[0].date, '2026-11-10');
+    assert.equal(parsed.scheduleBlocks[0].startTime, '09:00');
+    assert.equal(parsed.scheduleBlocks[0].endTime, '10:30');
+    assert.equal(parsed.weeklySlots.length, 3); // MO, WE, FR
+  });
+
+  await t.test('parseScheduleText extracts weekly routine slots and daily blocks from pasted text', () => {
+    const raw = [
+      'Mon 09:00 - 10:30 Deep Work: LLM Agents @Home Lab',
+      'Wed 18:00-19:15 Boxing & Mobility @Gym',
+      '14:00 - 15:00 Spanish Conversation Practice'
+    ].join('\n');
+
+    const res = parseScheduleText(raw, '2026-11-12', 'subj-algo');
+    assert.equal(res.weeklySlots.length, 2);
+    assert.equal(res.weeklySlots[0].dayIndex, 0); // Mon
+    assert.equal(res.weeklySlots[1].dayIndex, 2); // Wed
+    assert.equal(res.scheduleBlocks.length, 1);
+    assert.equal(res.scheduleBlocks[0].date, '2026-11-12');
+    assert.equal(res.scheduleBlocks[0].startTime, '14:00');
+    assert.equal(res.scheduleBlocks[0].endTime, '15:00');
+  });
+
+  await t.test('buildGoogleCalendarUrl creates a valid Google Calendar template URL', () => {
+    const url = buildGoogleCalendarUrl({
+      title: 'Spanish & Reading Synthesis',
+      date: '2026-11-12',
+      startTime: '14:00',
+      endTime: '15:00',
+      details: 'ChronoStudy Focus Block'
+    });
+    assert.ok(url.startsWith('https://calendar.google.com/calendar/render?'));
+    assert.ok(url.includes('action=TEMPLATE'));
+    assert.ok(url.includes('dates=20261112T140000%2F20261112T150000'));
+  });
+
+  await t.test('calculateGoalPace, shiftBlockTime, and startBlankSlate work accurately', () => {
+    const pace = calculateGoalPace(180, 10, 4); // 3h logged out of 10h target, 4 days left -> 420m / 4 = 105m/day
+    assert.equal(pace.remainingMinutes, 420);
+    assert.equal(pace.dailyMinutesNeeded, 105);
+    assert.equal(pace.completionPct, 30);
+
+    const s = new Store();
+    const block = s.state.scheduleBlocks[0];
+    const oldStart = timeToMinutes(block.startTime);
+    s.shiftBlockTime(block.id, 15);
+    const shifted = s.state.scheduleBlocks.find((b) => b.id === block.id);
+    assert.equal(timeToMinutes(shifted.startTime), oldStart + 15);
+
+    s.startBlankSlate();
+    assert.equal(s.state.tasks.length, 0);
+    assert.equal(s.state.scheduleBlocks.length, 0);
+    assert.equal(s.state.subjects.length, 3);
+  });
+});
+

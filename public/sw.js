@@ -1,9 +1,15 @@
-const CACHE_NAME = 'chronostudy-v1';
+const CACHE_NAME = 'chronostudy-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './icon.svg'
+  './icon.svg',
+  './src/index.css',
+  './src/main.js',
+  './src/store.js',
+  './src/audio.js',
+  './src/cloud-sync.js',
+  './src/calendar-sync.js'
 ];
 
 self.addEventListener('install', (event) => {

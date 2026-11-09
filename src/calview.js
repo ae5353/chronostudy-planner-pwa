@@ -89,16 +89,17 @@ export function dayItems(date, { blocks = [], sessions = [] }) {
 }
 
 /** How much of a planned block was actually covered by studied sessions (0..1). */
-export function overlapRatio(block, sessions) {
+export function overlapRatio(block, sessions = []) {
   const bs = hhmmToMin(block.startTime);
   const be = hhmmToMin(block.endTime);
   if (be <= bs) return 0;
   let covered = 0;
-  sessions
-    .filter((s) => s.date === block.date && s.start && s.end)
+  const list = Array.isArray(sessions) ? sessions : [sessions];
+  list
+    .filter((s) => (!block.date || !s.date || s.date === block.date) && (s.start || s.startTime) && (s.end || s.endTime))
     .forEach((s) => {
-      const ss = hhmmToMin(s.start);
-      const se = Math.max(ss, hhmmToMin(s.end));
+      const ss = hhmmToMin(s.start || s.startTime);
+      const se = Math.max(ss, hhmmToMin(s.end || s.endTime));
       covered += Math.max(0, Math.min(be, se) - Math.max(bs, ss));
     });
   return Math.min(1, covered / (be - bs));

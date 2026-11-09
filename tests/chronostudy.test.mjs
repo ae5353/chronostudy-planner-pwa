@@ -21,6 +21,59 @@ import {
   fetchLiveCalendarFeed,
   fetchGoogleCalendarEventsAPI
 } from '../src/calendar-sync.js';
+import {
+  isoFromMs,
+  hhmmFromMs,
+  shiftISO,
+  hhmmToMin,
+  weekStartISO,
+  monthBounds,
+  timerElapsedSeconds,
+  timerRemainingSeconds,
+  startTimerState,
+  pauseTimerState,
+  resetTimerState,
+  makeSession,
+  sessionFromTimer,
+  sessionsInRange,
+  sumMinutes,
+  minutesByDay,
+  minutesByTrack,
+  periodTotals,
+  computeStreaks,
+  topicProgress,
+  topicMinutes,
+  formatMinutes
+} from '../src/log.js';
+import {
+  REPORT_VERSION,
+  periodBounds,
+  buildReport,
+  reportSheets,
+  reportToCSV,
+  reportToXLSX,
+  isValidAppsScriptUrl
+} from '../src/reports.js';
+import {
+  parseQuickAdd,
+  makeTask,
+  completeTask,
+  reopenTask,
+  subtaskProgress,
+  filterTasks,
+  sortTasks,
+  todayList,
+  distinctProjects,
+  distinctTags
+} from '../src/todo.js';
+import {
+  isImportedBlock,
+  blockDurationMin,
+  monthGrid,
+  weekDates,
+  daySummary,
+  overlapRatio
+} from '../src/calview.js';
 
 const mockSubjects = createDefaultState().subjects;
 
@@ -404,5 +457,161 @@ test('7. v3.0 Google Calendar .ICS Import, Plain-Text Schedule Parser, Goal Pace
     assert.equal(gcalRes.scheduleBlocks[0].title, 'Google Calendar Live Sync Event');
   });
 });
+
+test('8. v4 Study Log, Timers, Sessions & Streak Tracker', async (t) => {
+  await t.test('timer state transitions and elapsed/remaining calculations', () => {
+    const fs = { durationSeconds: 1500, baseElapsedSeconds: 0, isRunning: false, startedAt: null };
+    const t0 = 1000000;
+    startTimerState(fs, t0);
+    assert.equal(fs.isRunning, true);
+    assert.equal(fs.startedAt, t0);
+
+    const elapsed = timerElapsedSeconds(fs, t0 + 300000);
+    assert.equal(elapsed, 300);
+    const rem = timerRemainingSeconds(fs, t0 + 300000);
+    assert.equal(rem, 1200);
+
+    pauseTimerState(fs, t0 + 300000);
+    assert.equal(fs.isRunning, false);
+    assert.equal(fs.baseElapsedSeconds, 300);
+
+    resetTimerState(fs);
+    assert.equal(fs.baseElapsedSeconds, 0);
+    assert.equal(fs.remainingSeconds, 1500);
+  });
+
+  await t.test('makeSession parses duration and start/end correctly', () => {
+    const s1 = makeSession({ date: '2026-11-09', start: '10:00', end: '11:30', trackId: 'trk-1' });
+    assert.equal(s1.minutes, 90);
+    assert.equal(s1.start, '10:00');
+    assert.equal(s1.end, '11:30');
+
+    const s2 = makeSession({ date: '2026-11-09', start: '23:30', end: '01:00', trackId: 'trk-1' });
+    assert.equal(s2.minutes, 90);
+  });
+
+  await t.test('computeStreaks calculates current and max study streaks with freeze days', () => {
+    const sessions = [
+      { date: '2026-11-07', minutes: 60 },
+      { date: '2026-11-08', minutes: 90 },
+      { date: '2026-11-09', minutes: 45 }
+    ];
+    const streaks = computeStreaks(sessions, '2026-11-09');
+    assert.equal(streaks.currentStreak, 3);
+    assert.ok(streaks.maxStreak >= 3);
+    assert.equal(streaks.activeDays, 3);
+  });
+});
+
+test('9. v4 Reports Payload, CSV & Excel XLSX Export', async (t) => {
+  const mockState = {
+    subjects: [
+      { id: 't1', name: 'Distributed Systems', targetHoursPerWeek: 10 },
+      { id: 't2', name: 'Machine Learning', targetHoursPerWeek: 6 }
+    ],
+    sessions: [
+      { id: 's1', date: '2026-11-09', start: '09:00', end: '11:00', minutes: 120, trackId: 't1', topic: 'Raft Consensus', rating: 5, covered: 'Raft election & logs' },
+      { id: 's2', date: '2026-11-10', start: '14:00', end: '15:30', minutes: 90, trackId: 't2', topic: 'Backprop', rating: 4, covered: 'Matrix calculus' }
+    ],
+    tasks: [
+      { id: 'tsk-1', title: 'Implement Raft state machine', subjectId: 't1', completed: true, completedAt: new Date('2026-11-09T12:00:00').getTime(), dueDate: '2026-11-10' }
+    ]
+  };
+
+  await t.test('buildReport constructs valid v1 report payload matching schema', () => {
+    const rep = buildReport(mockState, 'week', '2026-11-09');
+    assert.equal(rep.version, REPORT_VERSION);
+    assert.equal(rep.totals.minutes, 210);
+    assert.equal(rep.totals.sessions, 2);
+    assert.equal(rep.totals.tasksDone, 1);
+    assert.equal(rep.byTrack.length, 2);
+    assert.equal(rep.byTrack[0].name, 'Distributed Systems');
+    assert.equal(rep.byTrack[0].minutes, 120);
+    assert.equal(rep.goals.length, 2);
+  });
+
+  await t.test('reportToCSV produces valid CSV text with sections', () => {
+    const rep = buildReport(mockState, 'week', '2026-11-09');
+    const csv = reportToCSV(rep);
+    assert.ok(csv.includes('ChronoStudy report'));
+    assert.ok(csv.includes('Distributed Systems'));
+    assert.ok(csv.includes('Raft Consensus'));
+  });
+
+  await t.test('reportToXLSX generates valid binary zip structure with PK header', () => {
+    const rep = buildReport(mockState, 'week', '2026-11-09');
+    const xlsxBytes = reportToXLSX(rep);
+    assert.ok(xlsxBytes instanceof Uint8Array);
+    assert.equal(xlsxBytes[0], 0x50);
+    assert.equal(xlsxBytes[1], 0x4b);
+    assert.equal(xlsxBytes[2], 0x03);
+    assert.equal(xlsxBytes[3], 0x04);
+  });
+
+  await t.test('isValidAppsScriptUrl validates Google Apps Script URLs', () => {
+    assert.equal(isValidAppsScriptUrl('https://script.google.com/macros/s/AKfycbz_12345/exec'), true);
+    assert.equal(isValidAppsScriptUrl('https://example.com/api'), false);
+    assert.equal(isValidAppsScriptUrl('not-a-url'), false);
+  });
+});
+
+test('10. v4 Advanced To-Do Engine & Quick-Add', async (t) => {
+  await t.test('parseQuickAdd handles title, tags, projects, dates, and priorities', () => {
+    const parsed = parseQuickAdd('Draft thesis introduction &research +thesis p1 ~45m @tomorrow', '2026-11-09');
+    assert.equal(parsed.title, 'Draft thesis introduction');
+    assert.equal(parsed.tags.includes('research'), true);
+    assert.equal(parsed.project, 'thesis');
+    assert.equal(parsed.priority, 3); // p1 maps to priority 4 - 1 = 3 (high)
+    assert.equal(parsed.estimateMinutes, 45);
+    assert.equal(parsed.dueDate, '2026-11-10');
+  });
+
+  await t.test('makeTask, completeTask, and subtaskProgress work seamlessly', () => {
+    const tsk = makeTask({
+      title: 'Setup benchmarks',
+      subtasks: [
+        { id: 'sub-1', title: 'Prepare input datasets', done: true },
+        { id: 'sub-2', title: 'Execute warm-up runs', done: false }
+      ]
+    });
+    assert.equal(tsk.completed, false);
+    const prog = subtaskProgress(tsk);
+    assert.equal(prog.done, 1);
+    assert.equal(prog.total, 2);
+    assert.equal(prog.pct, 50);
+
+    const completed = completeTask(tsk);
+    assert.equal(completed.completed, true);
+    assert.ok(completed.completedAt > 0);
+
+    const reopened = reopenTask(completed);
+    assert.equal(reopened.completed, false);
+    assert.equal(reopened.completedAt, null);
+  });
+});
+
+test('11. v4 Calendar & Week View Layouts', async (t) => {
+  await t.test('weekDates returns 7 consecutive days starting on Monday', () => {
+    const days = weekDates('2026-11-11');
+    assert.equal(days.length, 7);
+    assert.equal(days[0], '2026-11-09');
+    assert.equal(days[6], '2026-11-15');
+  });
+
+  await t.test('monthGrid returns complete weeks covering entire month', () => {
+    const grid = monthGrid('2026-11-15');
+    assert.ok(grid.length >= 4);
+    assert.ok(grid.every((week) => week.length === 7));
+  });
+
+  await t.test('overlapRatio accurately detects ratio between two time spans', () => {
+    const ratio = overlapRatio(
+      { startTime: '10:00', endTime: '11:00' },
+      { startTime: '10:30', endTime: '11:30' }
+    );
+    assert.equal(ratio, 0.5);
+  });
+});
+
 
 

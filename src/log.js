@@ -204,7 +204,7 @@ export function computeStreaks(sessions, today) {
     longest = Math.max(longest, run);
     prev = d;
   }
-  return { current, longest, activeDays: days.size };
+  return { current, longest, currentStreak: current, maxStreak: longest, activeDays: days.size };
 }
 
 // ---------- Topics ----------

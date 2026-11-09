@@ -34,6 +34,10 @@ function matchTrack(query, tracks = []) {
  *   ~30m / ~2p (estimate)   every day|weekday|week|month|mon[,wed]   (recurrence)
  */
 export function parseQuickAdd(raw, tracks = [], today = todayISO()) {
+  if (typeof tracks === 'string') {
+    today = tracks;
+    tracks = [];
+  }
   let text = ` ${String(raw || '').trim()} `;
   const take = (re) => {
     const m = text.match(re);
@@ -153,34 +157,39 @@ export function makeTask(fields = {}) {
   };
 }
 
-/** Mark complete. Returns the spawned next occurrence (already pushed) for recurring tasks. */
-export function completeTask(tasks, id, now = Date.now()) {
-  const t = tasks.find((x) => x.id === id);
-  if (!t || t.completed) return null;
+/** Mark complete. Returns the completed task or spawned next occurrence for recurring tasks. */
+export function completeTask(tasksOrTask, id, now = Date.now()) {
+  const isArray = Array.isArray(tasksOrTask);
+  const t = isArray ? tasksOrTask.find((x) => x.id === id) : tasksOrTask;
+  if (!t || t.completed) return t || null;
   t.completed = true;
   t.status = 'done';
   t.completedAt = now;
-  if (!t.recurrence) return null;
+  if (!t.recurrence) return t;
   const next = makeTask({
     ...t,
     trackId: t.subjectId,
     dueDate: nextDueDate(t.dueDate, t.recurrence, isoFromMs(now)),
     subtasks: (t.subtasks || []).map((s) => ({ ...s, id: newId('sub'), done: false }))
   });
-  tasks.push(next);
+  if (isArray) tasksOrTask.push(next);
   return next;
 }
-export function reopenTask(tasks, id) {
-  const t = tasks.find((x) => x.id === id);
-  if (!t) return;
+export function reopenTask(tasksOrTask, id) {
+  const t = Array.isArray(tasksOrTask) ? tasksOrTask.find((x) => x.id === id) : tasksOrTask;
+  if (!t) return t;
   t.completed = false;
   t.status = 'todo';
   t.completedAt = null;
+  return t;
 }
 
 export function subtaskProgress(task) {
   const subs = task.subtasks || [];
-  return { done: subs.filter((s) => s.done).length, total: subs.length };
+  const done = subs.filter((s) => s.done).length;
+  const total = subs.length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return { done, total, pct };
 }
 
 // ---------- Filters & smart lists ----------

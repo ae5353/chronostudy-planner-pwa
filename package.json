@@ -1,7 +1,7 @@
 {
   "name": "chronostudy",
   "version": "2.0.0",
-  "description": "ChronoStudy v2.0 — Multi-platform Mobile PWA, Portable Bundle, Terminal CLI, LAN Sync Server & Capacitor Suite for Time Blocking, Weekly Programs, SM-2 Spaced Repetition, Cornell Notes, Pomodoro Focus & Exam Analytics",
+  "description": "ChronoStudy v2.0 \u2014 Multi-platform Mobile PWA, Portable Bundle, Terminal CLI, LAN Sync Server & Capacitor Suite for Time Blocking, Weekly Programs, SM-2 Spaced Repetition, Cornell Notes, Pomodoro Focus & Exam Analytics",
   "type": "module",
   "bin": {
     "chronostudy": "./cli/chronostudy-cli.mjs"
@@ -11,7 +11,8 @@
     "start": "node server/sync-server.mjs",
     "cli": "node cli/chronostudy-cli.mjs",
     "test": "node --test tests/chronostudy.test.mjs",
-    "build": "vite build"
+    "build": "vite build",
+    "test:all": "node --test tests/chronostudy.test.mjs && node --test chronostudy-termux/test/ && node --test studylog-minimal/tests/ && node --test chronostudy-sheets-reports/tests/"
   },
   "devDependencies": {
     "vite": "^6.0.0"

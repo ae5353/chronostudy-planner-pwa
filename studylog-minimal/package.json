@@ -1,0 +1,9 @@
+{
+  "name": "studylog-minimal",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "description": "Minimal single-file offline study tracker",
+  "scripts": {
+    "test": "node --test tests/"
+  }
+}

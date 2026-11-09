@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChronoStudy</title>
+<style>
+:root{--bg:#10141c;--card:#1a212e;--fg:#e6e9ef;--mut:#8b94a7;--acc:#4f8cff;--ok:#3ecf8e;--bad:#ff6b6b}
+@media(prefers-color-scheme:light){:root{--bg:#f3f5f9;--card:#fff;--fg:#1b2230;--mut:#667}}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+nav{display:flex;overflow-x:auto;background:var(--card);position:sticky;top:0;z-index:5}
+nav button{flex:1;padding:12px 8px;border:0;background:none;color:var(--mut);font-size:14px;white-space:nowrap}
+nav button.on{color:var(--acc);border-bottom:2px solid var(--acc)}
+main{max-width:900px;margin:auto;padding:12px}section{display:none}section.on{display:block}
+.card{background:var(--card);border-radius:10px;padding:12px;margin:10px 0}
+input,select,textarea,button{font:inherit;padding:8px;border-radius:6px;border:1px solid #556;background:var(--bg);color:var(--fg);max-width:100%}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}button.d{color:var(--bad)}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}.grow{flex:1;min-width:120px}
+.timer{font-size:48px;text-align:center;font-variant-numeric:tabular-nums;margin:10px}
+.mut{color:var(--mut);font-size:13px}table{width:100%;border-collapse:collapse}td,th{padding:4px;text-align:left;border-bottom:1px solid #3333}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.cell{background:var(--bg);min-height:70px;padding:2px;font-size:11px;overflow:hidden;border-radius:4px}
+.cell.today{outline:1px solid var(--acc)}.ev{display:block;background:#4f8cff33;border-radius:3px;margin:1px 0;padding:0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev.session{background:#3ecf8e33}.ev.task{background:#ffb34733}.ev.program{background:#a06bff33}
+.done{text-decoration:line-through;color:var(--mut)}.sub{margin-left:22px}.tag{background:#4f8cff33;border-radius:8px;padding:0 6px;font-size:12px}
+.p1{border-left:3px solid var(--bad)}.p2{border-left:3px solid #ffb347}.p3{border-left:3px solid var(--mut)}li{list-style:none}ul{padding:0;margin:0}li{padding:4px 6px;margin:2px 0}
+</style></head><body>
+<nav id="nav"></nav>
+<main>
+<section id="timer"><div class="card"><div class="timer" id="clock">00:00:00</div><div class="mut" style="text-align:center" id="cur">No active session</div>
+<div class="row"><select id="s_track" class="grow"></select><input id="s_topic" class="grow" placeholder="Topic"></div>
+<div class="row"><button class="p grow" id="b_start">Start</button><button id="b_pause">Pause/Resume</button><button id="b_stop" class="d">Stop</button></div>
+<div class="row"><select id="s_rating"><option value="">Rating</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select><input id="s_notes" class="grow" placeholder="Session notes (saved on stop)"></div>
+<div class="mut">Timer runs on the server &mdash; you can close this page.</div></div>
+<div class="card"><b>Recent sessions</b><table id="sess"></table></div>
+<div class="card"><b>Tracks</b><div class="row"><input id="t_name" class="grow" placeholder="New track name"><input id="t_goal" type="number" step="0.5" style="width:90px" placeholder="h/week"><input id="t_color" type="color" value="#4f8cff"><button id="t_add">Add</button></div><table id="tracks"></table></div></section>
+
+<section id="cal"><div class="row"><button id="c_prev">&lt;</button><b id="c_title" class="grow" style="text-align:center"></b><button id="c_next">&gt;</button>
+<select id="c_view"><option>month</option><option>week</option><option>day</option></select><button id="c_today">Today</button></div>
+<div id="c_body"></div>
+<div class="card"><b>Add event</b><div class="row"><input id="e_title" class="grow" placeholder="Title"><input id="e_start" type="datetime-local"><input id="e_end" type="datetime-local"><button id="e_add">Add</button></div></div>
+<div class="card"><b>Weekly program</b><div class="row"><select id="p_day"><option value="0">Mon</option><option value="1">Tue</option><option value="2">Wed</option><option value="3">Thu</option><option value="4">Fri</option><option value="5">Sat</option><option value="6">Sun</option></select>
+<select id="p_track"></select><input id="p_title" placeholder="Title" class="grow"><input id="p_s" type="time" value="18:00"><input id="p_e" type="time" value="19:00"><button id="p_add">Add</button></div><table id="prog"></table></div></section>
+
+<section id="tasks"><div class="card"><div class="row"><input id="k_title" class="grow" placeholder="New task"><select id="k_pri"><option value="1">High</option><option value="2" selected>Med</option><option value="3">Low</option></select>
+<input id="k_due" type="date"><select id="k_track"></select><input id="k_tags" placeholder="tags,comma" style="width:110px"><select id="k_rec"><option value="">no repeat</option><option>daily</option><option>weekly</option><option>monthly</option></select><button class="p" id="k_add">Add</button></div></div>
+<div class="row"><input id="k_filter" class="grow" placeholder="Filter text / #tag"><label><input type="checkbox" id="k_hide"> hide done</label></div><ul id="klist"></ul></section>
+
+<section id="notes"><div class="card"><div class="row"><select id="n_track"></select><input id="n_topic" class="grow" placeholder="Topic"><label>Progress <input id="n_prog" type="range" min="0" max="100" value="0"></label></div>
+<textarea id="n_text" rows="3" style="width:100%" placeholder="Note"></textarea><button class="p" id="n_add">Save note</button></div><div id="nlist"></div></section>
+
+<section id="reports"><div class="card"><div class="row"><select id="r_type"><option>week</option><option>month</option></select><input id="r_date" type="date"><button id="r_go" class="p">Show</button>
+<a id="r_csv"><button>CSV</button></a><a id="r_json"><button>JSON</button></a><a id="r_html" target="_blank"><button>Printable</button></a></div><div id="r_out"></div></div></section>
+
+<section id="settings"><div class="card"><b>Google Apps Script URL</b><div class="row"><input id="g_url" class="grow" placeholder="https://script.google.com/macros/s/.../exec"><button id="g_save">Save</button><button id="g_push" class="p">Push report</button></div><div class="mut" id="g_out"></div></div>
+<div class="card"><b>ICS import</b><div class="row"><input id="i_url" class="grow" placeholder="https://.../calendar.ics"><button id="i_add">Import &amp; subscribe</button><button id="i_ref">Refresh all</button></div>
+<div class="row"><input type="file" id="i_file" accept=".ics"></div><div class="row mut">Refresh every <input id="i_min" type="number" style="width:70px"> min</div><table id="ics"></table>
+<div class="mut">Export feed: <a id="feed" href="/feed.ics">/feed.ics</a> (add ?token=... if auth enabled)</div></div>
+<div class="card"><b>Auth token</b> <div class="row"><input id="tok" class="grow" placeholder="Bearer token (if server requires)"><button id="tok_save">Save</button></div><button id="bk">Backup now</button></div></section>
+</main>
+<script src="app.js"></script></body></html>

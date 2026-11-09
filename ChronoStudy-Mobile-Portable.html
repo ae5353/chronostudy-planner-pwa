@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="ChronoStudy" />
   <meta name="description" content="ChronoStudy — Mobile-first Time Blocking, Weekly Study Program, Spaced Repetition (SM-2), Pomodoro Deep Focus, and Eisenhower Task Planner." />
-  <title>ChronoStudy — Time, Program, Study & Task Planner</title>
+  <title>ChronoStudy v4.0 — Smart Planning, Study Log, Excel Reports & Drive Scanner</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="apple-touch-icon" href="./icon.svg" />
@@ -3419,7 +3419,7 @@ function renderNavigation() {
         <div class="brand-mark">CS</div>
         <div>
           <div class="brand-title">ChronoStudy</div>
-          <div class="brand-subtitle">v3.0 · Life, Study & Time Suite</div>
+          <div class="brand-subtitle">v4.0 · Life, Study & Automation Suite</div>
         </div>
       </div>
 
@@ -3441,7 +3441,10 @@ function renderNavigation() {
       <div style="margin-top: 4px;">
         <div style="display:flex; align-items:center; justify-content:space-between; padding: 0 8px 6px;">
           <span class="metric-label">Active Life & Study Tracks</span>
-          <button class="btn-ghost" style="font-size:0.75rem; padding:2px 6px;" data-action="open-subject-modal" title="Add New Track or Goal">+ Add</button>
+          <div style="display:flex; gap:4px;">
+            <button class="btn-ghost" style="font-size:0.75rem; padding:2px 6px;" data-action="trigger-scan-folder" title="Scan Local or Google Drive folder to auto-populate tracks">📂 Scan</button>
+            <button class="btn-ghost" style="font-size:0.75rem; padding:2px 6px;" data-action="open-subject-modal" title="Add New Track or Goal">+ Add</button>
+          </div>
         </div>
         <div style="display:flex; flex-direction:column; gap:5px;">
           ${s.subjects
@@ -3492,11 +3495,17 @@ function renderNavigation() {
         <span class="badge badge-q4" style="font-family:var(--font-mono);">${s.stats.todayFocusMinutes}m focused</span>
       </div>
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" data-action="trigger-scan-folder" id="btn-scan-folder-top" title="Scan local folder or Google Drive for active files from last 5 months">
+          📂 Scan Folder
+        </button>
         <button class="btn btn-primary btn-sm" data-action="open-calendar-modal" id="btn-open-calendar-sync" title="Import/Export Google Calendar, Apple Calendar & Activity Schedules">
-          📅 Google Calendar & Schedule Sync
+          📅 Google Calendar & Sync
         </button>
         <button class="btn btn-secondary btn-sm" data-action="open-backup-modal" id="btn-open-backup">
-          ${syncCfg.gistId ? '🟢 Cloud Sync' : '☁️ PC ↔ Mobile Sync'}
+          ${syncCfg.gistId ? '🟢 Cloud Sync' : '☁️ Sync'}
+        </button>
+        <button class="icon-btn" data-action="force-refresh-app" title="Bypass cache & force refresh app" aria-label="Refresh App">
+          🔄
         </button>
         <button class="icon-btn" data-action="toggle-theme" id="btn-toggle-theme" title="Toggle Light/Dark Mode" aria-label="Toggle Theme">
           ${s.theme === 'dark' ? '☀️' : '🌙'}
@@ -4825,6 +4834,20 @@ function openModal(type) {
         </div>
       </div>
 
+      <!-- Method 4: 5-Month Local / Google Drive Folder Scanner -->
+      <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="font-size:0.85rem;">3. 5-Month Local / Google Drive Folder Scanner</strong>
+          <span class="badge badge-q1">New in v4.0</span>
+        </div>
+        <p style="font-size:0.78rem; color:var(--text-secondary); margin:0;">
+          Select your local university/project folder or Google Drive to automatically auto-create tracks and syllabus topics from recently modified files.
+        </p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <button type="button" class="btn btn-primary btn-sm" data-action="trigger-scan-folder">📂 Select & Scan Folder</button>
+        </div>
+      </div>
+
       <!-- Method 3: Local PC Sync Server -->
       <div style="background:var(--bg-elevated); padding:13px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:8px;">
         <strong style="font-size:0.85rem;">3. Self-Hosted PC Sync Server (<code>npm start</code>)</strong>
@@ -5229,6 +5252,32 @@ document.addEventListener('click', async (e) => {
     store.resetToDemo();
     closeModal();
     showToast('Sample setup restored');
+  } else if (action === 'trigger-scan-folder') {
+    let inp = document.getElementById('scan-local-folder-input');
+    if (!inp) {
+      inp = document.createElement('input');
+      inp.type = 'file';
+      inp.id = 'scan-local-folder-input';
+      inp.webkitdirectory = true;
+      inp.setAttribute('directory', '');
+      inp.multiple = true;
+      inp.style.display = 'none';
+      document.body.appendChild(inp);
+    }
+    inp.click();
+  } else if (action === 'force-refresh-app') {
+    showToast('Clearing cache and reloading latest version...');
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) reg.unregister();
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+    }
+    setTimeout(() => {
+      window.location.reload(true);
+    }, 300);
   }
 });
 

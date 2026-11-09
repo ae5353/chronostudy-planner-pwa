@@ -1,17 +1,41 @@
 {
-  "name": "ChronoStudy — Personal Study Tracker & Planner",
+  "id": "chronostudy-study-tracker",
+  "name": "ChronoStudy — Horology Study Tracker & Planner",
   "short_name": "ChronoStudy",
-  "description": "Personal Study Tracker & Planner: Track what you study, when, and for how long with live notes, integrated to-dos, and activity history.",
+  "description": "Personal horology study tracker, mechanical chronograph focus timer, backlog planner, and curriculum scheduler for desktop and mobile.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "orientation": "any",
+  "background_color": "#08110c",
+  "theme_color": "#08110c",
+  "categories": ["education", "productivity"],
   "icons": [
     {
       "src": "./icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Focus Timer",
+      "short_name": "Focus",
+      "url": "./index.html?view=focus",
+      "description": "Start a study focus session"
+    },
+    {
+      "name": "Study Tasks",
+      "short_name": "Tasks",
+      "url": "./index.html?view=focus&action=tasks",
+      "description": "View and manage study tasks"
+    },
+    {
+      "name": "Planner & Calendar",
+      "short_name": "Planner",
+      "url": "./index.html?view=calendar",
+      "description": "Weekly curriculum and study plan"
     }
   ]
 }

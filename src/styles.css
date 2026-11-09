@@ -3851,6 +3851,193 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   color: var(--accent-rose);
 }
 
+/* ==========================================================================
+   Multi-Device Cloud Sync & Status Badges
+   ========================================================================== */
+
+.cloud-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+}
+
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.sync-dot-idle {
+  background-color: var(--text-dim);
+  border: 1px solid var(--border-color);
+}
+
+.sync-dot-synced {
+  background-color: var(--accent-green, #10b981);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}
+
+.sync-dot-syncing {
+  background-color: var(--accent-amber, #f59e0b);
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  animation: sync-pulse 1s infinite alternate;
+}
+
+.sync-dot-error {
+  background-color: var(--accent-rose, #ef4444);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+.sync-dot-offline {
+  background-color: #6b7280;
+  opacity: 0.6;
+}
+
+@keyframes sync-pulse {
+  from { opacity: 0.4; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1.15); }
+}
+
+.cloud-sync-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.modal-sync-dialog {
+  max-width: 580px;
+  width: 100%;
+}
+
+.sync-banner-card {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.sync-banner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sync-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.sync-status-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.sync-status-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.sync-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem 1rem;
+}
+
+.sync-meta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+}
+
+.sync-meta-lbl {
+  color: var(--text-dim);
+}
+
+.sync-meta-val {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.font-mono {
+  font-family: monospace;
+}
+
+.text-green {
+  color: var(--accent-green, #10b981) !important;
+}
+
+.text-amber {
+  color: var(--accent-amber, #f59e0b) !important;
+}
+
+.text-rose {
+  color: var(--accent-rose, #ef4444) !important;
+}
+
+/* Tab Bar */
+.sync-tab-bar {
+  display: flex;
+  gap: 0.35rem;
+  background-color: var(--bg-card);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  margin-bottom: 0.85rem;
+}
+
+.sync-tab-btn {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.sync-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.sync-tab-btn.active {
+  background-color: var(--bg-input);
+  color: var(--primary);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.sync-device-card {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .sync-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Responsiveness */
 @media (max-width: 992px) {
   .pc-dashboard-grid {

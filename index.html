@@ -66,6 +66,10 @@
 
       <!-- Quick Actions -->
       <div class="header-actions">
+        <button id="btn-cloud-sync" class="btn btn-secondary cloud-sync-btn" title="Multi-Device Cloud Sync Status">
+          <span id="cloud-sync-dot" class="sync-dot sync-dot-idle"></span>
+          <span id="cloud-sync-label" class="cloud-sync-label">Sync</span>
+        </button>
         <button id="btn-toggle-task-sidebar" class="btn btn-secondary nav-sidebar-btn" title="Toggle Study Tasks Sidebar (Alt+T)">
           <span style="font-size: 0.9rem; opacity: 0.85;">◨</span> Tasks
         </button>
@@ -1289,6 +1293,183 @@
       <div class="modal-footer" style="padding-top: 0.75rem;">
         <button type="button" id="inapp-dialog-btn-cancel" class="btn btn-secondary">Cancel</button>
         <button type="button" id="inapp-dialog-btn-confirm" class="btn btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Multi-Device Cloud Sync & Device Hub -->
+  <div id="cloud-sync-modal" class="modal">
+    <div class="modal-content modal-sync-dialog">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.25rem;">☁</span>
+          <h3 class="modal-title" style="margin: 0;">Multi-Device Cloud Sync</h3>
+        </div>
+        <button id="btn-close-sync-modal" class="btn btn-icon" title="Close">✕</button>
+      </div>
+
+      <!-- Sync Status Banner Card -->
+      <div class="sync-banner-card">
+        <div class="sync-banner-top">
+          <div class="sync-status-indicator">
+            <span id="modal-sync-dot" class="sync-dot sync-dot-idle"></span>
+            <div>
+              <div id="modal-sync-title" class="sync-status-title">Local Mode</div>
+              <div id="modal-sync-subtitle" class="sync-status-subtitle">All data safely stored in this browser</div>
+            </div>
+          </div>
+          <button id="btn-modal-sync-now" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+            <span>⟳</span> Sync Now
+          </button>
+        </div>
+
+        <div class="sync-meta-grid">
+          <div class="sync-meta-item">
+            <span class="sync-meta-lbl">Device ID:</span>
+            <span id="modal-device-id" class="sync-meta-val font-mono">device-desktop-xxxx</span>
+          </div>
+          <div class="sync-meta-item">
+            <span class="sync-meta-lbl">Last Synced:</span>
+            <span id="modal-last-synced" class="sync-meta-val">Never</span>
+          </div>
+          <div class="sync-meta-item">
+            <span class="sync-meta-lbl">Outbox Queue:</span>
+            <span id="modal-unsynced-count" class="sync-meta-val">0 changes pending</span>
+          </div>
+          <div class="sync-meta-item">
+            <span class="sync-meta-lbl">Network:</span>
+            <span id="modal-network-status" class="sync-meta-val text-green">Online</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Provider Navigation Tabs -->
+      <div class="sync-tab-bar">
+        <button type="button" class="sync-tab-btn active" data-sync-tab="supabase">Supabase Cloud (Free)</button>
+        <button type="button" class="sync-tab-btn" data-sync-tab="offline">Offline Snapshot & QR</button>
+        <button type="button" class="sync-tab-btn" data-sync-tab="devices">App Mode & Lock Screen</button>
+      </div>
+
+      <div class="modal-body modal-scroll-body" style="max-height: 440px;">
+        <!-- TAB 1: Supabase Cloud Sync -->
+        <div id="sync-tab-panel-supabase" class="sync-tab-panel active">
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.75rem;">
+            Sync your study tasks, calendar, and sessions instantly across your laptop, phone, and tablet anywhere on Earth using Supabase's generous 100% free tier.
+          </p>
+
+          <div class="form-group" style="margin-bottom: 0.65rem;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Supabase Project URL
+            </label>
+            <input type="url" id="sync-supabase-url" class="input-text" placeholder="https://your-project-id.supabase.co" autocomplete="off" />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.65rem;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Anon Public API Key
+            </label>
+            <input type="password" id="sync-supabase-key" class="input-text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." autocomplete="off" />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.65rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+                Sync Room Code (Shared across your devices)
+              </label>
+              <button type="button" id="btn-generate-room-code" class="btn-link" style="font-size: 0.72rem; color: var(--primary); cursor: pointer; background: none; border: none; padding: 0;">
+                Generate Code
+              </button>
+            </div>
+            <input type="text" id="sync-supabase-room" class="input-text" placeholder="e.g. chronostudy-itu-2026" autocomplete="off" />
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.85rem;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Secret Passphrase (Optional End-to-End Encryption)
+            </label>
+            <input type="password" id="sync-passphrase" class="input-text" placeholder="Leave blank for standard transport, or enter a secret key" autocomplete="off" />
+            <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.25rem;">
+              When set, records are encrypted with AES-GCM 256-bit on your device before uploading.
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="checkbox" id="sync-auto-toggle" checked style="accent-color: var(--primary); width: 16px; height: 16px;" />
+            <label for="sync-auto-toggle" style="font-size: 0.82rem; color: var(--text-main); cursor: pointer;">
+              Automatically sync changes in background (debounced 4s, polled every 60s)
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" id="btn-save-cloud-config" class="btn btn-primary" style="flex: 1;">Save & Connect</button>
+            <button type="button" id="btn-copy-supabase-sql" class="btn btn-secondary" title="Copy SQL statement to create the table in Supabase">
+              📋 Copy SQL Setup
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 2: Offline Snapshot & QR -->
+        <div id="sync-tab-panel-offline" class="sync-tab-panel" style="display: none;">
+          <p style="font-size: 0.83rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.75rem;">
+            Export a full, lossless snapshot of your study courses, tasks, calendar, and logged sessions to migrate to another device without any cloud account.
+          </p>
+
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.85rem;">
+            <button type="button" id="btn-export-snapshot" class="btn btn-secondary" style="flex: 1;">
+              📤 Copy Snapshot JSON
+            </button>
+            <button type="button" id="btn-download-snapshot-file" class="btn btn-secondary" style="flex: 1;">
+              💾 Download File
+            </button>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0.75rem;">
+            <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Import Snapshot from Another Device
+            </label>
+            <textarea id="sync-import-textarea" class="input-text" rows="3" placeholder="Paste snapshot JSON here..." style="font-family: monospace; font-size: 0.75rem;"></textarea>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <button type="button" id="btn-import-snapshot" class="btn btn-primary">
+              📥 Import & Additive Merge
+            </button>
+            <button type="button" id="btn-rollback-backup" class="btn btn-secondary" style="color: var(--accent-amber);" title="Rollback to snapshot created before last merge">
+              ↺ Restore Pre-Sync Backup
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 3: App Mode & Lock Screen -->
+        <div id="sync-tab-panel-devices" class="sync-tab-panel" style="display: none;">
+          <div class="sync-device-card">
+            <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
+              📱 Standalone App Mode (No Browser Bar)
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.65rem;">
+              ChronoStudy is a Progressive Web App (PWA). You can install it on your Android phone, Windows PC, or Mac to open as an independent window or home-screen icon with zero URL bars.
+            </p>
+            <button type="button" id="btn-pwa-install-app" class="btn btn-primary btn-sm">
+              📲 Install ChronoStudy as App
+            </button>
+          </div>
+
+          <div class="sync-device-card" style="margin-top: 0.85rem;">
+            <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
+              ⏱ Android Lock Screen & Notification Timer
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.65rem;">
+              Whenever your study timer starts, ChronoStudy automatically streams your course name, elapsed time, and Play / Pause controls straight to your Android lock screen and pull-down notification shade via the MediaSession engine.
+            </p>
+            <button type="button" id="btn-request-notifications" class="btn btn-secondary btn-sm">
+              🔔 Enable Lecture & Study Notifications
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding-top: 0.5rem;">
+        <button type="button" id="btn-done-sync-modal" class="btn btn-primary" style="padding: 0.45rem 1.4rem;">Done</button>
       </div>
     </div>
   </div>

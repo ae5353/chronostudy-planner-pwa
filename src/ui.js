@@ -2,6 +2,7 @@
 import { store, toLocalDateStr } from './store.js';
 import { timer } from './timer.js';
 import { playClickSound, setAmbientSound, updateAmbientVolume } from './audio.js';
+import { syncManager } from './sync.js';
 
 export class ChronoUI {
   constructor() {
@@ -48,6 +49,12 @@ export class ChronoUI {
     // Subscribe to timer updates
     timer.subscribe((timerState) => {
       this.renderTimer(timerState);
+    });
+
+    // Initialize and subscribe to Cloud Sync Controller
+    syncManager.init();
+    syncManager.subscribe((syncStatus) => {
+      this.renderSyncStatus(syncStatus);
     });
   }
 
@@ -298,6 +305,51 @@ export class ChronoUI {
     this.analyticsWeeklyBars = document.getElementById('analytics-weekly-bars');
     this.analyticsSubjectShare = document.getElementById('analytics-subject-share');
     this.btnExportCsv = document.getElementById('btn-export-csv');
+
+    // Cloud Sync & Device Hub elements
+    this.btnCloudSync = document.getElementById('btn-cloud-sync');
+    this.cloudSyncDot = document.getElementById('cloud-sync-dot');
+    this.cloudSyncLabel = document.getElementById('cloud-sync-label');
+
+    this.cloudSyncModal = document.getElementById('cloud-sync-modal');
+    this.btnCloseSyncModal = document.getElementById('btn-close-sync-modal');
+    this.btnDoneSyncModal = document.getElementById('btn-done-sync-modal');
+
+    this.modalSyncDot = document.getElementById('modal-sync-dot');
+    this.modalSyncTitle = document.getElementById('modal-sync-title');
+    this.modalSyncSubtitle = document.getElementById('modal-sync-subtitle');
+    this.btnModalSyncNow = document.getElementById('btn-modal-sync-now');
+
+    this.modalDeviceId = document.getElementById('modal-device-id');
+    this.modalLastSynced = document.getElementById('modal-last-synced');
+    this.modalUnsyncedCount = document.getElementById('modal-unsynced-count');
+    this.modalNetworkStatus = document.getElementById('modal-network-status');
+
+    this.syncTabBtns = document.querySelectorAll('.sync-tab-btn');
+    this.syncTabPanels = {
+      supabase: document.getElementById('sync-tab-panel-supabase'),
+      offline: document.getElementById('sync-tab-panel-offline'),
+      devices: document.getElementById('sync-tab-panel-devices')
+    };
+
+    this.syncSupabaseUrl = document.getElementById('sync-supabase-url');
+    this.syncSupabaseKey = document.getElementById('sync-supabase-key');
+    this.syncSupabaseRoom = document.getElementById('sync-supabase-room');
+    this.syncPassphrase = document.getElementById('sync-passphrase');
+    this.syncAutoToggle = document.getElementById('sync-auto-toggle');
+
+    this.btnSaveCloudConfig = document.getElementById('btn-save-cloud-config');
+    this.btnCopySupabaseSql = document.getElementById('btn-copy-supabase-sql');
+    this.btnGenerateRoomCode = document.getElementById('btn-generate-room-code');
+
+    this.btnExportSnapshot = document.getElementById('btn-export-snapshot');
+    this.btnDownloadSnapshotFile = document.getElementById('btn-download-snapshot-file');
+    this.syncImportTextarea = document.getElementById('sync-import-textarea');
+    this.btnImportSnapshot = document.getElementById('btn-import-snapshot');
+    this.btnRollbackBackup = document.getElementById('btn-rollback-backup');
+
+    this.btnPwaInstallApp = document.getElementById('btn-pwa-install-app');
+    this.btnRequestNotifications = document.getElementById('btn-request-notifications');
   }
 
   bindEvents() {
@@ -357,6 +409,115 @@ export class ChronoUI {
     if (this.btnDoneThemeModal) {
       this.btnDoneThemeModal.addEventListener('click', () => {
         this.closeThemeModal();
+        playClickSound();
+      });
+    }
+
+    // Cloud Sync Modal & Actions
+    if (this.btnCloudSync) {
+      this.btnCloudSync.addEventListener('click', () => {
+        this.openSyncModal();
+        playClickSound();
+      });
+    }
+
+    if (this.btnCloseSyncModal) {
+      this.btnCloseSyncModal.addEventListener('click', () => {
+        this.closeSyncModal();
+        playClickSound();
+      });
+    }
+
+    if (this.btnDoneSyncModal) {
+      this.btnDoneSyncModal.addEventListener('click', () => {
+        this.closeSyncModal();
+        playClickSound();
+      });
+    }
+
+    if (this.cloudSyncModal) {
+      this.cloudSyncModal.addEventListener('click', (e) => {
+        if (e.target === this.cloudSyncModal) {
+          this.closeSyncModal();
+        }
+      });
+    }
+
+    if (this.syncTabBtns) {
+      this.syncTabBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.switchSyncTab(btn.dataset.syncTab);
+          playClickSound();
+        });
+      });
+    }
+
+    if (this.btnModalSyncNow) {
+      this.btnModalSyncNow.addEventListener('click', () => {
+        this.triggerSyncNow();
+        playClickSound();
+      });
+    }
+
+    if (this.btnSaveCloudConfig) {
+      this.btnSaveCloudConfig.addEventListener('click', () => {
+        this.saveCloudConfig();
+        playClickSound();
+      });
+    }
+
+    if (this.btnCopySupabaseSql) {
+      this.btnCopySupabaseSql.addEventListener('click', () => {
+        this.copySupabaseSql();
+        playClickSound();
+      });
+    }
+
+    if (this.btnGenerateRoomCode) {
+      this.btnGenerateRoomCode.addEventListener('click', () => {
+        this.generateRoomCode();
+        playClickSound();
+      });
+    }
+
+    if (this.btnExportSnapshot) {
+      this.btnExportSnapshot.addEventListener('click', () => {
+        this.exportSnapshotClipboard();
+        playClickSound();
+      });
+    }
+
+    if (this.btnDownloadSnapshotFile) {
+      this.btnDownloadSnapshotFile.addEventListener('click', () => {
+        this.downloadSnapshotFile();
+        playClickSound();
+      });
+    }
+
+    if (this.btnImportSnapshot) {
+      this.btnImportSnapshot.addEventListener('click', () => {
+        this.importSnapshotFromUI();
+        playClickSound();
+      });
+    }
+
+    if (this.btnRollbackBackup) {
+      this.btnRollbackBackup.addEventListener('click', () => {
+        this.rollbackPreSyncBackup();
+        playClickSound();
+      });
+    }
+
+    if (this.btnPwaInstallApp) {
+      this.btnPwaInstallApp.addEventListener('click', () => {
+        syncManager.promptPWAInstall();
+        playClickSound();
+      });
+    }
+
+    if (this.btnRequestNotifications) {
+      this.btnRequestNotifications.addEventListener('click', () => {
+        this.requestNotifications();
         playClickSound();
       });
     }
@@ -1223,6 +1384,396 @@ export class ChronoUI {
         inputEl.select();
       }, 50);
     });
+  }
+
+  showInAppAlert({ title = 'Notice', message = '', buttonText = 'OK' }) {
+    return new Promise((resolve) => {
+      const modal = document.getElementById('inapp-dialog-modal');
+      const titleEl = document.getElementById('inapp-dialog-title');
+      const msgEl = document.getElementById('inapp-dialog-message');
+      const inputGroup = document.getElementById('inapp-dialog-input-group');
+      const btnCancel = document.getElementById('inapp-dialog-btn-cancel');
+      const btnConfirm = document.getElementById('inapp-dialog-btn-confirm');
+
+      if (!modal || !titleEl || !btnConfirm) {
+        window.alert(`${title}\n\n${message}`);
+        resolve();
+        return;
+      }
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      msgEl.style.display = message ? 'block' : 'none';
+      if (inputGroup) inputGroup.style.display = 'none';
+      if (btnCancel) btnCancel.style.display = 'none';
+
+      btnConfirm.textContent = buttonText;
+      btnConfirm.className = 'btn btn-primary';
+
+      const cleanup = () => {
+        modal.classList.remove('active');
+        btnConfirm.removeEventListener('click', onConfirm);
+        document.removeEventListener('keydown', onKeyDown);
+        if (btnCancel) btnCancel.style.display = 'inline-block';
+        resolve();
+      };
+
+      const onConfirm = () => cleanup();
+      const onKeyDown = (e) => {
+        if (e.key === 'Escape' || e.key === 'Enter') {
+          e.preventDefault();
+          cleanup();
+        }
+      };
+
+      btnConfirm.addEventListener('click', onConfirm);
+      document.addEventListener('keydown', onKeyDown);
+
+      modal.classList.add('active');
+      btnConfirm.focus();
+    });
+  }
+
+  // --- Multi-Device Cloud Sync Methods ---
+  openSyncModal() {
+    if (!this.cloudSyncModal) return;
+    const syncState = store.getState().sync || {};
+    if (this.syncSupabaseUrl) this.syncSupabaseUrl.value = syncState.supabaseUrl || '';
+    if (this.syncSupabaseKey) this.syncSupabaseKey.value = syncState.supabaseKey || '';
+    if (this.syncSupabaseRoom) this.syncSupabaseRoom.value = syncState.supabaseRoomId || '';
+    if (this.syncPassphrase) this.syncPassphrase.value = syncState.passphrase || '';
+    if (this.syncAutoToggle) this.syncAutoToggle.checked = syncState.autoSync !== false;
+
+    this.renderSyncStatus(syncManager.getStatus());
+    this.cloudSyncModal.classList.add('active');
+  }
+
+  closeSyncModal() {
+    if (this.cloudSyncModal) {
+      this.cloudSyncModal.classList.remove('active');
+    }
+  }
+
+  switchSyncTab(tabName) {
+    if (this.syncTabBtns) {
+      this.syncTabBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.syncTab === tabName);
+      });
+    }
+    if (this.syncTabPanels) {
+      Object.entries(this.syncTabPanels).forEach(([key, panel]) => {
+        if (panel) {
+          panel.style.display = key === tabName ? 'block' : 'none';
+        }
+      });
+    }
+  }
+
+  renderSyncStatus(status) {
+    // Header dot & label
+    if (this.cloudSyncDot && this.cloudSyncLabel) {
+      this.cloudSyncDot.className = 'sync-dot';
+      if (!status.isOnline) {
+        this.cloudSyncDot.classList.add('sync-dot-offline');
+        this.cloudSyncLabel.textContent = 'Offline';
+      } else if (status.status === 'syncing') {
+        this.cloudSyncDot.classList.add('sync-dot-syncing');
+        this.cloudSyncLabel.textContent = 'Syncing...';
+      } else if (status.status === 'synced') {
+        this.cloudSyncDot.classList.add('sync-dot-synced');
+        this.cloudSyncLabel.textContent = 'Synced';
+      } else if (status.status === 'error') {
+        this.cloudSyncDot.classList.add('sync-dot-error');
+        this.cloudSyncLabel.textContent = 'Sync Error';
+      } else {
+        this.cloudSyncDot.classList.add('sync-dot-idle');
+        this.cloudSyncLabel.textContent = 'Sync';
+      }
+    }
+
+    // Modal elements
+    if (this.modalSyncDot) {
+      this.modalSyncDot.className = 'sync-dot';
+      if (!status.isOnline) {
+        this.modalSyncDot.classList.add('sync-dot-offline');
+      } else if (status.status === 'syncing') {
+        this.modalSyncDot.classList.add('sync-dot-syncing');
+      } else if (status.status === 'synced') {
+        this.modalSyncDot.classList.add('sync-dot-synced');
+      } else if (status.status === 'error') {
+        this.modalSyncDot.classList.add('sync-dot-error');
+      } else {
+        this.modalSyncDot.classList.add('sync-dot-idle');
+      }
+    }
+
+    if (this.modalDeviceId) {
+      this.modalDeviceId.textContent = status.deviceId || 'device-local';
+    }
+
+    if (this.modalLastSynced) {
+      if (status.lastSyncedAt) {
+        const d = new Date(status.lastSyncedAt);
+        this.modalLastSynced.textContent = `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+      } else {
+        this.modalLastSynced.textContent = 'Never';
+      }
+    }
+
+    if (this.modalUnsyncedCount) {
+      this.modalUnsyncedCount.textContent = status.hasChanges
+        ? `${status.unsyncedCount} change${status.unsyncedCount === 1 ? '' : 's'} pending`
+        : 'All changes synced';
+    }
+
+    if (this.modalNetworkStatus) {
+      this.modalNetworkStatus.textContent = status.isOnline ? 'Online' : 'Offline';
+      this.modalNetworkStatus.className = 'sync-meta-val ' + (status.isOnline ? 'text-green' : 'text-rose');
+    }
+
+    if (this.modalSyncTitle) {
+      if (!status.isOnline) {
+        this.modalSyncTitle.textContent = 'Device Offline';
+      } else if (status.status === 'syncing') {
+        this.modalSyncTitle.textContent = 'Syncing with Cloud...';
+      } else if (status.status === 'synced') {
+        this.modalSyncTitle.textContent = 'Cloud Synchronized';
+      } else if (status.status === 'error') {
+        this.modalSyncTitle.textContent = 'Sync Attention Needed';
+      } else if (status.isConfigured) {
+        this.modalSyncTitle.textContent = 'Ready to Sync';
+      } else {
+        this.modalSyncTitle.textContent = 'Local Mode (No Cloud Account)';
+      }
+    }
+
+    if (this.modalSyncSubtitle) {
+      if (!status.isOnline) {
+        this.modalSyncSubtitle.textContent = 'Changes queued locally; will auto-sync upon reconnection';
+      } else if (status.lastError) {
+        this.modalSyncSubtitle.textContent = status.lastError;
+      } else if (status.isConfigured) {
+        this.modalSyncSubtitle.textContent = `Room: ${status.roomId} • Encrypted End-to-End`;
+      } else {
+        this.modalSyncSubtitle.textContent = 'Connect Supabase to keep PC & mobile in sync automatically';
+      }
+    }
+  }
+
+  async saveCloudConfig() {
+    const url = this.syncSupabaseUrl ? this.syncSupabaseUrl.value.trim() : '';
+    const key = this.syncSupabaseKey ? this.syncSupabaseKey.value.trim() : '';
+    let room = this.syncSupabaseRoom ? this.syncSupabaseRoom.value.trim().toLowerCase() : '';
+    const pass = this.syncPassphrase ? this.syncPassphrase.value.trim() : '';
+    const auto = this.syncAutoToggle ? this.syncAutoToggle.checked : true;
+
+    if (!url || !key) {
+      await this.showInAppAlert({
+        title: 'Missing Credentials',
+        message: 'Please provide both your Supabase Project URL and Anon API key.'
+      });
+      return;
+    }
+
+    if (!room) {
+      room = `chronostudy-room-${Math.random().toString(36).slice(2, 8)}`;
+      if (this.syncSupabaseRoom) this.syncSupabaseRoom.value = room;
+    }
+
+    store.updateSyncSettings({
+      provider: 'supabase',
+      supabaseUrl: url,
+      supabaseKey: key,
+      supabaseRoomId: room,
+      passphrase: pass,
+      autoSync: auto
+    });
+
+    await this.triggerSyncNow();
+  }
+
+  async triggerSyncNow() {
+    if (this.btnModalSyncNow) {
+      this.btnModalSyncNow.disabled = true;
+      this.btnModalSyncNow.textContent = 'Syncing...';
+    }
+
+    const res = await syncManager.performSync({ force: true });
+
+    if (this.btnModalSyncNow) {
+      this.btnModalSyncNow.disabled = false;
+      this.btnModalSyncNow.innerHTML = '<span>⟳</span> Sync Now';
+    }
+
+    if (res.success) {
+      await this.showInAppAlert({
+        title: 'Sync Complete',
+        message: 'Your study tasks, courses, and sessions are now fully synchronized with the cloud!'
+      });
+    } else if (res.reason !== 'unconfigured') {
+      await this.showInAppAlert({
+        title: 'Sync Alert',
+        message: res.error || 'Failed to sync. Please check your network connection and Supabase settings.'
+      });
+    }
+  }
+
+  async copySupabaseSql() {
+    const sql = `-- Run this once in your Supabase SQL Editor
+create table if not exists chronostudy_sync (
+  room_id text primary key,
+  payload text not null,
+  updated_at timestamptz default now(),
+  device_id text
+);
+
+alter table chronostudy_sync enable row level security;
+
+create policy "Allow room sync access" on chronostudy_sync
+  for all using (true) with check (true);`;
+
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(sql);
+        await this.showInAppAlert({
+          title: 'SQL Setup Copied',
+          message: 'The table setup SQL query was copied to your clipboard! Paste it into your Supabase Dashboard -> SQL Editor and click "Run".'
+        });
+      } else {
+        await this.showInAppAlert({
+          title: 'Supabase SQL Setup',
+          message: sql
+        });
+      }
+    } catch (e) {
+      await this.showInAppAlert({
+        title: 'Supabase SQL Setup',
+        message: sql
+      });
+    }
+  }
+
+  generateRoomCode() {
+    const code = `chronostudy-itu-${Math.random().toString(36).slice(2, 8)}`;
+    if (this.syncSupabaseRoom) {
+      this.syncSupabaseRoom.value = code;
+    }
+  }
+
+  async exportSnapshotClipboard() {
+    const json = syncManager.exportSnapshotJSON();
+    try {
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(json);
+        await this.showInAppAlert({
+          title: 'Snapshot Copied',
+          message: 'Full study workspace snapshot JSON copied to clipboard. You can paste it on another device to import!'
+        });
+      } else {
+        if (this.syncImportTextarea) this.syncImportTextarea.value = json;
+        await this.showInAppAlert({
+          title: 'Snapshot Generated',
+          message: 'Snapshot JSON has been placed in the text box below for you to copy.'
+        });
+      }
+    } catch (e) {
+      if (this.syncImportTextarea) this.syncImportTextarea.value = json;
+    }
+  }
+
+  downloadSnapshotFile() {
+    const json = syncManager.exportSnapshotJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chronostudy-backup-${toLocalDateStr(new Date())}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async importSnapshotFromUI() {
+    const text = this.syncImportTextarea ? this.syncImportTextarea.value.trim() : '';
+    if (!text) {
+      await this.showInAppAlert({
+        title: 'Empty Input',
+        message: 'Please paste the snapshot JSON text into the text area before importing.'
+      });
+      return;
+    }
+
+    const confirmed = await this.showInAppConfirm({
+      title: 'Import Snapshot',
+      message: 'This will additively merge all courses, tasks, and study sessions from the snapshot into your current workspace. Your existing data will not be lost. Continue?'
+    });
+
+    if (!confirmed) return;
+
+    const res = await syncManager.importSnapshotJSON(text);
+    if (res.success) {
+      if (this.syncImportTextarea) this.syncImportTextarea.value = '';
+      await this.showInAppAlert({
+        title: 'Import Successful',
+        message: `Successfully merged workspace snapshot! Added ${res.summary.addedTasks} new tasks and ${res.summary.addedSessions} study sessions without data loss.`
+      });
+    } else {
+      await this.showInAppAlert({
+        title: 'Import Failed',
+        message: res.error || 'Failed to parse and merge snapshot.'
+      });
+    }
+  }
+
+  async rollbackPreSyncBackup() {
+    const confirmed = await this.showInAppConfirm({
+      title: 'Rollback to Pre-Sync Backup',
+      message: 'Are you sure you want to revert your workspace to the automatic safety snapshot created before the last sync operation?',
+      danger: true
+    });
+
+    if (!confirmed) return;
+
+    const res = store.restoreSafetyBackup();
+    if (res.success) {
+      await this.showInAppAlert({
+        title: 'Rollback Complete',
+        message: `Workspace successfully restored to backup from ${new Date(res.backupAt).toLocaleTimeString()}.`
+      });
+    } else {
+      await this.showInAppAlert({
+        title: 'Rollback Failed',
+        message: res.error || 'No safety backup snapshot found.'
+      });
+    }
+  }
+
+  async requestNotifications() {
+    if (typeof Notification === 'undefined') {
+      await this.showInAppAlert({
+        title: 'Notifications Unsupported',
+        message: 'Web notifications are not supported on this browser.'
+      });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      new Notification('ChronoStudy Planner', {
+        body: 'Notifications enabled! You will receive study timer and lecture alerts.',
+        icon: 'icons/icon-192.png'
+      });
+      await this.showInAppAlert({
+        title: 'Notifications Active',
+        message: 'Notification permission granted! ChronoStudy can now remind you of upcoming lectures and study milestones.'
+      });
+    } else {
+      await this.showInAppAlert({
+        title: 'Permission Denied',
+        message: 'Notification permission was denied. You can re-enable notifications in your browser site settings.'
+      });
+    }
   }
 
   // --- Themes & Appearance Engine ---

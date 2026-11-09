@@ -142,7 +142,7 @@ export function toLocalDateStr(d = new Date()) {
 
 // Authentic study tasks aligned with user schedule
 const INITIAL_STATE = {
-  version: 11,
+  version: 12,
   groups: DEFAULT_GROUPS,
   subjects: INITIAL_SUBJECTS,
   weeklyEvents: INITIAL_WEEKLY_EVENTS,
@@ -274,6 +274,17 @@ const INITIAL_STATE = {
     ambientSound: 'none',
     volume: 0.5,
     calendarView: 'week'
+  },
+  sync: {
+    enabled: false,
+    provider: 'supabase', // 'supabase' | 'gdrive' | 'qr'
+    supabaseUrl: '',
+    supabaseAnonKey: '',
+    syncPassphrase: '',
+    lastSyncedAt: null,
+    status: 'idle', // 'idle' | 'syncing' | 'synced' | 'offline' | 'error'
+    lastError: null,
+    autoSync: true
   }
 };
 
@@ -370,14 +381,35 @@ class Store {
       }
     });
 
+    // Entity sync metadata sanitization
+    tasks.forEach((t) => {
+      if (!t.createdAt) t.createdAt = new Date().toISOString();
+      if (!t.updatedAt) t.updatedAt = t.createdAt;
+      if (t.deletedAt === undefined) t.deletedAt = null;
+      if (t.synced === undefined) t.synced = true;
+    });
+
     const sessions = Array.isArray(state.sessions) ? state.sessions : [...INITIAL_STATE.sessions];
     sessions.forEach((s) => {
       if (s.id === 'sess-eef211-1') {
         s.endTime = '2026-11-09T18:30:00.000Z';
         s.createdAt = '2026-11-09T18:30:00.000Z';
       }
+      if (!s.createdAt) s.createdAt = s.startTime || new Date().toISOString();
+      if (!s.updatedAt) s.updatedAt = s.createdAt;
+      if (s.synced === undefined) s.synced = true;
     });
     state.sessions = sessions;
+
+    subjects.forEach((s) => {
+      if (!s.updatedAt) s.updatedAt = new Date().toISOString();
+      if (s.deletedAt === undefined) s.deletedAt = null;
+    });
+
+    weeklyEvents.forEach((e) => {
+      if (!e.updatedAt) e.updatedAt = new Date().toISOString();
+      if (e.deletedAt === undefined) e.deletedAt = null;
+    });
 
     if (!state.settings) state.settings = { ...INITIAL_STATE.settings };
     if (!state.settings.fontStyle) state.settings.fontStyle = 'sans';
@@ -386,6 +418,13 @@ class Store {
       state.settings.timerStyle = 'chronograph';
     }
 
+    if (!state.sync) {
+      state.sync = { ...INITIAL_STATE.sync };
+    } else {
+      state.sync = { ...INITIAL_STATE.sync, ...state.sync };
+    }
+
+    state.version = 12;
     state.subjects = subjects;
     state.groups = cleanGroups;
     state.weeklyEvents = weeklyEvents;
@@ -486,13 +525,219 @@ class Store {
 
   saveState() {
     try {
-      if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
+      }
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('chronostudy:state-changed', { detail: { timestamp: Date.now() } }));
       }
     } catch (err) {
       console.error('Failed to save to localStorage', err);
     }
     this.notify();
+  }
+
+  // --- Safety Backup Snapshots (Zero Data Loss Protection) ---
+  createSafetyBackup() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const payload = {
+          backupAt: new Date().toISOString(),
+          version: this.state.version,
+          state: this.state
+        };
+        localStorage.setItem('chronostudy_pre_sync_backup', JSON.stringify(payload));
+      }
+    } catch (err) {
+      console.warn('Safety backup snapshot failed:', err);
+    }
+  }
+
+  restoreSafetyBackup() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const serialized = localStorage.getItem('chronostudy_pre_sync_backup');
+        if (serialized) {
+          const parsed = JSON.parse(serialized);
+          if (parsed && parsed.state) {
+            this.state = this.sanitizeState(parsed.state);
+            this.saveState();
+            return { success: true, backupAt: parsed.backupAt };
+          }
+        }
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: 'No safety backup found' };
+  }
+
+  // --- Cloud Sync Payload & Settings ---
+  getSyncPayload() {
+    return {
+      version: this.state.version,
+      exportedAt: new Date().toISOString(),
+      groups: this.state.groups,
+      subjects: this.state.subjects,
+      weeklyEvents: this.state.weeklyEvents,
+      tasks: this.state.tasks,
+      sessions: this.state.sessions,
+      settings: this.state.settings
+    };
+  }
+
+  updateSyncSettings(partial) {
+    if (!this.state.sync) this.state.sync = { ...INITIAL_STATE.sync };
+    this.state.sync = {
+      ...this.state.sync,
+      ...partial
+    };
+    this.saveState();
+  }
+
+  markRecordsSynced(syncTimestamp = new Date().toISOString()) {
+    this.state.tasks.forEach((t) => { t.synced = true; });
+    this.state.sessions.forEach((s) => { s.synced = true; });
+    if (!this.state.sync) this.state.sync = { ...INITIAL_STATE.sync };
+    this.state.sync.lastSyncedAt = syncTimestamp;
+    this.state.sync.status = 'synced';
+    this.state.sync.lastError = null;
+    this.saveState();
+  }
+
+  getUnsyncedChanges() {
+    const unsyncedTasks = this.state.tasks.filter((t) => t.synced === false);
+    const unsyncedSessions = this.state.sessions.filter((s) => s.synced === false);
+    return {
+      hasChanges: unsyncedTasks.length > 0 || unsyncedSessions.length > 0,
+      tasks: unsyncedTasks,
+      sessions: unsyncedSessions
+    };
+  }
+
+  // --- Deterministic 3-Way Cloud Merge Engine ---
+  mergeRemoteState(remote) {
+    if (!remote || typeof remote !== 'object') {
+      return { success: false, error: 'Invalid remote sync payload' };
+    }
+
+    // 1. Take safety snapshot before touching state
+    this.createSafetyBackup();
+
+    let changesCount = 0;
+    const nowIso = new Date().toISOString();
+
+    // 2. Additive Merge for Study Sessions (Zero loss, deduplicated by ID)
+    if (Array.isArray(remote.sessions)) {
+      const localSessionIds = new Set(this.state.sessions.map((s) => s.id));
+      remote.sessions.forEach((remoteSess) => {
+        if (!localSessionIds.has(remoteSess.id)) {
+          this.state.sessions.push({ ...remoteSess, synced: true });
+          localSessionIds.add(remoteSess.id);
+          changesCount++;
+        }
+      });
+      // Sort sessions descending by start time
+      this.state.sessions.sort((a, b) => new Date(b.startTime || b.date || 0) - new Date(a.startTime || a.date || 0));
+    }
+
+    // 3. Last-Write-Wins Merge for Tasks (resolved by updatedAt & soft-delete)
+    if (Array.isArray(remote.tasks)) {
+      const localTaskMap = new Map(this.state.tasks.map((t) => [t.id, t]));
+      remote.tasks.forEach((remoteTask) => {
+        const localTask = localTaskMap.get(remoteTask.id);
+        if (!localTask) {
+          // If remote task is already deleted, don't re-create
+          if (!remoteTask.deletedAt) {
+            this.state.tasks.unshift({ ...remoteTask, synced: true });
+            changesCount++;
+          }
+        } else {
+          const remoteUpdated = new Date(remoteTask.updatedAt || remoteTask.createdAt || 0).getTime();
+          const localUpdated = new Date(localTask.updatedAt || localTask.createdAt || 0).getTime();
+          if (remoteUpdated > localUpdated) {
+            if (remoteTask.deletedAt) {
+              localTask.deletedAt = remoteTask.deletedAt;
+              localTask.updatedAt = remoteTask.updatedAt;
+              localTask.synced = true;
+            } else {
+              Object.assign(localTask, remoteTask, { synced: true });
+            }
+            changesCount++;
+          }
+        }
+      });
+    }
+
+    // 4. Merge Subjects
+    if (Array.isArray(remote.subjects)) {
+      const localSubMap = new Map(this.state.subjects.map((s) => [s.id, s]));
+      remote.subjects.forEach((remoteSub) => {
+        const localSub = localSubMap.get(remoteSub.id);
+        if (!localSub) {
+          if (!remoteSub.deletedAt) {
+            this.state.subjects.push({ ...remoteSub });
+            changesCount++;
+          }
+        } else {
+          const remoteUpdated = new Date(remoteSub.updatedAt || 0).getTime();
+          const localUpdated = new Date(localSub.updatedAt || 0).getTime();
+          if (remoteUpdated > localUpdated) {
+            if (remoteSub.deletedAt) {
+              this.state.subjects = this.state.subjects.filter((s) => s.id !== remoteSub.id);
+            } else {
+              Object.assign(localSub, remoteSub);
+            }
+            changesCount++;
+          }
+        }
+      });
+    }
+
+    // 5. Merge Weekly Events
+    if (Array.isArray(remote.weeklyEvents)) {
+      const localEvMap = new Map(this.state.weeklyEvents.map((e) => [e.id, e]));
+      remote.weeklyEvents.forEach((remoteEv) => {
+        const localEv = localEvMap.get(remoteEv.id);
+        if (!localEv) {
+          if (!remoteEv.deletedAt) {
+            this.state.weeklyEvents.push({ ...remoteEv });
+            changesCount++;
+          }
+        } else {
+          const remoteUpdated = new Date(remoteEv.updatedAt || 0).getTime();
+          const localUpdated = new Date(localEv.updatedAt || 0).getTime();
+          if (remoteUpdated > localUpdated) {
+            if (remoteEv.deletedAt) {
+              this.state.weeklyEvents = this.state.weeklyEvents.filter((e) => e.id !== remoteEv.id);
+            } else {
+              Object.assign(localEv, remoteEv);
+            }
+            changesCount++;
+          }
+        }
+      });
+    }
+
+    // 6. Merge Groups
+    if (Array.isArray(remote.groups)) {
+      remote.groups.forEach((g) => {
+        if (!this.state.groups.includes(g)) this.state.groups.push(g);
+      });
+    }
+
+    // 7. Merge Settings
+    if (remote.settings) {
+      this.state.settings = { ...this.state.settings, ...remote.settings };
+    }
+
+    if (!this.state.sync) this.state.sync = { ...INITIAL_STATE.sync };
+    this.state.sync.lastSyncedAt = nowIso;
+    this.state.sync.status = 'synced';
+    this.state.sync.lastError = null;
+
+    this.saveState();
+    return { success: true, changesCount };
   }
 
   subscribe(listener) {
@@ -582,6 +827,7 @@ class Store {
     const parsedMins = targetMinutes ? parseInt(targetMinutes, 10) : null;
     const cleanDueDate = dueDate && dueDate.trim() ? dueDate.trim() : null;
     const cleanSubject = subject && subject.trim() && subject.trim().toLowerCase() !== 'none' && subject.trim().toLowerCase() !== 'all' ? subject.trim() : null;
+    const nowIso = new Date().toISOString();
 
     const newTask = {
       id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -594,7 +840,10 @@ class Store {
       parentRecurringId: null,
       notes: notes ? notes.trim() : '',
       completed: false,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      deletedAt: null,
+      synced: false,
       completedAt: null,
       timeSpentSec: 0
     };
@@ -610,6 +859,8 @@ class Store {
     const wasCompleted = task.completed;
     task.completed = !wasCompleted;
     task.completedAt = task.completed ? new Date().toISOString() : null;
+    task.updatedAt = new Date().toISOString();
+    task.synced = false;
 
     // If the task was just marked COMPLETED and it is RECURRING, spawn the next occurrence
     if (task.completed && task.recurrence && task.recurrence !== 'none') {
@@ -624,6 +875,7 @@ class Store {
       );
 
       if (!alreadyExists && nextDate) {
+        const nextNowIso = new Date().toISOString();
         const nextTask = {
           id: 'task-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
           title: task.title,
@@ -635,7 +887,10 @@ class Store {
           parentRecurringId: parentId,
           notes: task.notes || '',
           completed: false,
-          createdAt: new Date().toISOString(),
+          createdAt: nextNowIso,
+          updatedAt: nextNowIso,
+          deletedAt: null,
+          synced: false,
           completedAt: null,
           timeSpentSec: 0
         };
@@ -650,6 +905,8 @@ class Store {
     const task = this.state.tasks.find((t) => t.id === taskId);
     if (!task) return;
     Object.assign(task, updates);
+    task.updatedAt = new Date().toISOString();
+    task.synced = false;
     this.saveState();
   }
 
@@ -665,6 +922,8 @@ class Store {
     const task = this.state.tasks.find((t) => t.id === taskId);
     if (task) {
       task.timeSpentSec = (task.timeSpentSec || 0) + durationSec;
+      task.updatedAt = new Date().toISOString();
+      task.synced = false;
       this.saveState();
     }
   }
@@ -684,6 +943,7 @@ class Store {
     const start = startTime ? new Date(startTime) : new Date(end.getTime() - durationSec * 1000);
 
     const cleanSubject = subject && subject.trim() && subject.trim().toLowerCase() !== 'none' ? subject.trim() : 'General';
+    const nowIso = now.toISOString();
 
     const newSession = {
       id: 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -694,7 +954,9 @@ class Store {
       startTime: start.toISOString(),
       endTime: end.toISOString(),
       notes: notes ? notes.trim() : '',
-      createdAt: now.toISOString()
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      synced: false
     };
 
     this.state.sessions.unshift(newSession);

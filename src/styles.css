@@ -615,11 +615,21 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 }
 
 .pc-dashboard-grid > .panel-card {
-  contain: layout style;
+  min-width: 0;
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .task-planner-panel {
-  contain: layout style;
+  min-width: 0;
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .pc-dashboard-grid.tasks-expanded {
@@ -1058,6 +1068,9 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   border-radius: var(--radius-md);
   padding: 0.85rem;
   margin-bottom: 1rem;
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .task-input-row {
@@ -1140,6 +1153,9 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   max-height: 520px;
   overflow-y: auto;
   padding-right: 2px;
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .task-card {
@@ -3215,6 +3231,9 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1rem 1.15rem;
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 .digital-card-top {
@@ -3289,7 +3308,7 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   height: 100%;
   background: linear-gradient(90deg, var(--primary), var(--primary-hover));
   border-radius: var(--radius-sm);
-  transition: width 0.35s ease;
+  transition: none !important;
 }
 
 .digital-controls {

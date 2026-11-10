@@ -787,16 +787,16 @@ export class SyncManager {
             ]
           });
         }
-      }
 
-      // Update position state natively if browser supports it (zero network & zero metadata churn)
-      if (typeof navigator.mediaSession.setPositionState === 'function' && timerState.elapsedSec > 0) {
-        const totalDuration = timerState.mode === 'countdown' ? Math.max(1, timerState.targetSec) : Math.max(1, timerState.elapsedSec + 3600);
-        navigator.mediaSession.setPositionState({
-          duration: totalDuration,
-          playbackRate: isRunning ? 1 : 0,
-          position: Math.min(timerState.elapsedSec, totalDuration)
-        });
+        // Only update position state when playback state or session context changes (never continuously every second)
+        if (typeof navigator.mediaSession.setPositionState === 'function' && timerState.elapsedSec > 0) {
+          const totalDuration = timerState.mode === 'countdown' ? Math.max(1, timerState.targetSec) : Math.max(1, timerState.elapsedSec + 3600);
+          navigator.mediaSession.setPositionState({
+            duration: totalDuration,
+            playbackRate: isRunning ? 1 : 0,
+            position: Math.min(timerState.elapsedSec, totalDuration)
+          });
+        }
       }
     } catch (err) {
       // Graceful fallback on browsers with partial MediaSession support

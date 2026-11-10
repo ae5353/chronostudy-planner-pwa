@@ -2700,17 +2700,17 @@ create policy "Allow room sync access" on chronostudy_sync
     const FORMATS = [
       {
         id: 'auto',
-        name: '⚡ Auto-Adaptive (Responsive)',
+        name: '◈ Auto-Adaptive (Responsive)',
         desc: 'Automatically adapts to screen size. Uses widescreen dual dashboard on PC/tablets, and mobile format on phones.'
       },
       {
         id: 'mobile',
-        name: '📱 Mobile Phone Format',
+        name: '▯ Mobile Phone Format',
         desc: 'Optimized vertical layout for smartphones. Proportional timepiece, segmented Focus/Tasks switcher, swipeable filter chips, and ergonomic touch targets.'
       },
       {
         id: 'desktop',
-        name: '💻 Tablet & PC Dashboard',
+        name: '◨ Tablet & PC Dashboard',
         desc: 'Classic widescreen dual-column dashboard with side-by-side timer and backlog. Preserves the exact PC layout on tablets.'
       }
     ];
@@ -2888,7 +2888,7 @@ create policy "Allow room sync access" on chronostudy_sync
         targetProgressBadge = `
           <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" style="font-size: 0.65rem;" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%)">
             <span class="task-progress-mini-bar" style="width: ${pct}%;"></span>
-            <span class="task-progress-mini-text">🎯 ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
+            <span class="task-progress-mini-text">◷ ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
           </span>
         `;
       } else if (timeLoggedMins > 0) {
@@ -3679,7 +3679,7 @@ create policy "Allow room sync access" on chronostudy_sync
       targetProgressBadgeHTML = `
         <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%)">
           <span class="task-progress-mini-bar" style="width: ${pct}%;"></span>
-          <span class="task-progress-mini-text">🎯 ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
+          <span class="task-progress-mini-text">◷ ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
         </span>
       `;
     } else if (timeLoggedMins > 0) {
@@ -4585,7 +4585,7 @@ create policy "Allow room sync access" on chronostudy_sync
           <div class="day-col-header">
             <span class="day-name">${dayName}</span>
             <span class="day-number ${isToday ? 'today-pill' : ''}">${dayNum}</span>
-            ${totalMinsStudied > 0 ? `<span class="day-logged-pill">⏱ ${totalMinsStudied}m studied</span>` : ''}
+            ${totalMinsStudied > 0 ? `<span class="day-logged-pill">◷ ${totalMinsStudied}m studied</span>` : ''}
           </div>
 
           <div class="day-col-body">

@@ -4396,7 +4396,9 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 }
 
 .focus-seg-btn .seg-icon {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+  line-height: 1;
+  font-family: system-ui, -apple-system, "Segoe UI Symbol", sans-serif;
   flex-shrink: 0;
 }
 
@@ -4429,6 +4431,12 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   color: var(--text-muted);
   border-radius: var(--radius-sm);
   position: relative;
+}
+
+.mobile-nav-bar .mobile-nav-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+  font-family: system-ui, -apple-system, "Segoe UI Symbol", sans-serif;
 }
 
 .mobile-nav-bar .mobile-nav-btn.active,

@@ -148,4 +148,24 @@ assert(migratedState.tasks.find(t => t.id === 'task-legacy').updatedAt, 'Legacy 
 assert(migratedState.subjects.some(s => s.name.includes('Circuit Analysis')), 'Authentic subjects must be preserved');
 console.log('✔ Forward schema migration safety verified.');
 
+// 7. Deleted Task Tombstone Protection (Prevent resurrection from remote payloads)
+const toDeleteTask = store.addTask({ title: 'Task To Be Deleted Forever', targetMinutes: 30 });
+const delId = toDeleteTask.id;
+assert(store.getState().tasks.some(t => t.id === delId), 'Task must exist before deletion');
+
+store.deleteTask(delId);
+assert(!store.getState().tasks.some(t => t.id === delId), 'Task must be removed locally');
+assert(store.getState().deletedTaskIds[delId], 'Tombstone must be recorded in deletedTaskIds');
+
+// Simulate incoming remote payload that still contains the deleted task
+const resurrectionAttemptPayload = {
+  version: 12,
+  tasks: [
+    { id: delId, title: 'Task To Be Deleted Forever', updatedAt: toDeleteTask.createdAt }
+  ]
+};
+store.mergeRemoteState(resurrectionAttemptPayload);
+assert(!store.getState().tasks.some(t => t.id === delId), 'Deleted task must NEVER be resurrected by remote payload');
+console.log('✔ Task deletion tombstone engine verified (zero resurrection).');
+
 console.log('\nAll Cloud Synchronization & Conflict Resolution tests passed successfully! 🚀');

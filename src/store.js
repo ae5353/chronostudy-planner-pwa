@@ -275,6 +275,7 @@ const INITIAL_STATE = {
     volume: 0.5,
     calendarView: 'week'
   },
+  deletedTaskIds: {},
   sync: {
     enabled: false,
     provider: 'gdrive', // 'gdrive' | 'supabase' | 'offline' | 'none'
@@ -433,6 +434,7 @@ class Store {
     state.groups = cleanGroups;
     state.weeklyEvents = weeklyEvents;
     state.tasks = tasks;
+    state.deletedTaskIds = (state.deletedTaskIds && typeof state.deletedTaskIds === 'object') ? state.deletedTaskIds : {};
     return state;
   }
 
@@ -585,6 +587,7 @@ class Store {
       subjects: this.state.subjects,
       weeklyEvents: this.state.weeklyEvents,
       tasks: this.state.tasks,
+      deletedTaskIds: this.state.deletedTaskIds || {},
       sessions: this.state.sessions,
       settings: this.state.settings
     };
@@ -645,28 +648,56 @@ class Store {
       this.state.sessions.sort((a, b) => new Date(b.startTime || b.date || 0) - new Date(a.startTime || a.date || 0));
     }
 
-    // 3. Last-Write-Wins Merge for Tasks (resolved by updatedAt & soft-delete)
+    // 3. Merge Deleted Task Tombstones (Guarantees deleted tasks NEVER resurrect)
+    if (!this.state.deletedTaskIds) this.state.deletedTaskIds = {};
+    if (remote.deletedTaskIds && typeof remote.deletedTaskIds === 'object') {
+      Object.entries(remote.deletedTaskIds).forEach(([delId, delTime]) => {
+        const existingDel = this.state.deletedTaskIds[delId];
+        if (!existingDel || new Date(delTime) > new Date(existingDel)) {
+          this.state.deletedTaskIds[delId] = delTime;
+        }
+      });
+    }
+
+    // Prune locally any task that has a tombstone
+    this.state.tasks = this.state.tasks.filter((t) => {
+      const delTime = this.state.deletedTaskIds[t.id];
+      if (delTime) {
+        const taskUpdated = new Date(t.updatedAt || t.createdAt || 0).getTime();
+        if (new Date(delTime).getTime() >= taskUpdated) {
+          changesCount++;
+          return false;
+        }
+      }
+      return true;
+    });
+
+    // 4. Last-Write-Wins Merge for Tasks (resolved by updatedAt & tombstones)
     if (Array.isArray(remote.tasks)) {
       const localTaskMap = new Map(this.state.tasks.map((t) => [t.id, t]));
       remote.tasks.forEach((remoteTask) => {
+        // Skip if task was deleted either locally or remotely
+        const delTime = this.state.deletedTaskIds[remoteTask.id];
+        if (delTime) {
+          const remoteUpdated = new Date(remoteTask.updatedAt || remoteTask.createdAt || 0).getTime();
+          if (new Date(delTime).getTime() >= remoteUpdated) {
+            return;
+          }
+        }
+        if (remoteTask.deletedAt) {
+          this.state.deletedTaskIds[remoteTask.id] = remoteTask.deletedAt;
+          return;
+        }
+
         const localTask = localTaskMap.get(remoteTask.id);
         if (!localTask) {
-          // If remote task is already deleted, don't re-create
-          if (!remoteTask.deletedAt) {
-            this.state.tasks.unshift({ ...remoteTask, synced: true });
-            changesCount++;
-          }
+          this.state.tasks.unshift({ ...remoteTask, synced: true });
+          changesCount++;
         } else {
           const remoteUpdated = new Date(remoteTask.updatedAt || remoteTask.createdAt || 0).getTime();
           const localUpdated = new Date(localTask.updatedAt || localTask.createdAt || 0).getTime();
           if (remoteUpdated > localUpdated) {
-            if (remoteTask.deletedAt) {
-              localTask.deletedAt = remoteTask.deletedAt;
-              localTask.updatedAt = remoteTask.updatedAt;
-              localTask.synced = true;
-            } else {
-              Object.assign(localTask, remoteTask, { synced: true });
-            }
+            Object.assign(localTask, remoteTask, { synced: true });
             changesCount++;
           }
         }
@@ -915,6 +946,9 @@ class Store {
   }
 
   deleteTask(taskId) {
+    if (!this.state.deletedTaskIds) this.state.deletedTaskIds = {};
+    const nowIso = new Date().toISOString();
+    this.state.deletedTaskIds[taskId] = nowIso;
     this.state.tasks = this.state.tasks.filter((t) => t.id !== taskId);
     if (this.state.activeTimer.linkedTaskId === taskId) {
       this.state.activeTimer.linkedTaskId = null;

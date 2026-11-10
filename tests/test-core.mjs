@@ -125,7 +125,22 @@ assert.equal(store.calculateNextRecurrenceDate('2026-11-13', 'weekdays'), '2026-
 assert.equal(store.calculateNextRecurrenceDate('2026-11-10', 'biweekly'), '2026-11-24', 'Bi-weekly must advance 14 days');
 assert.equal(store.calculateNextRecurrenceDate('2026-11-10', 'triweekly'), '2026-12-01', 'Tri-weekly must advance 21 days');
 assert.equal(store.calculateNextRecurrenceDate('2026-11-10', 'monthly'), '2026-12-10', 'Monthly must advance 1 month');
-console.log('✔ Task management with recurrence, optional due dates and minutes verified.');
+
+// Verify Task Editing
+store.updateTask(task.id, {
+  title: 'Circuit Analysis Problem Set 5 (Revised)',
+  targetMinutes: 90,
+  dueDate: '2026-11-12',
+  notes: 'Review nodal analysis and superposition'
+});
+const editedTask = store.getState().tasks.find(t => t.id === task.id);
+assert.equal(editedTask.title, 'Circuit Analysis Problem Set 5 (Revised)', 'Task title must be updated');
+assert.equal(editedTask.targetMinutes, 90, 'Task target minutes must be updated');
+assert.equal(editedTask.dueDate, '2026-11-12', 'Task due date must be updated');
+assert.equal(editedTask.notes, 'Review nodal analysis and superposition', 'Task notes must be updated');
+assert.equal(editedTask.synced, false, 'Edited task must be flagged as unsynced');
+
+console.log('✔ Task management with editing, recurrence, optional due dates and minutes verified.');
 
 // 4. Recurring Events with Cadence (Weekly, Bi-weekly, Monthly, Daily, Weekdays)
 const wevent = store.addWeeklyEvent({

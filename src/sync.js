@@ -108,9 +108,53 @@ export class SyncManager {
     this.pwaInstallPrompt = null;
     this.gdriveAccessToken = null;
     this.gdriveTokenExpiry = null;
+    this.restoreSavedGoogleAuth();
 
     // Generate or restore a unique client device ID
     this.deviceId = this.getOrCreateDeviceId();
+  }
+
+  restoreSavedGoogleAuth() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const raw = localStorage.getItem('chronostudy_gdrive_auth');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.token && parsed.expiresAt && Date.now() < parsed.expiresAt - 60000) {
+            this.gdriveAccessToken = parsed.token;
+            this.gdriveTokenExpiry = parsed.expiresAt;
+            if (parsed.email && !store.getState().sync.googleUserEmail) {
+              store.updateSyncSettings({ googleUserEmail: parsed.email });
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  saveGoogleAuth(token, expiresInSec, email = null) {
+    this.gdriveAccessToken = token;
+    const expiresAt = Date.now() + (parseInt(expiresInSec, 10) || 3500) * 1000;
+    this.gdriveTokenExpiry = expiresAt;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('chronostudy_gdrive_auth', JSON.stringify({
+          token,
+          expiresAt,
+          email: email || store.getState().sync.googleUserEmail || null
+        }));
+      }
+    } catch (e) {}
+  }
+
+  clearSavedGoogleAuth() {
+    this.gdriveAccessToken = null;
+    this.gdriveTokenExpiry = null;
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('chronostudy_gdrive_auth');
+      }
+    } catch (e) {}
   }
 
   getOrCreateDeviceId() {
@@ -303,6 +347,11 @@ export class SyncManager {
       return this.gdriveAccessToken;
     }
 
+    // CRITICAL: If this is an automatic background sync, NEVER trigger a disruptive popup window!
+    if (!interactive) {
+      return null;
+    }
+
     if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
       throw new Error('Google Identity Services SDK is loading. Please check your internet connection.');
     }
@@ -332,9 +381,7 @@ export class SyncManager {
               reject(new Error(resp.error_description || resp.error));
               return;
             }
-            this.gdriveAccessToken = resp.access_token;
-            const expiresIn = parseInt(resp.expires_in, 10) || 3500;
-            this.gdriveTokenExpiry = Date.now() + expiresIn * 1000;
+            this.saveGoogleAuth(resp.access_token, resp.expires_in);
             resolve(resp.access_token);
           },
           error_callback: (err) => {
@@ -345,7 +392,7 @@ export class SyncManager {
           }
         });
 
-        tokenClient.requestAccessToken({ prompt: interactive ? '' : 'none' });
+        tokenClient.requestAccessToken({ prompt: '' });
       } catch (err) {
         if (!isSettled) {
           isSettled = true;
@@ -372,6 +419,10 @@ export class SyncManager {
     }
 
     if (!token) {
+      if (!interactive) {
+        // Quietly skip background sync without disrupting the user
+        return;
+      }
       throw new Error('Google Drive authorization needed. Click "Sign in with Google Drive".');
     }
 
@@ -385,6 +436,10 @@ export class SyncManager {
           const userinfo = await userinfoRes.json();
           if (userinfo.email) {
             store.updateSyncSettings({ googleUserEmail: userinfo.email });
+            if (this.gdriveAccessToken && this.gdriveTokenExpiry) {
+              const remainingSec = Math.max(60, Math.floor((this.gdriveTokenExpiry - Date.now()) / 1000));
+              this.saveGoogleAuth(this.gdriveAccessToken, remainingSec, userinfo.email);
+            }
           }
         }
       } catch (e) {
@@ -402,10 +457,16 @@ export class SyncManager {
       const errTxt = await searchRes.text();
       if (searchRes.status === 401) {
         this.gdriveAccessToken = null;
+        this.clearSavedGoogleAuth();
         throw new Error('Google authorization expired. Please click "Sign in with Google Drive" again.');
       }
-      if (searchRes.status === 403 && (errTxt.includes('Google Drive API has not been used') || errTxt.includes('SERVICE_DISABLED'))) {
-        throw new Error('Google Drive API is disabled in your Google Cloud project. Please click "Enable" in Google Cloud Console and retry.');
+      if (searchRes.status === 403 && (errTxt.includes('Google Drive API has not been used') || errTxt.includes('SERVICE_DISABLED') || errTxt.includes('is disabled'))) {
+        const projectIdMatch = errTxt.match(/project[=\s](\d+)/i) || (clientId.match(/^(\d+)-/));
+        const projectId = projectIdMatch ? projectIdMatch[1] : '';
+        const enableUrl = projectId
+          ? `https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=${projectId}`
+          : 'https://console.developers.google.com/apis/api/drive.googleapis.com/overview';
+        throw new Error(`Google Drive API is disabled in your Google Cloud Project. Please click to enable it: ${enableUrl}`);
       }
       try {
         const parsedErr = JSON.parse(errTxt);
@@ -462,6 +523,11 @@ export class SyncManager {
 
       if (!patchRes.ok) {
         const patchErr = await patchRes.text();
+        if (patchRes.status === 401) {
+          this.gdriveAccessToken = null;
+          this.clearSavedGoogleAuth();
+          throw new Error('Google authorization expired. Please click "Sign in with Google Drive" again.');
+        }
         throw new Error(`Failed to update file in Google Drive: ${patchErr}`);
       }
     } else {
@@ -495,6 +561,11 @@ export class SyncManager {
 
       if (!createRes.ok) {
         const createErr = await createRes.text();
+        if (createRes.status === 401) {
+          this.gdriveAccessToken = null;
+          this.clearSavedGoogleAuth();
+          throw new Error('Google authorization expired. Please click "Sign in with Google Drive" again.');
+        }
         throw new Error(`Failed to create file in Google Drive: ${createErr}`);
       }
 
@@ -515,8 +586,7 @@ export class SyncManager {
         window.google.accounts.oauth2.revoke(this.gdriveAccessToken, () => {});
       } catch (e) {}
     }
-    this.gdriveAccessToken = null;
-    this.gdriveTokenExpiry = null;
+    this.clearSavedGoogleAuth();
     store.updateSyncSettings({
       googleUserEmail: null,
       googleDriveFileId: null,

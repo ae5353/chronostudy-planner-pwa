@@ -362,6 +362,20 @@ export class ChronoUI {
 
     this.btnPwaInstallApp = document.getElementById('btn-pwa-install-app');
     this.btnRequestNotifications = document.getElementById('btn-request-notifications');
+
+    // Task Edit Modal
+    this.taskEditModal = document.getElementById('task-edit-modal');
+    this.btnCloseEditTaskModal = document.getElementById('btn-close-edit-task-modal');
+    this.btnCancelEditTask = document.getElementById('btn-cancel-edit-task');
+    this.btnDeleteFromEditModal = document.getElementById('btn-delete-from-edit-modal');
+    this.taskEditForm = document.getElementById('task-edit-form');
+    this.editTaskId = document.getElementById('edit-task-id');
+    this.editTaskTitle = document.getElementById('edit-task-title');
+    this.editTaskSubject = document.getElementById('edit-task-subject');
+    this.editTaskMinutes = document.getElementById('edit-task-minutes');
+    this.editTaskDueDate = document.getElementById('edit-task-duedate');
+    this.editTaskRecurrence = document.getElementById('edit-task-recurrence');
+    this.editTaskNotes = document.getElementById('edit-task-notes');
   }
 
   bindEvents() {
@@ -912,6 +926,70 @@ export class ChronoUI {
       this.renderTasks();
     });
 
+    // Task Edit Modal Event Listeners
+    if (this.btnCloseEditTaskModal) {
+      this.btnCloseEditTaskModal.addEventListener('click', () => {
+        this.closeTaskEditModal();
+      });
+    }
+    if (this.btnCancelEditTask) {
+      this.btnCancelEditTask.addEventListener('click', () => {
+        this.closeTaskEditModal();
+      });
+    }
+    if (this.taskEditModal) {
+      this.taskEditModal.addEventListener('click', (e) => {
+        if (e.target === this.taskEditModal) {
+          this.closeTaskEditModal();
+        }
+      });
+    }
+    if (this.btnDeleteFromEditModal) {
+      this.btnDeleteFromEditModal.addEventListener('click', async () => {
+        const taskId = this.editTaskId ? this.editTaskId.value : '';
+        if (!taskId) return;
+        const task = store.getState().tasks.find((t) => t.id === taskId);
+        const title = task ? task.title : 'this task';
+        const ok = await this.showInAppConfirm({
+          title: 'Delete Study Task',
+          message: `Delete study task "${title}"?`,
+          confirmText: 'Delete',
+          danger: true
+        });
+        if (ok) {
+          store.deleteTask(taskId);
+          playClickSound();
+          this.closeTaskEditModal();
+        }
+      });
+    }
+    if (this.taskEditForm) {
+      this.taskEditForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const taskId = this.editTaskId ? this.editTaskId.value : '';
+        if (!taskId) return;
+        const title = this.editTaskTitle ? this.editTaskTitle.value.trim() : '';
+        if (!title) return;
+        const subject = this.editTaskSubject ? this.editTaskSubject.value : '';
+        const targetMinutes = (this.editTaskMinutes && this.editTaskMinutes.value) ? parseInt(this.editTaskMinutes.value, 10) : null;
+        const dueDate = (this.editTaskDueDate && this.editTaskDueDate.value) ? this.editTaskDueDate.value : null;
+        const recurrence = this.editTaskRecurrence ? this.editTaskRecurrence.value : 'none';
+        const notes = this.editTaskNotes ? this.editTaskNotes.value.trim() : '';
+
+        store.updateTask(taskId, {
+          title,
+          subject,
+          targetMinutes,
+          dueDate,
+          recurrence,
+          notes
+        });
+
+        playClickSound();
+        this.closeTaskEditModal();
+      });
+    }
+
     // Subject Management Page
     this.btnOpenAddSubject.addEventListener('click', () => {
       this.openSubjectModal(null);
@@ -1320,7 +1398,23 @@ export class ChronoUI {
       }
 
       titleEl.textContent = title;
-      msgEl.textContent = message;
+      if (typeof message === 'string' && message.includes('drive.googleapis.com')) {
+        const urlMatch = message.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
+        const url = urlMatch ? urlMatch[0] : '';
+        msgEl.innerHTML = `
+          <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
+          <div style="margin-top: 0.85rem; text-align: center;">
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+              👉 Enable Google Drive API in Google Cloud
+            </a>
+          </div>
+          <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
+            Click the blue <strong>"ENABLE"</strong> button on the Google Cloud page, then return here and click "Sync Now".
+          </div>
+        `;
+      } else {
+        msgEl.textContent = message;
+      }
       msgEl.style.display = message ? 'block' : 'none';
       if (inputGroup) inputGroup.style.display = 'none';
 
@@ -1374,7 +1468,23 @@ export class ChronoUI {
       }
 
       titleEl.textContent = title;
-      msgEl.textContent = message;
+      if (typeof message === 'string' && message.includes('drive.googleapis.com')) {
+        const urlMatch = message.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
+        const url = urlMatch ? urlMatch[0] : '';
+        msgEl.innerHTML = `
+          <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
+          <div style="margin-top: 0.85rem; text-align: center;">
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+              👉 Enable Google Drive API in Google Cloud
+            </a>
+          </div>
+          <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
+            Click the blue <strong>"ENABLE"</strong> button on the Google Cloud page, then return here and click "Sync Now".
+          </div>
+        `;
+      } else {
+        msgEl.textContent = message;
+      }
       msgEl.style.display = message ? 'block' : 'none';
 
       if (inputGroup) inputGroup.style.display = 'block';
@@ -1435,7 +1545,23 @@ export class ChronoUI {
       }
 
       titleEl.textContent = title;
-      msgEl.textContent = message;
+      if (typeof message === 'string' && message.includes('drive.googleapis.com')) {
+        const urlMatch = message.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
+        const url = urlMatch ? urlMatch[0] : '';
+        msgEl.innerHTML = `
+          <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
+          <div style="margin-top: 0.85rem; text-align: center;">
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+              👉 Enable Google Drive API in Google Cloud
+            </a>
+          </div>
+          <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
+            Click the blue <strong>"ENABLE"</strong> button on the Google Cloud page, then return here and click "Sync Now".
+          </div>
+        `;
+      } else {
+        msgEl.textContent = message;
+      }
       msgEl.style.display = message ? 'block' : 'none';
       if (inputGroup) inputGroup.style.display = 'none';
       if (btnCancel) btnCancel.style.display = 'none';
@@ -1588,7 +1714,23 @@ export class ChronoUI {
       if (!status.isOnline) {
         this.modalSyncSubtitle.textContent = 'Changes queued locally; will auto-sync upon reconnection';
       } else if (status.lastError) {
-        this.modalSyncSubtitle.textContent = status.lastError;
+        const err = status.lastError;
+        const gdriveUrlMatch = err.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
+        if (gdriveUrlMatch) {
+          this.modalSyncSubtitle.innerHTML = `
+            <div style="color: var(--accent-rose); line-height: 1.4;">
+              ⚠️ Google Drive API is not yet enabled in your Google Cloud Project.<br/>
+              <a href="${gdriveUrlMatch[0]}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; margin-top:0.45rem; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none;">
+                👉 Click Here to Enable Google Drive API (1 click)
+              </a>
+              <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.35rem;">
+                Click "ENABLE" on the Google page, then click "Sync Now" above.
+              </div>
+            </div>
+          `;
+        } else {
+          this.modalSyncSubtitle.textContent = status.lastError;
+        }
       } else if (status.provider === 'gdrive' && status.googleUserEmail) {
         this.modalSyncSubtitle.textContent = `Google Drive: ${status.googleUserEmail} • chronostudy_sync.json`;
       } else if (status.provider === 'supabase' && status.roomId) {
@@ -2462,7 +2604,7 @@ create policy "Allow room sync access" on chronostudy_sync
             <span class="checkmark"></span>
           </label>
           <div class="task-info">
-            <div class="task-title" style="font-size: 0.84rem;">${this.escapeHTML(task.title)}</div>
+            <div class="task-title clickable-title" style="font-size: 0.84rem;" title="Click to edit task">${this.escapeHTML(task.title)}</div>
             <div class="task-badges" style="margin-top: 0.2rem;">
               <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}; font-size: 0.65rem;">${task.subject ? this.escapeHTML(task.subject) : 'General'}</span>
               ${task.dueDate ? `<span class="meta-badge date-badge" style="font-size: 0.65rem;">${task.dueDate}</span>` : ''}
@@ -2477,6 +2619,7 @@ create policy "Allow room sync access" on chronostudy_sync
               ▶
             </button>
           ` : ''}
+          <button class="btn btn-icon btn-sidebar-edit-task" data-task-id="${task.id}" title="Edit task" style="font-size: 0.75rem;">✏️</button>
           <button class="btn btn-icon btn-del-sidebar-task" data-task-id="${task.id}" title="Delete task" style="font-size: 0.75rem;">✕</button>
         </div>
       `;
@@ -2603,6 +2746,24 @@ create policy "Allow room sync access" on chronostudy_sync
           this.switchView('focus');
           this.startTaskStudySession(task);
           playClickSound();
+        }
+      });
+    });
+
+    this.sidebarTaskList.querySelectorAll('.btn-sidebar-edit-task').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openTaskEditModal(btn.dataset.taskId);
+        playClickSound();
+      });
+    });
+
+    this.sidebarTaskList.querySelectorAll('.task-title.clickable-title').forEach((titleEl) => {
+      titleEl.addEventListener('click', (e) => {
+        const card = e.target.closest('.task-card');
+        const cb = card ? card.querySelector('.sidebar-task-cb') : null;
+        if (cb && cb.dataset.taskId) {
+          this.openTaskEditModal(cb.dataset.taskId);
         }
       });
     });
@@ -3015,6 +3176,43 @@ create policy "Allow room sync access" on chronostudy_sync
     this.linkedTaskBanner.style.display = 'flex';
   }
 
+  openTaskEditModal(taskId) {
+    const task = store.getState().tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    if (this.editTaskSubject) {
+      this.editTaskSubject.innerHTML = '<option value="">📌 General (No Course)</option>';
+      const subjects = store.getState().subjects || [];
+      subjects.forEach((s) => {
+        const opt = document.createElement('option');
+        opt.value = s.name;
+        opt.textContent = s.code ? `${s.name} (${s.code})` : s.name;
+        this.editTaskSubject.appendChild(opt);
+      });
+    }
+
+    if (this.editTaskId) this.editTaskId.value = task.id;
+    if (this.editTaskTitle) this.editTaskTitle.value = task.title || '';
+    if (this.editTaskSubject) this.editTaskSubject.value = task.subject || '';
+    if (this.editTaskMinutes) this.editTaskMinutes.value = task.targetMinutes || '';
+    if (this.editTaskDueDate) this.editTaskDueDate.value = task.dueDate || '';
+    if (this.editTaskRecurrence) this.editTaskRecurrence.value = task.recurrence || 'none';
+    if (this.editTaskNotes) this.editTaskNotes.value = task.notes || '';
+
+    if (this.taskEditModal) {
+      this.taskEditModal.classList.add('active');
+    }
+    if (this.editTaskTitle) {
+      setTimeout(() => this.editTaskTitle.focus(), 50);
+    }
+  }
+
+  closeTaskEditModal() {
+    if (this.taskEditModal) {
+      this.taskEditModal.classList.remove('active');
+    }
+  }
+
   createTaskCardElement(task, todayStr) {
     const card = document.createElement('div');
     card.className = `task-card ${task.completed ? 'task-completed' : ''}`;
@@ -3029,7 +3227,7 @@ create policy "Allow room sync access" on chronostudy_sync
           <span class="checkmark"></span>
         </label>
         <div class="task-info">
-          <div class="task-title ${task.completed ? 'completed-text' : ''}">${this.escapeHTML(task.title)}</div>
+          <div class="task-title clickable-title ${task.completed ? 'completed-text' : ''}" title="Click to edit task">${this.escapeHTML(task.title)}</div>
           <div class="task-badges">
             <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}">
               ${task.subject ? this.escapeHTML(task.subject) : 'General'}
@@ -3056,6 +3254,7 @@ create policy "Allow room sync access" on chronostudy_sync
             ▶ Study Now
           </button>
         ` : ''}
+        <button class="btn btn-icon btn-edit-task" data-task-id="${task.id}" title="Edit task">✏️</button>
         <button class="btn btn-icon btn-delete-task" data-task-id="${task.id}" title="Delete task">✕</button>
       </div>
     `;
@@ -3070,6 +3269,22 @@ create policy "Allow room sync access" on chronostudy_sync
       btnStudy.addEventListener('click', () => {
         this.startTaskStudySession(task);
         playClickSound();
+      });
+    }
+
+    const btnEdit = card.querySelector('.btn-edit-task');
+    if (btnEdit) {
+      btnEdit.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openTaskEditModal(task.id);
+        playClickSound();
+      });
+    }
+
+    const titleEl = card.querySelector('.task-title');
+    if (titleEl) {
+      titleEl.addEventListener('click', () => {
+        this.openTaskEditModal(task.id);
       });
     }
 
@@ -3919,6 +4134,7 @@ create policy "Allow room sync access" on chronostudy_sync
                             ▶ Study
                           </button>
                         ` : ''}
+                        <button class="btn-cal-edit" data-task-id="${t.id}" title="Edit task">✏️</button>
                         <a 
                           href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${dateStr.replace(/-/g, '')}T090000Z/${dateStr.replace(/-/g, '')}T100000Z&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" 
                           target="_blank" 
@@ -3962,6 +4178,25 @@ create policy "Allow room sync access" on chronostudy_sync
       btn.addEventListener('click', () => {
         store.toggleTask(btn.dataset.taskId);
         playClickSound();
+      });
+    });
+
+    this.calendarViewContainer.querySelectorAll('.btn-cal-edit').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.openTaskEditModal(btn.dataset.taskId);
+        playClickSound();
+      });
+    });
+
+    this.calendarViewContainer.querySelectorAll('.cal-task-title').forEach((titleEl) => {
+      titleEl.style.cursor = 'pointer';
+      titleEl.title = 'Click to edit task';
+      titleEl.addEventListener('click', (e) => {
+        const item = e.target.closest('.cal-task-item');
+        const checkBtn = item ? item.querySelector('.btn-cal-check') : null;
+        if (checkBtn && checkBtn.dataset.taskId) {
+          this.openTaskEditModal(checkBtn.dataset.taskId);
+        }
       });
     });
 
@@ -4250,6 +4485,7 @@ create policy "Allow room sync access" on chronostudy_sync
         </div>
         <div class="backlog-task-actions">
           <button class="btn btn-study-now btn-study-backlog" data-id="${t.id}">▶ Study</button>
+          <button class="btn btn-icon btn-edit-backlog" data-id="${t.id}" title="Edit task">✏️</button>
           <button class="btn btn-secondary btn-schedule-backlog" data-id="${t.id}" title="Assign to a day">📅 Schedule</button>
           <button class="btn btn-icon btn-del-backlog" data-id="${t.id}">✕</button>
         </div>
@@ -4259,6 +4495,20 @@ create policy "Allow room sync access" on chronostudy_sync
         this.startTaskStudySession(t);
         playClickSound();
       });
+
+      card.querySelector('.btn-edit-backlog').addEventListener('click', () => {
+        this.openTaskEditModal(t.id);
+        playClickSound();
+      });
+
+      const titleEl = card.querySelector('.backlog-task-title');
+      if (titleEl) {
+        titleEl.style.cursor = 'pointer';
+        titleEl.title = 'Click to edit task';
+        titleEl.addEventListener('click', () => {
+          this.openTaskEditModal(t.id);
+        });
+      }
 
       card.querySelector('.btn-schedule-backlog').addEventListener('click', async () => {
         const todayStr = toLocalDateStr(new Date());

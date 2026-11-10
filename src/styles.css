@@ -3851,6 +3851,43 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   color: var(--accent-rose);
 }
 
+.btn-cal-edit {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 3px;
+  transition: color 0.15s ease;
+}
+
+.btn-cal-edit:hover {
+  color: var(--primary);
+}
+
+.btn-edit-task,
+.btn-sidebar-edit-task {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.btn-edit-task:hover,
+.btn-sidebar-edit-task:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.task-title.clickable-title {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.task-title.clickable-title:hover {
+  color: var(--primary);
+}
+
 /* ==========================================================================
    Multi-Device Cloud Sync & Status Badges
    ========================================================================== */

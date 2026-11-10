@@ -1299,6 +1299,83 @@
     </div>
   </div>
 
+  <!-- MODAL: Edit Existing Study Task -->
+  <div id="task-edit-modal" class="modal">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 1.15rem;">✏️</span>
+          <h3 class="modal-title" style="margin: 0;">Edit Study Task</h3>
+        </div>
+        <button type="button" id="btn-close-edit-task-modal" class="btn btn-icon" title="Close">✕</button>
+      </div>
+      <form id="task-edit-form" class="modal-body" style="gap: 0.85rem;">
+        <input type="hidden" id="edit-task-id" />
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="edit-task-title" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+            Task Title
+          </label>
+          <input type="text" id="edit-task-title" class="input-text" required placeholder="e.g. Folland Exercises 1-15" autocomplete="off" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="edit-task-subject" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Course / Subject
+            </label>
+            <select id="edit-task-subject" class="input-select" style="font-size: 0.82rem; padding: 0.4rem 0.5rem;"></select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="edit-task-minutes" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Target Minutes
+            </label>
+            <input type="number" id="edit-task-minutes" class="input-text" min="0" max="720" placeholder="e.g. 50" />
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="edit-task-duedate" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Due Date
+            </label>
+            <input type="date" id="edit-task-duedate" class="input-text" style="font-size: 0.82rem;" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="edit-task-recurrence" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+              Repeat
+            </label>
+            <select id="edit-task-recurrence" class="input-select" style="font-size: 0.82rem; padding: 0.4rem 0.5rem;">
+              <option value="none">No Repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekdays">Weekdays (Mon-Fri)</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Bi-weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="edit-task-notes" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+            Notes & Formulas
+          </label>
+          <textarea id="edit-task-notes" class="input-text" rows="3" placeholder="Chapter references, formulas, homework link, or details..." style="font-size: 0.82rem;"></textarea>
+        </div>
+
+        <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" id="btn-delete-from-edit-modal" class="btn btn-secondary" style="color: var(--accent-rose);" title="Delete this task">
+            🗑 Delete
+          </button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" id="btn-cancel-edit-task" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary" style="padding: 0.45rem 1.4rem;">Save Changes</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: Multi-Device Cloud Sync & Device Hub -->
   <div id="cloud-sync-modal" class="modal">
     <div class="modal-content modal-sync-dialog">

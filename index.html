@@ -822,9 +822,24 @@
           <div class="modal-stat-line">Topic: <strong id="finish-modal-topic"></strong></div>
         </div>
 
-        <div id="finish-modal-task-group" class="checkbox-label" style="display: none;">
-          <input type="checkbox" id="finish-modal-task-complete" />
-          <span>Mark <strong id="finish-modal-task-name"></strong> as completed?</span>
+        <div id="finish-modal-task-group" class="finish-task-box" style="display: none;">
+          <div class="finish-task-header">
+            <span class="finish-task-badge">LINKED TASK</span>
+            <strong id="finish-modal-task-name" class="finish-task-title"></strong>
+          </div>
+          <div id="finish-modal-task-progress-wrap" class="finish-task-progress-wrap" style="display: none;">
+            <div class="finish-task-progress-row">
+              <span id="finish-modal-task-progress-stats" class="finish-task-stats">0m / 0m (0%)</span>
+              <span id="finish-modal-task-delta" class="finish-task-delta">+0m this session</span>
+            </div>
+            <div class="finish-task-bar-track">
+              <div id="finish-modal-task-bar-fill" class="finish-task-bar-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+          <label class="checkbox-label finish-task-checkbox-label" for="finish-modal-task-complete">
+            <input type="checkbox" id="finish-modal-task-complete" />
+            <span id="finish-modal-task-check-label">Mark task as completed?</span>
+          </label>
         </div>
 
         <div class="form-group">

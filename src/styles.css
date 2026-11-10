@@ -2727,6 +2727,137 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   cursor: pointer;
 }
 
+/* Finish Modal Task Progress Box */
+.finish-task-box {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.finish-task-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.finish-task-badge {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background-color: rgba(210, 153, 34, 0.15);
+  color: var(--primary);
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+}
+
+.finish-task-title {
+  font-size: 0.88rem;
+  color: var(--text-main);
+  word-break: break-word;
+}
+
+.finish-task-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background-color: var(--bg-input);
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm);
+}
+
+.finish-task-progress-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.finish-task-stats {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.finish-task-delta {
+  color: var(--accent-green, #10b981);
+  font-weight: 600;
+}
+
+.finish-task-bar-track {
+  width: 100%;
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.finish-task-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #3b82f6);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.finish-task-bar-fill.bar-complete {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.finish-task-checkbox-label {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* Task Target Progress Pill in Task Cards */
+.task-target-progress-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-main);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  padding: 0.15rem 0.45rem;
+  vertical-align: middle;
+}
+
+.task-target-progress-pill.target-met {
+  border-color: rgba(16, 185, 129, 0.4);
+  color: var(--accent-green, #10b981);
+}
+
+.task-progress-mini-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background-color: rgba(210, 153, 34, 0.2);
+  z-index: 1;
+  pointer-events: none;
+  transition: width 0.2s ease;
+}
+
+.task-target-progress-pill.target-met .task-progress-mini-bar {
+  background-color: rgba(16, 185, 129, 0.22);
+}
+
+.task-progress-mini-text {
+  position: relative;
+  z-index: 2;
+}
+
 /* Mobile Bottom Navigation */
 .mobile-nav-bar {
   display: none;

@@ -202,6 +202,11 @@ export class ChronoUI {
     this.finishModalTaskCompleteGroup = document.getElementById('finish-modal-task-group');
     this.finishModalTaskCheckbox = document.getElementById('finish-modal-task-complete');
     this.finishModalTaskName = document.getElementById('finish-modal-task-name');
+    this.finishModalTaskProgressWrap = document.getElementById('finish-modal-task-progress-wrap');
+    this.finishModalTaskStats = document.getElementById('finish-modal-task-progress-stats');
+    this.finishModalTaskDelta = document.getElementById('finish-modal-task-delta');
+    this.finishModalTaskBarFill = document.getElementById('finish-modal-task-bar-fill');
+    this.finishModalTaskCheckLabel = document.getElementById('finish-modal-task-check-label');
     this.btnSaveFinishedSession = document.getElementById('btn-save-finished-session');
     this.btnCancelFinishSession = document.getElementById('btn-cancel-finish-session');
 
@@ -1398,8 +1403,10 @@ export class ChronoUI {
     });
 
     // Finish Modal
-    this.finishModalTaskCompleteGroup.addEventListener('click', () => {
-      this.finishModalTaskCheckbox.checked = !this.finishModalTaskCheckbox.checked;
+    this.finishModalTaskCompleteGroup.addEventListener('click', (e) => {
+      if (e.target !== this.finishModalTaskCheckbox) {
+        this.finishModalTaskCheckbox.checked = !this.finishModalTaskCheckbox.checked;
+      }
     });
 
     this.btnCancelFinishSession.addEventListener('click', () => {
@@ -2737,6 +2744,22 @@ create policy "Allow room sync access" on chronostudy_sync
 
     const createSidebarCard = (task) => {
       const color = store.getSubjectColor(task.subject);
+      const timeLoggedMins = Math.round((task.timeSpentSec || 0) / 60);
+      let targetProgressBadge = '';
+      if (task.targetMinutes) {
+        const targetMins = task.targetMinutes;
+        const pct = Math.min(100, Math.round((timeLoggedMins / targetMins) * 100));
+        const isMet = timeLoggedMins >= targetMins;
+        targetProgressBadge = `
+          <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" style="font-size: 0.65rem;" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%)">
+            <span class="task-progress-mini-bar" style="width: ${pct}%;"></span>
+            <span class="task-progress-mini-text">🎯 ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
+          </span>
+        `;
+      } else if (timeLoggedMins > 0) {
+        targetProgressBadge = `<span class="meta-badge logged-badge" style="font-size: 0.65rem;">◷ ${timeLoggedMins}m</span>`;
+      }
+
       const card = document.createElement('div');
       card.className = `task-card ${task.completed ? 'task-completed' : ''}`;
       card.style.padding = '0.6rem 0.75rem';
@@ -2752,7 +2775,7 @@ create policy "Allow room sync access" on chronostudy_sync
               <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}; font-size: 0.65rem;">${task.subject ? this.escapeHTML(task.subject) : 'General'}</span>
               ${task.dueDate ? `<span class="meta-badge date-badge" style="font-size: 0.65rem;">${task.dueDate}</span>` : ''}
               ${task.recurrence && task.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}</span>` : ''}
-              ${task.targetMinutes ? `<span class="meta-badge" style="font-size: 0.65rem;">${task.targetMinutes}m</span>` : ''}
+              ${targetProgressBadge}
             </div>
           </div>
         </div>
@@ -3401,7 +3424,15 @@ create policy "Allow room sync access" on chronostudy_sync
       this.linkedTaskBanner.style.display = 'none';
       return;
     }
-    this.linkedTaskTitle.textContent = task.title;
+    const timeLoggedMins = Math.round((task.timeSpentSec || 0) / 60);
+    let progressSuffix = '';
+    if (task.targetMinutes) {
+      const pct = Math.min(100, Math.round((timeLoggedMins / task.targetMinutes) * 100));
+      progressSuffix = ` • ${timeLoggedMins}/${task.targetMinutes}m (${pct}%)`;
+    } else if (timeLoggedMins > 0) {
+      progressSuffix = ` • ${timeLoggedMins}m studied`;
+    }
+    this.linkedTaskTitle.textContent = `${task.title}${progressSuffix}`;
     this.linkedTaskBanner.style.display = 'flex';
   }
 
@@ -3505,6 +3536,21 @@ create policy "Allow room sync access" on chronostudy_sync
     const timeLoggedMins = Math.round((task.timeSpentSec || 0) / 60);
     const isOverdue = Boolean(task.dueDate && task.dueDate < todayStr && !task.completed);
 
+    let targetProgressBadgeHTML = '';
+    if (task.targetMinutes) {
+      const targetMins = task.targetMinutes;
+      const pct = Math.min(100, Math.round((timeLoggedMins / targetMins) * 100));
+      const isMet = timeLoggedMins >= targetMins;
+      targetProgressBadgeHTML = `
+        <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%)">
+          <span class="task-progress-mini-bar" style="width: ${pct}%;"></span>
+          <span class="task-progress-mini-text">🎯 ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
+        </span>
+      `;
+    } else if (timeLoggedMins > 0) {
+      targetProgressBadgeHTML = `<span class="meta-badge logged-badge">◷ ${timeLoggedMins}m logged</span>`;
+    }
+
     card.innerHTML = `
       <div class="task-card-left">
         <label class="custom-checkbox">
@@ -3517,7 +3563,7 @@ create policy "Allow room sync access" on chronostudy_sync
             <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}">
               ${task.subject ? this.escapeHTML(task.subject) : 'General'}
             </span>
-            ${task.targetMinutes ? `<span class="meta-badge">${task.targetMinutes}m target</span>` : ''}
+            ${targetProgressBadgeHTML}
             ${task.dueDate ? `
               <span class="meta-badge date-badge ${isOverdue ? 'overdue' : ''}" title="${isOverdue ? 'Task is past due!' : 'Target due date'}">
                 Due: ${task.dueDate}${isOverdue ? ' (Overdue)' : ''}
@@ -3528,7 +3574,6 @@ create policy "Allow room sync access" on chronostudy_sync
                 ↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}
               </span>
             ` : ''}
-            ${timeLoggedMins > 0 ? `<span class="meta-badge logged-badge">◷ ${timeLoggedMins}m logged</span>` : ''}
           </div>
           ${task.notes ? `<div class="task-notes-preview">${this.escapeHTML(task.notes)}</div>` : ''}
         </div>
@@ -5068,8 +5113,65 @@ create policy "Allow room sync access" on chronostudy_sync
       const task = store.getState().tasks.find((t) => t.id === state.linkedTaskId);
       if (task && !task.completed) {
         this.finishModalTaskCompleteGroup.style.display = 'flex';
-        this.finishModalTaskName.textContent = `"${task.title}"`;
-        this.finishModalTaskCheckbox.checked = true;
+        this.finishModalTaskName.textContent = task.title;
+
+        const priorSec = task.timeSpentSec || 0;
+        const newTotalSec = priorSec + state.elapsedSec;
+        const newTotalMins = Math.round(newTotalSec / 60);
+
+        if (task.targetMinutes) {
+          const targetMins = task.targetMinutes;
+          const progressPct = Math.round((newTotalMins / targetMins) * 100);
+          const isTargetMet = newTotalMins >= targetMins;
+
+          if (this.finishModalTaskProgressWrap) {
+            this.finishModalTaskProgressWrap.style.display = 'block';
+            if (this.finishModalTaskStats) {
+              this.finishModalTaskStats.textContent = `${newTotalMins}m / ${targetMins}m (${progressPct}%)`;
+            }
+            if (this.finishModalTaskDelta) {
+              this.finishModalTaskDelta.textContent = `+${durationMins}m this session`;
+            }
+            if (this.finishModalTaskBarFill) {
+              this.finishModalTaskBarFill.style.width = `${Math.min(100, progressPct)}%`;
+              if (isTargetMet) {
+                this.finishModalTaskBarFill.classList.add('bar-complete');
+              } else {
+                this.finishModalTaskBarFill.classList.remove('bar-complete');
+              }
+            }
+          }
+
+          if (this.finishModalTaskCheckLabel) {
+            if (isTargetMet) {
+              this.finishModalTaskCheckLabel.textContent = `Target reached (${progressPct}%)! Mark task as fully completed?`;
+            } else {
+              this.finishModalTaskCheckLabel.textContent = `Mark task as completed? (Leave unchecked to keep in progress for more sessions)`;
+            }
+          }
+
+          // Pre-check only if target was reached; leave unchecked if doing in parts!
+          this.finishModalTaskCheckbox.checked = isTargetMet;
+        } else {
+          // No target duration set: show cumulative minutes logged
+          if (this.finishModalTaskProgressWrap) {
+            this.finishModalTaskProgressWrap.style.display = 'block';
+            if (this.finishModalTaskStats) {
+              this.finishModalTaskStats.textContent = `Total studied: ${newTotalMins}m`;
+            }
+            if (this.finishModalTaskDelta) {
+              this.finishModalTaskDelta.textContent = `+${durationMins}m this session`;
+            }
+            if (this.finishModalTaskBarFill) {
+              this.finishModalTaskBarFill.style.width = '100%';
+              this.finishModalTaskBarFill.classList.remove('bar-complete');
+            }
+          }
+          if (this.finishModalTaskCheckLabel) {
+            this.finishModalTaskCheckLabel.textContent = `Mark task as completed? (Leave unchecked to keep in progress)`;
+          }
+          this.finishModalTaskCheckbox.checked = false;
+        }
       } else {
         this.finishModalTaskCompleteGroup.style.display = 'none';
       }

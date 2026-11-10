@@ -413,6 +413,10 @@ export class SyncManager {
       throw new Error('Please enter your Google OAuth Client ID in Cloud Sync settings.');
     }
 
+    if (!this.gdriveAccessToken) {
+      this.restoreSavedGoogleAuth();
+    }
+
     let token = this.gdriveAccessToken;
     if (!token || !this.gdriveTokenExpiry || Date.now() >= this.gdriveTokenExpiry - 60000) {
       token = await this.requestGoogleAccessToken({ clientId, interactive });

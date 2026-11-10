@@ -344,6 +344,22 @@
                 required 
               />
             </div>
+            <!-- Quick Date Chips (MS To Do style) -->
+            <div class="quick-dates-bar" id="focus-quick-dates">
+              <span class="quick-dates-label">Due:</span>
+              <button type="button" class="quick-date-chip" data-focus-preset="today" title="Due today">
+                ☀️ Today
+              </button>
+              <button type="button" class="quick-date-chip" data-focus-preset="tomorrow" title="Due tomorrow">
+                📅 Tomorrow
+              </button>
+              <button type="button" class="quick-date-chip" data-focus-preset="nextweek" title="Due next Monday">
+                🗓 Next Week
+              </button>
+              <button type="button" class="quick-date-chip btn-clear-date" id="focus-clear-date" title="Clear due date" style="display: none;">
+                ✕ No Date
+              </button>
+            </div>
             <div class="task-sub-row">
               <select id="task-subject-select" class="input-select" title="Subject">
                 <!-- Populated via JS -->
@@ -1161,7 +1177,7 @@
     </div>
 
     <div class="sidebar-body">
-      <!-- Quick add task inside sidebar -->
+      <!-- Quick add task inside sidebar (Microsoft To Do style) -->
       <form id="sidebar-task-form" class="sidebar-add-form">
         <input 
           type="text" 
@@ -1169,9 +1185,31 @@
           class="input-text" 
           placeholder="Add quick study task... (Enter)" 
           required 
+          autocomplete="off"
         />
+
+        <!-- MS To Do Style Quick Due Date Row -->
+        <div class="quick-dates-bar" id="sidebar-quick-dates">
+          <button type="button" class="quick-date-chip" data-sidebar-preset="today" title="Due today">
+            ☀️ Today
+          </button>
+          <button type="button" class="quick-date-chip" data-sidebar-preset="tomorrow" title="Due tomorrow">
+            📅 Tomorrow
+          </button>
+          <button type="button" class="quick-date-chip" data-sidebar-preset="nextweek" title="Due next Monday">
+            🗓 Next Week
+          </button>
+          <label class="quick-date-chip quick-date-picker-label" title="Pick specific date from calendar">
+            <span id="sidebar-date-picker-label">📆 Custom</span>
+            <input type="date" id="sidebar-task-duedate" class="quick-date-native-input" />
+          </label>
+          <button type="button" class="quick-date-chip btn-clear-date" id="sidebar-clear-date" title="Clear due date" style="display: none;">
+            ✕
+          </button>
+        </div>
+
         <div class="sidebar-form-sub">
-          <select id="sidebar-task-subject" class="input-select" style="flex: 1.4; min-width: 90px;">
+          <select id="sidebar-task-subject" class="input-select" style="flex: 1.4; min-width: 90px;" title="Course">
             <!-- Populated via JS -->
           </select>
           <select id="sidebar-task-recurrence" class="input-select" style="flex: 1.1; min-width: 85px; font-size: 0.8rem;" title="Recurrence Cadence">

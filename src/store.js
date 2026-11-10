@@ -529,18 +529,20 @@ class Store {
     }
   }
 
-  saveState() {
+  saveState({ emitSyncEvent = true, notifyUI = true } = {}) {
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       }
-      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+      if (emitSyncEvent && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
         window.dispatchEvent(new CustomEvent('chronostudy:state-changed', { detail: { timestamp: Date.now() } }));
       }
     } catch (err) {
       console.error('Failed to save to localStorage', err);
     }
-    this.notify();
+    if (notifyUI) {
+      this.notify();
+    }
   }
 
   // --- Safety Backup Snapshots (Zero Data Loss Protection) ---
@@ -609,7 +611,7 @@ class Store {
     this.state.sync.lastSyncedAt = syncTimestamp;
     this.state.sync.status = 'synced';
     this.state.sync.lastError = null;
-    this.saveState();
+    this.saveState({ emitSyncEvent: false, notifyUI: false });
   }
 
   getUnsyncedChanges() {
@@ -771,7 +773,11 @@ class Store {
     this.state.sync.status = 'synced';
     this.state.sync.lastError = null;
 
-    this.saveState();
+    if (changesCount > 0) {
+      this.saveState({ emitSyncEvent: false, notifyUI: true });
+    } else {
+      this.saveState({ emitSyncEvent: false, notifyUI: false });
+    }
     return { success: true, changesCount };
   }
 

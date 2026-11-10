@@ -2825,6 +2825,81 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   gap: 0.5rem;
 }
 
+/* Microsoft To Do Style Quick Due Date Chips */
+.quick-dates-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.15rem 0;
+}
+
+.quick-dates-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-right: 0.1rem;
+}
+
+.quick-date-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  font-weight: 500;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1.2;
+}
+
+.quick-date-chip:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+  border-color: var(--border-focus);
+}
+
+.quick-date-chip.active {
+  background: rgba(224, 109, 67, 0.2);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.quick-date-picker-label {
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.quick-date-native-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.quick-date-chip.btn-clear-date {
+  color: var(--accent-rose);
+  border-color: rgba(225, 29, 72, 0.3);
+  padding: 0.22rem 0.45rem;
+}
+
+.quick-date-chip.btn-clear-date:hover {
+  background: rgba(225, 29, 72, 0.15);
+  color: var(--accent-rose);
+}
+
 .sidebar-filter-row {
   display: flex;
   justify-content: space-between;

@@ -267,6 +267,16 @@ export class ChronoUI {
     this.sidebarTaskTitle = document.getElementById('sidebar-task-title');
     this.sidebarTaskSubject = document.getElementById('sidebar-task-subject');
     this.sidebarTaskRecurrence = document.getElementById('sidebar-task-recurrence');
+    this.sidebarQuickDates = document.getElementById('sidebar-quick-dates');
+    this.sidebarTaskDueDate = document.getElementById('sidebar-task-duedate');
+    this.sidebarDatePickerLabel = document.getElementById('sidebar-date-picker-label');
+    this.sidebarClearDate = document.getElementById('sidebar-clear-date');
+    this.selectedSidebarDueDate = null;
+
+    // Focus View Quick Due Date elements
+    this.focusQuickDates = document.getElementById('focus-quick-dates');
+    this.focusClearDate = document.getElementById('focus-clear-date');
+
     this.sidebarTaskList = document.getElementById('sidebar-task-list');
     this.sidebarFilterTabs = document.querySelectorAll('.task-sidebar-drawer [data-sfilter]');
     this.sidebarTaskGroup = document.getElementById('sidebar-task-group');
@@ -604,15 +614,54 @@ export class ChronoUI {
         if (!title) return;
         const subject = this.sidebarTaskSubject.value || null;
         const recurrence = this.sidebarTaskRecurrence ? this.sidebarTaskRecurrence.value : 'none';
+        const dueDate = this.selectedSidebarDueDate || null;
         store.addTask({
           title,
           subject,
           recurrence,
           targetMinutes: null,
-          dueDate: null
+          dueDate
         });
         this.sidebarTaskTitle.value = '';
         if (this.sidebarTaskRecurrence) this.sidebarTaskRecurrence.value = 'none';
+        this.setSidebarDueDate(null);
+        playClickSound();
+      });
+    }
+
+    // Sidebar Quick Due Date Chips (MS To Do style)
+    if (this.sidebarQuickDates) {
+      this.sidebarQuickDates.querySelectorAll('.quick-date-chip[data-sidebar-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const preset = btn.dataset.sidebarPreset;
+          const d = new Date();
+          let targetDateStr = null;
+          if (preset === 'today') {
+            targetDateStr = toLocalDateStr(d);
+          } else if (preset === 'tomorrow') {
+            d.setDate(d.getDate() + 1);
+            targetDateStr = toLocalDateStr(d);
+          } else if (preset === 'nextweek') {
+            const day = d.getDay() || 7;
+            d.setDate(d.getDate() + (8 - day));
+            targetDateStr = toLocalDateStr(d);
+          }
+          this.setSidebarDueDate(targetDateStr, preset);
+          playClickSound();
+        });
+      });
+    }
+
+    if (this.sidebarTaskDueDate) {
+      this.sidebarTaskDueDate.addEventListener('change', () => {
+        const val = this.sidebarTaskDueDate.value;
+        this.setSidebarDueDate(val || null, null);
+      });
+    }
+
+    if (this.sidebarClearDate) {
+      this.sidebarClearDate.addEventListener('click', () => {
+        this.setSidebarDueDate(null);
         playClickSound();
       });
     }
@@ -878,8 +927,49 @@ export class ChronoUI {
       this.taskTargetInput.value = '';
       this.taskDueDateInput.value = '';
       if (this.taskRecurrenceSelect) this.taskRecurrenceSelect.value = 'none';
+      this.updateFocusDateChips(null);
       playClickSound();
     });
+
+    // Focus View Quick Due Date Chips (MS To Do style)
+    if (this.focusQuickDates) {
+      this.focusQuickDates.querySelectorAll('.quick-date-chip[data-focus-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const preset = btn.dataset.focusPreset;
+          const d = new Date();
+          let targetDateStr = null;
+          if (preset === 'today') {
+            targetDateStr = toLocalDateStr(d);
+          } else if (preset === 'tomorrow') {
+            d.setDate(d.getDate() + 1);
+            targetDateStr = toLocalDateStr(d);
+          } else if (preset === 'nextweek') {
+            const day = d.getDay() || 7;
+            d.setDate(d.getDate() + (8 - day));
+            targetDateStr = toLocalDateStr(d);
+          }
+          if (this.taskDueDateInput) {
+            this.taskDueDateInput.value = targetDateStr || '';
+          }
+          this.updateFocusDateChips(preset);
+          playClickSound();
+        });
+      });
+    }
+
+    if (this.focusClearDate) {
+      this.focusClearDate.addEventListener('click', () => {
+        if (this.taskDueDateInput) this.taskDueDateInput.value = '';
+        this.updateFocusDateChips(null);
+        playClickSound();
+      });
+    }
+
+    if (this.taskDueDateInput) {
+      this.taskDueDateInput.addEventListener('change', () => {
+        this.updateFocusDateChips();
+      });
+    }
 
     // Task Filters
     this.taskFilterTabs.forEach((tab) => {
@@ -3174,6 +3264,57 @@ create policy "Allow room sync access" on chronostudy_sync
     }
     this.linkedTaskTitle.textContent = task.title;
     this.linkedTaskBanner.style.display = 'flex';
+  }
+
+  setSidebarDueDate(dateStr, presetName = null) {
+    this.selectedSidebarDueDate = dateStr;
+    if (this.sidebarTaskDueDate) {
+      this.sidebarTaskDueDate.value = dateStr || '';
+    }
+
+    if (this.sidebarQuickDates) {
+      this.sidebarQuickDates.querySelectorAll('.quick-date-chip[data-sidebar-preset]').forEach((btn) => {
+        btn.classList.toggle('active', Boolean(presetName && btn.dataset.sidebarPreset === presetName));
+      });
+    }
+
+    const pickerLabel = this.sidebarDatePickerLabel;
+    if (pickerLabel) {
+      if (dateStr && !presetName) {
+        pickerLabel.textContent = `📅 ${dateStr}`;
+        pickerLabel.parentElement.classList.add('active');
+      } else {
+        pickerLabel.textContent = '📆 Custom';
+        pickerLabel.parentElement.classList.remove('active');
+      }
+    }
+
+    if (this.sidebarClearDate) {
+      this.sidebarClearDate.style.display = dateStr ? 'inline-flex' : 'none';
+    }
+  }
+
+  updateFocusDateChips(activePreset = null) {
+    const val = this.taskDueDateInput ? this.taskDueDateInput.value : '';
+    const todayStr = toLocalDateStr(new Date());
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = toLocalDateStr(tomorrow);
+
+    let preset = activePreset;
+    if (!preset && val) {
+      if (val === todayStr) preset = 'today';
+      else if (val === tomorrowStr) preset = 'tomorrow';
+    }
+
+    if (this.focusQuickDates) {
+      this.focusQuickDates.querySelectorAll('.quick-date-chip[data-focus-preset]').forEach((btn) => {
+        btn.classList.toggle('active', Boolean(preset && btn.dataset.focusPreset === preset));
+      });
+    }
+    if (this.focusClearDate) {
+      this.focusClearDate.style.display = val ? 'inline-flex' : 'none';
+    }
   }
 
   openTaskEditModal(taskId) {

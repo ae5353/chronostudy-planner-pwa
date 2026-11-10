@@ -257,13 +257,13 @@ export class SyncManager {
       }
     });
 
-    // Periodic background sync every 60 seconds when online
+    // Periodic background sync every 120 seconds when online
     if (this.backgroundPollTimer) clearInterval(this.backgroundPollTimer);
     this.backgroundPollTimer = setInterval(() => {
       if (this.networkOnline && this.isConfigured() && store.getState().sync.autoSync && !this.isSyncing) {
         this.performSync({ silent: true });
       }
-    }, 60000);
+    }, 120000);
 
     // Setup Android lock-screen and notification bar MediaSession controls
     this.initMediaSession();
@@ -284,6 +284,10 @@ export class SyncManager {
   scheduleDebouncedSync() {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
+      const unsynced = store.getUnsyncedChanges();
+      if (!unsynced.hasChanges) {
+        return; // No local changes to upload
+      }
       this.performSync({ silent: true });
     }, 4000);
   }
@@ -307,6 +311,14 @@ export class SyncManager {
       }
       this.notify();
       return { success: false, reason: 'unconfigured' };
+    }
+
+    // Prevent unnecessary redundant network roundtrips if there are no unsynced changes and we synced in the last 60 seconds
+    if (!force && !store.getUnsyncedChanges().hasChanges) {
+      const lastSynced = syncState.lastSyncedAt;
+      if (lastSynced && (Date.now() - new Date(lastSynced).getTime() < 60000)) {
+        return { success: true, reason: 'recently-synced' };
+      }
     }
 
     this.isSyncing = true;

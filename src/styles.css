@@ -4084,8 +4084,12 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 }
 
 .sync-status-subtitle {
-  font-size: 0.72rem;
+  font-family: var(--font-body, system-ui, -apple-system, sans-serif);
+  font-size: 0.74rem;
   color: var(--text-dim);
+  text-transform: none;
+  letter-spacing: normal;
+  word-break: break-word;
 }
 
 .sync-meta-grid {

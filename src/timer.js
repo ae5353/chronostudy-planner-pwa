@@ -9,7 +9,7 @@ class StudyTimer {
     this.sessionStartTime = null;
 
     // Load active state from store
-    const state = store.getState().activeTimer;
+    const state = store.getState().activeTimer || {};
     this.mode = state.mode || 'stopwatch'; // 'stopwatch' | 'countdown'
     this.targetSec = state.targetSec || 1500;
     this.elapsedSec = state.elapsedSec || 0;
@@ -19,12 +19,18 @@ class StudyTimer {
     this.linkedTaskId = state.linkedTaskId || null;
     this.draftNotes = state.draftNotes || '';
     this.isZenMode = state.isZenMode || false;
+    this.sessionStartTime = state.startedAt ? new Date(state.startedAt) : null;
 
-    // If it was running before page reload, resume with calculated delta
-    if (state.isRunning && state.startedAt) {
-      const deltaSec = Math.floor((Date.now() - new Date(state.startedAt).getTime()) / 1000);
-      this.elapsedSec = (state.elapsedSec || 0) + Math.max(0, deltaSec);
-      this.sessionStartTime = new Date(state.startedAt);
+    // If it was running before page reload, resume with calculated delta since LAST TICK
+    // (Prevents doubling elapsedSec or adding full session duration on Ctrl+R)
+    if (state.isRunning) {
+      if (state.lastTickAt) {
+        const offlineDeltaSec = Math.max(0, Math.floor((Date.now() - new Date(state.lastTickAt).getTime()) / 1000));
+        // Add offline seconds if reasonable (e.g. up to 24h)
+        if (offlineDeltaSec > 0 && offlineDeltaSec < 86400) {
+          this.elapsedSec = (state.elapsedSec || 0) + offlineDeltaSec;
+        }
+      }
       this.start(false);
     }
   }
@@ -51,6 +57,7 @@ class StudyTimer {
       elapsedSec: this.elapsedSec,
       isRunning: this.isRunning,
       startedAt: this.sessionStartTime ? this.sessionStartTime.toISOString() : null,
+      lastTickAt: new Date().toISOString(),
       subject: this.subject,
       topic: this.topic,
       linkedTaskId: this.linkedTaskId,

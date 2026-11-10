@@ -1835,7 +1835,10 @@ export class ChronoUI {
         this.modalSyncSubtitle.textContent = 'Changes queued locally; will auto-sync upon reconnection';
       } else if (status.lastError) {
         const err = String(status.lastError);
-        const isDriveDisabled = err.includes('Google Drive API') && (err.includes('disabled') || err.includes('has not been used') || err.includes('403') || err.includes('SERVICE_DISABLED'));
+        const errLower = err.toLowerCase();
+        const isDriveDisabled = (errLower.includes('google drive api') || errLower.includes('drive.googleapis.com')) &&
+          (errLower.includes('disabled') || errLower.includes('has not been used') || errLower.includes('403') || errLower.includes('service_disabled') || errLower.includes('accessnotconfigured'));
+
         if (isDriveDisabled) {
           const match = err.match(/https?:\/\/[^\s'"\\]+/);
           const rawUrl = match ? match[0].replace(/\\/g, '') : '';
@@ -1843,13 +1846,20 @@ export class ChronoUI {
           const projectId = projectIdMatch ? projectIdMatch[1] : '749004251176';
           const enableUrl = rawUrl || `https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=${projectId}`;
           this.modalSyncSubtitle.innerHTML = `
-            <div style="color: var(--accent-rose); line-height: 1.4; padding: 0.35rem 0;">
-              Google Drive API is disabled in your Google Cloud Project.<br/>
-              <a href="${enableUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; margin-top:0.45rem; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none;">
-                → Click to Enable Google Drive API (1 Click)
-              </a>
-              <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.35rem;">
-                Click the blue "ENABLE" button on Google Cloud, then click "Sync Now" above.
+            <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 6px; padding: 0.65rem 0.85rem; margin-top: 0.35rem; text-align: left; font-family: system-ui, -apple-system, sans-serif; text-transform: none; letter-spacing: normal;">
+              <div style="color: #fca5a5; font-weight: 600; font-size: 0.82rem; margin-bottom: 0.25rem;">
+                ⚠ Google Drive API Disabled in Project ${projectId}
+              </div>
+              <div style="font-size: 0.74rem; color: #fecaca; line-height: 1.45;">
+                Google blocked the sync because the Google Drive API library is not yet enabled in your Google Cloud Console project.
+              </div>
+              <div style="margin-top: 0.55rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="${enableUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.85rem; font-size: 0.76rem; text-decoration: none; font-weight: 600; background: #eab308; color: #000; border: none; border-radius: 4px;">
+                  ↗ Enable Google Drive API (1 Click)
+                </a>
+                <span style="font-size: 0.72rem; color: #94a3b8;">
+                  Click the blue "ENABLE" button, then return and click "Sync Now".
+                </span>
               </div>
             </div>
           `;
@@ -3062,8 +3072,17 @@ create policy "Allow room sync access" on chronostudy_sync
         const pct = Math.min(100, Math.round(state.progress * 100));
         this.timerDigitalProgressBar.style.width = `${pct}%`;
       } else {
-        const pct = Math.min(100, Math.round(((state.elapsedSec % 60) / 60) * 100));
-        this.timerDigitalProgressBar.style.width = `${pct}%`;
+        const secInMin = state.elapsedSec % 60;
+        if (secInMin === 0 && state.elapsedSec > 0) {
+          this.timerDigitalProgressBar.style.transition = 'none';
+          this.timerDigitalProgressBar.style.width = '0%';
+          requestAnimationFrame(() => {
+            if (this.timerDigitalProgressBar) this.timerDigitalProgressBar.style.transition = '';
+          });
+        } else {
+          const pct = Math.min(100, Math.round((secInMin / 60) * 100));
+          this.timerDigitalProgressBar.style.width = `${pct}%`;
+        }
       }
     }
 
@@ -3218,8 +3237,17 @@ create policy "Allow room sync access" on chronostudy_sync
             const pct = Math.min(100, Math.round(state.progress * 100));
             this.zenDigitalProgressBar.style.width = `${pct}%`;
           } else {
-            const pct = Math.min(100, Math.round(((state.elapsedSec % 60) / 60) * 100));
-            this.zenDigitalProgressBar.style.width = `${pct}%`;
+            const secInMin = state.elapsedSec % 60;
+            if (secInMin === 0 && state.elapsedSec > 0) {
+              this.zenDigitalProgressBar.style.transition = 'none';
+              this.zenDigitalProgressBar.style.width = '0%';
+              requestAnimationFrame(() => {
+                if (this.zenDigitalProgressBar) this.zenDigitalProgressBar.style.transition = '';
+              });
+            } else {
+              const pct = Math.min(100, Math.round((secInMin / 60) * 100));
+              this.zenDigitalProgressBar.style.width = `${pct}%`;
+            }
           }
         }
 

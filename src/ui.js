@@ -3340,15 +3340,13 @@ create policy "Allow room sync access" on chronostudy_sync
           zenNotes.value = val;
         }
       }
-    }
 
-        if (zenNotes && !zenNotes.dataset.bound) {
-          zenNotes.dataset.bound = 'true';
-          zenNotes.addEventListener('input', () => {
-            this.sessionNotesArea.value = zenNotes.value;
-            timer.setDraftNotes(zenNotes.value);
-          });
-        }
+      if (zenNotes && !zenNotes.dataset.bound) {
+        zenNotes.dataset.bound = 'true';
+        zenNotes.addEventListener('input', () => {
+          this.sessionNotesArea.value = zenNotes.value;
+          timer.setDraftNotes(zenNotes.value);
+        });
       }
     }
   }

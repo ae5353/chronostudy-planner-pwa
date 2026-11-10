@@ -270,6 +270,7 @@ const INITIAL_STATE = {
     theme: 'slate',
     fontStyle: 'sans', // 'sans' | 'serif' | 'mono' | 'humanist' | 'cinzel' | 'cormorant'
     timerStyle: 'chronograph', // 'chronograph' | 'cadran' | 'minimal'
+    layoutFormat: 'auto', // 'auto' | 'mobile' | 'desktop'
     soundEnabled: true,
     ambientSound: 'none',
     volume: 0.5,
@@ -421,6 +422,9 @@ class Store {
     if (!state.settings.theme) state.settings.theme = 'slate';
     if (!state.settings.timerStyle || state.settings.timerStyle === 'chronometer') {
       state.settings.timerStyle = 'chronograph';
+    }
+    if (!state.settings.layoutFormat || !['auto', 'mobile', 'desktop'].includes(state.settings.layoutFormat)) {
+      state.settings.layoutFormat = 'auto';
     }
 
     if (!state.sync) {

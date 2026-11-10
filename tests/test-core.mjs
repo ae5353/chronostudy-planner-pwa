@@ -167,11 +167,12 @@ assert.equal(updatedWevent.title, 'Haftalık Müzakere (Updated)');
 store.deleteWeeklyEvent(wevent.id);
 assert(!store.getState().weeklyEvents.some(e => e.id === wevent.id), 'Weekly event should be deleted');
 
-// Settings & Typography
-store.updateSettings({ fontStyle: 'cinzel', theme: 'bibliotheca', timerStyle: 'cadran' });
+// Settings, Typography & Layout Formats
+store.updateSettings({ fontStyle: 'cinzel', theme: 'bibliotheca', timerStyle: 'cadran', layoutFormat: 'mobile' });
 assert.equal(store.getState().settings.fontStyle, 'cinzel', 'Font style setting should persist');
 assert.equal(store.getState().settings.theme, 'bibliotheca', 'Theme setting should persist');
 assert.equal(store.getState().settings.timerStyle, 'cadran', 'Timer style setting should persist');
+assert.equal(store.getState().settings.layoutFormat, 'mobile', 'Layout format setting should persist');
 
 // Lecture Slot management on a subject
 const testSubId = store.getState().subjects[0].id;

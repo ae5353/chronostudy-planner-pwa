@@ -4340,49 +4340,538 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   padding: 0.85rem 1rem;
 }
 
+/* ==========================================================================
+   DISPLAY FORMATS & RESPONSIVE SCALING ENGINE
+   Supports:
+   - ⚡ Auto-Adaptive (Responsive)
+   - 📱 Mobile Phone Format (Compact Smartphone Ergonomics)
+   - 💻 Tablet & PC Dashboard (Widescreen Multi-Column Workstation)
+   ========================================================================== */
+
+/* Mobile Focus Segmented Bar (Timer vs Tasks vs Both) */
+.focus-mobile-segmented-bar {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full, 9999px);
+  padding: 0.25rem;
+  margin: 0 0 1rem 0;
+  gap: 0.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.focus-seg-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-full, 9999px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.focus-seg-btn:hover {
+  color: var(--text-main);
+  background-color: var(--bg-hover);
+}
+
+.focus-seg-btn.active {
+  color: #ffffff;
+  background-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.focus-seg-btn .seg-icon {
+  font-size: 0.95rem;
+}
+
+.focus-seg-btn .badge-counter {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 @media (max-width: 600px) {
   .sync-meta-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Responsiveness */
+/* Base Responsive Switcher (When NOT forced to Desktop mode) */
 @media (max-width: 992px) {
-  .pc-dashboard-grid {
+  body:not(.layout-format-desktop) .pc-dashboard-grid {
     grid-template-columns: 1fr;
   }
-  .week-calendar-grid {
+  body:not(.layout-format-desktop) .week-calendar-grid {
     grid-template-columns: 1fr;
     min-width: 0;
   }
 }
 
+/* Mobile Phone Responsive Rules (Active when screen <= 768px in Auto OR when .layout-format-mobile is active) */
 @media (max-width: 768px) {
-  .study-context-row {
+  body:not(.layout-format-desktop) .study-context-row {
     grid-template-columns: 1fr;
+    gap: 0.45rem;
   }
-  
-  .header-nav {
+
+  body:not(.layout-format-desktop) .header-nav {
     display: none;
   }
 
-  .header-stats {
+  body:not(.layout-format-desktop) .header-stats {
     display: none;
   }
 
-  .app-main {
-    padding: 1rem 0.75rem 5rem 0.75rem;
+  body:not(.layout-format-desktop) .brand-subtitle {
+    display: none !important;
   }
 
-  .mobile-nav-bar {
+  body:not(.layout-format-desktop) .nav-sidebar-btn {
+    display: none !important;
+  }
+
+  body:not(.layout-format-desktop) .btn-pip {
+    display: none !important;
+  }
+
+  body:not(.layout-format-desktop) .btn-expand-panel {
+    display: none !important;
+  }
+
+  body:not(.layout-format-desktop) .app-header {
+    padding: 0.45rem 0.75rem;
+  }
+
+  body:not(.layout-format-desktop) .header-actions {
+    gap: 0.35rem;
+  }
+
+  body:not(.layout-format-desktop) .cloud-sync-btn {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.78rem;
+  }
+
+  body:not(.layout-format-desktop) .focus-mobile-segmented-bar {
     display: flex;
   }
 
-  .zen-overlay {
+  body:not(.layout-format-desktop) .app-main {
+    padding: 0.75rem 0.65rem calc(4.8rem + env(safe-area-inset-bottom, 0px)) 0.65rem;
+  }
+
+  body:not(.layout-format-desktop) .mobile-nav-bar {
+    display: flex;
+    padding: 0.45rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) 0.5rem;
+  }
+
+  body:not(.layout-format-desktop) .timer-station.timer-cockpit {
+    flex-direction: column;
+    padding: 0.85rem 0.65rem;
+    gap: 0.85rem;
+    margin: 0.25rem 0 0.85rem 0;
+    text-align: center;
+  }
+
+  body:not(.layout-format-desktop) .timer-circle-container {
+    width: min(220px, 62vw);
+    height: min(220px, 62vw);
+    max-width: 220px;
+    max-height: 220px;
+    margin: 0 auto;
+  }
+
+  body:not(.layout-format-desktop) .timer-digital-col {
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+  }
+
+  body:not(.layout-format-desktop) .digital-instrument-card {
+    padding: 0.75rem 0.85rem;
+  }
+
+  body:not(.layout-format-desktop) .digital-digits-display .timer-digits {
+    font-size: clamp(2.3rem, 9.5vw, 3rem);
+    letter-spacing: -0.02em;
+  }
+
+  body:not(.layout-format-desktop) .digital-controls {
+    gap: 0.45rem;
+  }
+
+  body:not(.layout-format-desktop) .digital-controls .btn {
+    min-height: 44px;
+    font-size: 0.92rem;
+  }
+
+  body:not(.layout-format-desktop) .session-notes-box {
+    margin-top: 0.75rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  body:not(.layout-format-desktop) .session-notes-textarea {
+    min-height: 90px;
+    font-size: 0.85rem;
+  }
+
+  body:not(.layout-format-desktop) .task-planner-panel {
+    padding: 0.85rem;
+  }
+
+  body:not(.layout-format-desktop) .new-task-box {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  body:not(.layout-format-desktop) .task-sub-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  body:not(.layout-format-desktop) #task-subject-select {
+    flex: 1 1 130px;
+    font-size: 0.82rem;
+  }
+
+  body:not(.layout-format-desktop) .task-target-input {
+    flex: 0 0 75px;
+    font-size: 0.82rem;
+  }
+
+  body:not(.layout-format-desktop) .task-date-input {
+    flex: 1 1 120px;
+    font-size: 0.82rem;
+  }
+
+  body:not(.layout-format-desktop) .task-recurrence-select {
+    flex: 1 1 110px;
+    font-size: 0.82rem;
+  }
+
+  body:not(.layout-format-desktop) .task-sub-row button[type="submit"] {
+    flex: 1 0 100%;
+    padding: 0.55rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+
+  body:not(.layout-format-desktop) .todo-smart-tabs {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0.35rem;
+    padding-bottom: 4px;
+    margin-bottom: 0.5rem;
+  }
+
+  body:not(.layout-format-desktop) .todo-smart-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  body:not(.layout-format-desktop) .todo-tab-btn {
+    flex-shrink: 0;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  body:not(.layout-format-desktop) .todo-tools-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+  }
+
+  body:not(.layout-format-desktop) .todo-select {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  body:not(.layout-format-desktop) .task-item {
+    padding: 0.65rem 0.75rem;
+    gap: 0.6rem;
+  }
+
+  body:not(.layout-format-desktop) .zen-overlay {
     padding: 1.25rem;
   }
 
-  .zen-timer-digits {
+  body:not(.layout-format-desktop) .zen-timer-digits {
     font-size: 4.5rem;
   }
 }
+
+/* Screen width <= 480px: Compact header and buttons */
+@media (max-width: 480px) {
+  body:not(.layout-format-desktop) .cloud-sync-label {
+    display: none;
+  }
+  body:not(.layout-format-desktop) #btn-log-past {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.76rem;
+  }
+}
+
+/* ==========================================================================
+   FORCED LAYOUT FORMAT: MOBILE PHONE FORMAT (.layout-format-mobile)
+   Applies full mobile scaling even on wider viewports or emulators
+   ========================================================================== */
+body.layout-format-mobile .pc-dashboard-grid {
+  grid-template-columns: 1fr !important;
+}
+
+body.layout-format-mobile .week-calendar-grid {
+  grid-template-columns: 1fr !important;
+  min-width: 0 !important;
+}
+
+body.layout-format-mobile .study-context-row {
+  grid-template-columns: 1fr !important;
+  gap: 0.45rem !important;
+}
+
+body.layout-format-mobile .header-nav {
+  display: none !important;
+}
+
+body.layout-format-mobile .header-stats {
+  display: none !important;
+}
+
+body.layout-format-mobile .brand-subtitle {
+  display: none !important;
+}
+
+body.layout-format-mobile .nav-sidebar-btn {
+  display: none !important;
+}
+
+body.layout-format-mobile .btn-pip {
+  display: none !important;
+}
+
+body.layout-format-mobile .btn-expand-panel {
+  display: none !important;
+}
+
+body.layout-format-mobile .app-header {
+  padding: 0.45rem 0.75rem !important;
+}
+
+body.layout-format-mobile .header-actions {
+  gap: 0.35rem !important;
+}
+
+body.layout-format-mobile .cloud-sync-btn {
+  padding: 0.35rem 0.55rem !important;
+  font-size: 0.78rem !important;
+}
+
+body.layout-format-mobile .focus-mobile-segmented-bar {
+  display: flex !important;
+}
+
+body.layout-format-mobile .app-main {
+  padding: 0.75rem 0.65rem calc(4.8rem + env(safe-area-inset-bottom, 0px)) 0.65rem !important;
+}
+
+body.layout-format-mobile .mobile-nav-bar {
+  display: flex !important;
+  padding: 0.45rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px)) 0.5rem !important;
+}
+
+body.layout-format-mobile .timer-station.timer-cockpit {
+  flex-direction: column !important;
+  padding: 0.85rem 0.65rem !important;
+  gap: 0.85rem !important;
+  margin: 0.25rem 0 0.85rem 0 !important;
+  text-align: center !important;
+}
+
+body.layout-format-mobile .timer-circle-container {
+  width: min(220px, 62vw) !important;
+  height: min(220px, 62vw) !important;
+  max-width: 220px !important;
+  max-height: 220px !important;
+  margin: 0 auto !important;
+}
+
+body.layout-format-mobile .timer-digital-col {
+  width: 100% !important;
+  max-width: 340px !important;
+  margin: 0 auto !important;
+}
+
+body.layout-format-mobile .digital-instrument-card {
+  padding: 0.75rem 0.85rem !important;
+}
+
+body.layout-format-mobile .digital-digits-display .timer-digits {
+  font-size: clamp(2.3rem, 9.5vw, 3rem) !important;
+  letter-spacing: -0.02em !important;
+}
+
+body.layout-format-mobile .digital-controls {
+  gap: 0.45rem !important;
+}
+
+body.layout-format-mobile .digital-controls .btn {
+  min-height: 44px !important;
+  font-size: 0.92rem !important;
+}
+
+body.layout-format-mobile .session-notes-box {
+  margin-top: 0.75rem !important;
+  padding: 0.75rem 0.85rem !important;
+}
+
+body.layout-format-mobile .session-notes-textarea {
+  min-height: 90px !important;
+  font-size: 0.85rem !important;
+}
+
+body.layout-format-mobile .task-planner-panel {
+  padding: 0.85rem !important;
+}
+
+body.layout-format-mobile .new-task-box {
+  padding: 0.75rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+body.layout-format-mobile .task-sub-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.45rem !important;
+}
+
+body.layout-format-mobile #task-subject-select {
+  flex: 1 1 130px !important;
+  font-size: 0.82rem !important;
+}
+
+body.layout-format-mobile .task-target-input {
+  flex: 0 0 75px !important;
+  font-size: 0.82rem !important;
+}
+
+body.layout-format-mobile .task-date-input {
+  flex: 1 1 120px !important;
+  font-size: 0.82rem !important;
+}
+
+body.layout-format-mobile .task-recurrence-select {
+  flex: 1 1 110px !important;
+  font-size: 0.82rem !important;
+}
+
+body.layout-format-mobile .task-sub-row button[type="submit"] {
+  flex: 1 0 100% !important;
+  padding: 0.55rem !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+}
+
+body.layout-format-mobile .todo-smart-tabs {
+  display: flex !important;
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  gap: 0.35rem !important;
+  padding-bottom: 4px !important;
+  margin-bottom: 0.5rem !important;
+}
+
+body.layout-format-mobile .todo-smart-tabs::-webkit-scrollbar {
+  display: none !important;
+}
+
+body.layout-format-mobile .todo-tab-btn {
+  flex-shrink: 0 !important;
+  padding: 0.3rem 0.65rem !important;
+  font-size: 0.75rem !important;
+}
+
+body.layout-format-mobile .todo-tools-row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 0.4rem !important;
+}
+
+body.layout-format-mobile .todo-select {
+  font-size: 0.78rem !important;
+  padding: 0.35rem 0.5rem !important;
+}
+
+/* ==========================================================================
+   FORCED LAYOUT FORMAT: TABLET & PC DASHBOARD (.layout-format-desktop)
+   Guarantees the user's tablet and PC stay in full widescreen dual-cockpit mode
+   ========================================================================== */
+body.layout-format-desktop .pc-dashboard-grid {
+  display: grid !important;
+  grid-template-columns: minmax(460px, 1fr) minmax(400px, 460px) !important;
+  gap: 1.25rem !important;
+}
+
+body.layout-format-desktop .pc-dashboard-grid > .panel-card {
+  display: block !important;
+}
+
+body.layout-format-desktop .focus-mobile-segmented-bar {
+  display: none !important;
+}
+
+body.layout-format-desktop .timer-station.timer-cockpit {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+body.layout-format-desktop .timer-circle-container {
+  width: 250px !important;
+  height: 250px !important;
+}
+
+body.layout-format-desktop .header-nav {
+  display: flex !important;
+}
+
+body.layout-format-desktop .header-stats {
+  display: flex !important;
+}
+
+body.layout-format-desktop .brand-subtitle {
+  display: inline-block !important;
+}
+
+body.layout-format-desktop .mobile-nav-bar {
+  display: none !important;
+}
+
+body.layout-format-desktop .nav-sidebar-btn {
+  display: inline-flex !important;
+}
+
+body.layout-format-desktop .btn-pip {
+  display: inline-flex !important;
+}
+
+body.layout-format-desktop .btn-expand-panel {
+  display: inline-block !important;
+}
+

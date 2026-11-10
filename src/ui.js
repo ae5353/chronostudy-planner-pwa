@@ -35,6 +35,7 @@ export class ChronoUI {
     this.applyTheme(store.getState().settings.theme || 'slate');
     this.applyFont(store.getState().settings.fontStyle || 'sans');
     this.applyTimerStyle(store.getState().settings.timerStyle || 'chronograph');
+    this.applyLayoutFormat(store.getState().settings.layoutFormat || 'auto');
 
     // Configure Screen WakeLock (Stays awake during fullscreen, Zen Mode, & active study)
     wakeLockManager.setConditionChecker(() => {
@@ -319,6 +320,15 @@ export class ChronoUI {
     this.themePickerGrid = document.getElementById('theme-picker-grid');
     this.fontPickerGrid = document.getElementById('font-picker-grid');
     this.cadranPickerGrid = document.getElementById('cadran-picker-grid');
+    this.layoutPickerGrid = document.getElementById('layout-picker-grid');
+
+    // Mobile Focus Segmented Bar & Panels
+    this.focusMobileSegmentedBar = document.getElementById('focus-mobile-segmented-bar');
+    this.focusSegBtns = document.querySelectorAll('.focus-seg-btn');
+    this.timerMainPanel = document.querySelector('.timer-main-panel');
+    this.taskPlannerPanel = document.querySelector('.task-planner-panel');
+    this.focusSegTaskCount = document.getElementById('focus-seg-task-count');
+    this.activeFocusMobileTab = 'timer';
 
     // PiP Floating Mini-Timer Widget
     this.btnPipTimer = document.getElementById('btn-pip-timer');
@@ -770,9 +780,27 @@ export class ChronoUI {
     this.navTabBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
         const view = btn.dataset.view;
+        const focusTarget = btn.dataset.focusTarget;
         this.switchView(view);
+        if (view === 'focus' && focusTarget) {
+          this.switchFocusMobileTab(focusTarget);
+        }
         playClickSound();
       });
+    });
+
+    // Mobile Focus Segmented Control (Timer vs Study Tasks)
+    if (this.focusSegBtns) {
+      this.focusSegBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.switchFocusMobileTab(btn.dataset.focusTab);
+          playClickSound();
+        });
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      this.handleLayoutResize();
     });
 
     // Timer Mode Switchers
@@ -1497,7 +1525,11 @@ export class ChronoUI {
   switchView(viewName) {
     this.activeView = viewName;
     this.navTabBtns.forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.view === viewName);
+      if (btn.dataset.focusTarget) {
+        btn.classList.toggle('active', viewName === 'focus' && (this.activeFocusMobileTab || 'timer') === btn.dataset.focusTarget);
+      } else {
+        btn.classList.toggle('active', btn.dataset.view === viewName);
+      }
     });
 
     Object.entries(this.views).forEach(([name, el]) => {
@@ -1506,12 +1538,69 @@ export class ChronoUI {
       }
     });
 
-    if (viewName === 'calendar') {
+    if (viewName === 'focus') {
+      this.switchFocusMobileTab(this.activeFocusMobileTab || 'timer', false);
+    } else if (viewName === 'calendar') {
       this.renderCalendar();
     } else if (viewName === 'subjects') {
       this.renderSubjectsPage();
     } else if (viewName === 'history') {
       this.renderHistory();
+    }
+  }
+
+  applyLayoutFormat(format) {
+    const validFormats = ['auto', 'mobile', 'desktop'];
+    const normalized = validFormats.includes(format) ? format : 'auto';
+    document.documentElement.setAttribute('data-layout-format', normalized);
+    document.body.classList.remove('layout-format-auto', 'layout-format-mobile', 'layout-format-desktop');
+    document.body.classList.add(`layout-format-${normalized}`);
+    this.handleLayoutResize();
+    this.renderLayoutPicker();
+  }
+
+  isMobileLayoutActive() {
+    const format = store.getState().settings.layoutFormat || 'auto';
+    if (format === 'mobile') return true;
+    if (format === 'desktop') return false;
+    return typeof window !== 'undefined' && window.innerWidth <= 768;
+  }
+
+  handleLayoutResize() {
+    this.switchFocusMobileTab(this.activeFocusMobileTab || 'timer', false);
+  }
+
+  switchFocusMobileTab(tab = 'timer', updateButtons = true) {
+    this.activeFocusMobileTab = tab;
+    if (updateButtons && this.focusSegBtns) {
+      this.focusSegBtns.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.focusTab === tab);
+      });
+      this.navTabBtns.forEach((btn) => {
+        if (btn.dataset.focusTarget) {
+          btn.classList.toggle('active', this.activeView === 'focus' && btn.dataset.focusTarget === tab);
+        }
+      });
+    }
+
+    if (!this.timerMainPanel || !this.taskPlannerPanel) {
+      this.timerMainPanel = document.querySelector('.timer-main-panel');
+      this.taskPlannerPanel = document.querySelector('.task-planner-panel');
+    }
+
+    const isMobile = this.isMobileLayoutActive();
+
+    if (this.timerMainPanel && this.taskPlannerPanel) {
+      if (!isMobile || tab === 'both') {
+        this.timerMainPanel.style.display = 'block';
+        this.taskPlannerPanel.style.display = 'block';
+      } else if (tab === 'timer') {
+        this.timerMainPanel.style.display = 'block';
+        this.taskPlannerPanel.style.display = 'none';
+      } else if (tab === 'tasks') {
+        this.timerMainPanel.style.display = 'none';
+        this.taskPlannerPanel.style.display = 'block';
+      }
     }
   }
 
@@ -2601,6 +2690,52 @@ create policy "Allow room sync access" on chronostudy_sync
         });
       });
     }
+
+    this.renderLayoutPicker();
+  }
+
+  renderLayoutPicker() {
+    if (!this.layoutPickerGrid) return;
+    const currentFormat = store.getState().settings.layoutFormat || 'auto';
+    const FORMATS = [
+      {
+        id: 'auto',
+        name: '⚡ Auto-Adaptive (Responsive)',
+        desc: 'Automatically adapts to screen size. Uses widescreen dual dashboard on PC/tablets, and mobile format on phones.'
+      },
+      {
+        id: 'mobile',
+        name: '📱 Mobile Phone Format',
+        desc: 'Optimized vertical layout for smartphones. Proportional timepiece, segmented Focus/Tasks switcher, swipeable filter chips, and ergonomic touch targets.'
+      },
+      {
+        id: 'desktop',
+        name: '💻 Tablet & PC Dashboard',
+        desc: 'Classic widescreen dual-column dashboard with side-by-side timer and backlog. Preserves the exact PC layout on tablets.'
+      }
+    ];
+
+    this.layoutPickerGrid.innerHTML = FORMATS.map((f) => {
+      const isActive = f.id === currentFormat;
+      return `
+        <div class="cadran-card layout-card ${isActive ? 'active' : ''}" data-layout-id="${f.id}">
+          <div class="cadran-card-title">
+            <span>${f.name}</span>
+          </div>
+          <div class="cadran-card-desc">${f.desc}</div>
+        </div>
+      `;
+    }).join('');
+
+    this.layoutPickerGrid.querySelectorAll('.layout-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const layoutId = card.dataset.layoutId;
+        this.applyLayoutFormat(layoutId);
+        store.updateSettings({ layoutFormat: layoutId });
+        this.renderThemeModal();
+        playClickSound();
+      });
+    });
   }
 
   // --- Expand Tasks Panel ---
@@ -3660,6 +3795,9 @@ create policy "Allow room sync access" on chronostudy_sync
     if (this.sidebarTaskCount) {
       this.sidebarTaskCount.textContent = pendingCount;
     }
+    if (this.focusSegTaskCount) {
+      this.focusSegTaskCount.textContent = pendingCount;
+    }
 
     this.renderSidebarTasks();
 
@@ -3862,6 +4000,7 @@ create policy "Allow room sync access" on chronostudy_sync
     }
 
     this.switchView('focus');
+    this.switchFocusMobileTab('timer');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

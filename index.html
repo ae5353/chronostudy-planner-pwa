@@ -93,10 +93,23 @@
 
     <!-- VIEW 1: FOCUS STUDIO (Timer, Live Notes, To-Dos) -->
     <section id="view-focus" class="view-section">
+      <!-- Mobile Focus View Switcher: Segmented Control (Active on Mobile Phones) -->
+      <div class="focus-mobile-segmented-bar" id="focus-mobile-segmented-bar">
+        <button type="button" class="focus-seg-btn active" data-focus-tab="timer" id="btn-focus-tab-timer">
+          <span class="seg-icon">⏱</span> Focus Timer
+        </button>
+        <button type="button" class="focus-seg-btn" data-focus-tab="tasks" id="btn-focus-tab-tasks">
+          <span class="seg-icon">📋</span> Study Tasks <span id="focus-seg-task-count" class="badge-counter">0</span>
+        </button>
+        <button type="button" class="focus-seg-btn" data-focus-tab="both" id="btn-focus-tab-both" title="Show both Timer and Tasks stacked">
+          <span class="seg-icon">☰</span> All
+        </button>
+      </div>
+
       <div class="pc-dashboard-grid">
         
         <!-- Left Column: Active Study Station -->
-        <div class="panel-card">
+        <div class="panel-card timer-main-panel">
           <div class="panel-header">
             <div class="panel-title">
               <span>Timer & Focus Session</span>
@@ -793,21 +806,25 @@
 
   <!-- Mobile Bottom Navigation Bar -->
   <nav class="mobile-nav-bar">
-    <button class="mobile-nav-btn nav-tab-btn active" data-view="focus">
-      <span class="mobile-nav-icon">◷</span>
+    <button class="mobile-nav-btn nav-tab-btn active" data-view="focus" data-focus-target="timer" title="Focus Timer">
+      <span class="mobile-nav-icon">⏱</span>
       <span>Timer</span>
     </button>
-    <button class="mobile-nav-btn nav-tab-btn" data-view="calendar">
+    <button class="mobile-nav-btn nav-tab-btn" data-view="focus" data-focus-target="tasks" title="Study Tasks & Backlog">
+      <span class="mobile-nav-icon">📋</span>
+      <span>Tasks</span>
+    </button>
+    <button class="mobile-nav-btn nav-tab-btn" data-view="calendar" title="Academic Planner">
       <span class="mobile-nav-icon">▦</span>
       <span>Planner</span>
     </button>
-    <button class="mobile-nav-btn nav-tab-btn" data-view="subjects">
+    <button class="mobile-nav-btn nav-tab-btn" data-view="subjects" title="Courses & Syllabus">
       <span class="mobile-nav-icon">◈</span>
       <span>Courses</span>
     </button>
-    <button class="mobile-nav-btn nav-tab-btn" data-view="history">
-      <span class="mobile-nav-icon">≡</span>
-      <span>History</span>
+    <button class="mobile-nav-btn nav-tab-btn" data-view="history" title="Analytics & History">
+      <span class="mobile-nav-icon">📊</span>
+      <span>Analytics</span>
     </button>
   </nav>
 
@@ -1324,6 +1341,18 @@
             Choose an authentic typographic format — classical scholarly serif, modern sans, or precision engineering monospace.
           </p>
           <div id="font-picker-grid" class="font-picker-grid">
+            <!-- Rendered dynamically via JS -->
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+          <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">
+            Display Format & Device Screen Layout
+          </div>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+            Choose your layout format — automatic responsive, dedicated mobile phone format, or widescreen tablet &amp; PC dashboard.
+          </p>
+          <div id="layout-picker-grid" class="cadran-picker-grid">
             <!-- Rendered dynamically via JS -->
           </div>
         </div>

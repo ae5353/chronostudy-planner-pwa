@@ -34,10 +34,10 @@
   --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.5);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="oled"] {
@@ -70,10 +70,10 @@
   --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.9);
   --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.95);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="light"] {
@@ -106,10 +106,10 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="sepia"] {
@@ -142,10 +142,10 @@
   --shadow-md: 0 4px 8px -1px rgba(43, 37, 30, 0.08);
   --shadow-lg: 0 12px 20px -3px rgba(43, 37, 30, 0.1);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="forest"] {
@@ -178,10 +178,10 @@
   --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.6);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="bibliotheca"] {
@@ -214,10 +214,10 @@
   --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 14px 28px rgba(0, 0, 0, 0.7);
 
-  --radius-sm: 5px;
-  --radius-md: 7px;
-  --radius-lg: 10px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="oxblood"] {
@@ -250,10 +250,10 @@
   --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.65);
   --shadow-lg: 0 14px 28px rgba(0, 0, 0, 0.75);
 
-  --radius-sm: 5px;
-  --radius-md: 7px;
-  --radius-lg: 10px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="parchment"] {
@@ -286,10 +286,10 @@
   --shadow-md: 0 4px 8px -1px rgba(36, 29, 22, 0.09);
   --shadow-lg: 0 12px 20px -3px rgba(36, 29, 22, 0.12);
 
-  --radius-sm: 5px;
-  --radius-md: 7px;
-  --radius-lg: 10px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="oxford"] {
@@ -322,10 +322,10 @@
   --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.6);
   --shadow-lg: 0 14px 26px rgba(0, 0, 0, 0.7);
 
-  --radius-sm: 5px;
-  --radius-md: 7px;
-  --radius-lg: 10px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 [data-theme="tokyo"] {
@@ -358,10 +358,10 @@
   --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.6);
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-full: 9999px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-full: 3px;
 }
 
 /* Base Scaling: Proportional compact refinement across the app */
@@ -1946,7 +1946,7 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   font-size: 0.68rem;
   font-weight: 600;
   padding: 0.1rem 0.4rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   line-height: 1.2;
 }
 
@@ -3062,7 +3062,7 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   font-size: 0.6rem;
   font-weight: 600;
   padding: 0.08rem 0.35rem;
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   background-color: rgba(255, 255, 255, 0.08);
   color: var(--text-muted);
   letter-spacing: 0.02em;
@@ -3248,14 +3248,14 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   width: 100%;
   height: 6px;
   background-color: var(--bg-subtle);
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .digital-progress-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--primary), var(--primary-hover));
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   transition: width 0.35s ease;
 }
 
@@ -3900,13 +3900,13 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   width: 100%;
   height: 7px;
   background-color: var(--bg-subtle);
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .share-bar-fill {
   height: 100%;
-  border-radius: 9999px;
+  border-radius: var(--radius-sm);
   transition: width 0.5s ease;
 }
 

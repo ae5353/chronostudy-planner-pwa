@@ -79,7 +79,7 @@
           + Log Past
         </button>
         <button id="btn-theme-palette" class="btn btn-icon theme-btn" title="Themes & Color Palette">
-          🎨
+          ◈
         </button>
         <button id="backup-btn" class="btn btn-icon" title="Data Backup & Export">
           ⚙
@@ -115,7 +115,7 @@
 
               <!-- Floating Mini-Timer Widget (PiP) -->
               <button id="btn-pip-timer" class="btn btn-secondary btn-pip" title="Floating On-Screen Mini-Timer (Stays on top of PDFs & IDEs)">
-                📌 Widget
+                Widget
               </button>
 
               <!-- Zen Mode Button -->
@@ -348,16 +348,16 @@
             <div class="quick-dates-bar" id="focus-quick-dates">
               <span class="quick-dates-label">Due:</span>
               <button type="button" class="quick-date-chip" data-focus-preset="today" title="Due today">
-                ☀️ Today
+                Today
               </button>
               <button type="button" class="quick-date-chip" data-focus-preset="tomorrow" title="Due tomorrow">
-                📅 Tomorrow
+                Tomorrow
               </button>
               <button type="button" class="quick-date-chip" data-focus-preset="nextweek" title="Due next Monday">
-                🗓 Next Week
+                Next Week
               </button>
               <button type="button" class="quick-date-chip btn-clear-date" id="focus-clear-date" title="Clear due date" style="display: none;">
-                ✕ No Date
+                ✕ Clear
               </button>
             </div>
             <div class="task-sub-row">
@@ -381,12 +381,12 @@
               />
               <select id="task-recurrence-select" class="input-select task-recurrence-select" title="Recurrence Cadence (Optional)">
                 <option value="none">No Repeat</option>
-                <option value="daily">🔁 Daily</option>
-                <option value="weekdays">🔁 Weekdays</option>
-                <option value="weekly">🔁 Weekly</option>
-                <option value="biweekly">🔁 Bi-weekly (2 wks)</option>
-                <option value="triweekly">🔁 Tri-weekly (3 wks)</option>
-                <option value="monthly">🔁 Monthly</option>
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Bi-weekly (2 wks)</option>
+                <option value="triweekly">Tri-weekly (3 wks)</option>
+                <option value="monthly">Monthly</option>
               </select>
               <button type="submit" class="btn btn-primary" title="Add to study list">
                 + Add
@@ -398,12 +398,12 @@
           <div class="todo-command-bar">
             <!-- Smart List Views -->
             <div class="todo-smart-tabs">
-              <button type="button" class="todo-tab-btn active" data-view="todo">📋 To Do</button>
-              <button type="button" class="todo-tab-btn" data-view="today">☀️ Today</button>
-              <button type="button" class="todo-tab-btn" data-view="planned">📅 Planned</button>
-              <button type="button" class="todo-tab-btn" data-view="general">📌 General</button>
-              <button type="button" class="todo-tab-btn" data-view="recurring">🔁 Recurring</button>
-              <button type="button" class="todo-tab-btn" data-view="done">✓ Done</button>
+              <button type="button" class="todo-tab-btn active" data-view="todo">To Do</button>
+              <button type="button" class="todo-tab-btn" data-view="today">Today</button>
+              <button type="button" class="todo-tab-btn" data-view="planned">Planned</button>
+              <button type="button" class="todo-tab-btn" data-view="general">General</button>
+              <button type="button" class="todo-tab-btn" data-view="recurring">Recurring</button>
+              <button type="button" class="todo-tab-btn" data-view="done">Done</button>
               <button type="button" class="todo-tab-btn" data-view="all">All</button>
             </div>
 
@@ -537,7 +537,7 @@
       <!-- Analytics KPI Row -->
       <div class="analytics-kpi-grid">
         <div class="kpi-card">
-          <div class="kpi-icon">⏱</div>
+          <div class="kpi-icon">◷</div>
           <div class="kpi-content">
             <span class="kpi-label">Total Time Focused</span>
             <div id="analytics-total-time" class="kpi-value">0h 0m</div>
@@ -545,7 +545,7 @@
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon">📈</div>
+          <div class="kpi-icon">◈</div>
           <div class="kpi-content">
             <span class="kpi-label">This Week's Focus</span>
             <div id="analytics-week-time" class="kpi-value">0h 0m</div>
@@ -553,7 +553,7 @@
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon">🔥</div>
+          <div class="kpi-icon">▲</div>
           <div class="kpi-content">
             <span class="kpi-label">Active Focus Days</span>
             <div id="analytics-active-days" class="kpi-value">0 / 7</div>
@@ -561,7 +561,7 @@
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon">✅</div>
+          <div class="kpi-icon">✓</div>
           <div class="kpi-content">
             <span class="kpi-label">Tasks Completed</span>
             <div id="analytics-tasks-done" class="kpi-value">0 / 0</div>
@@ -576,7 +576,7 @@
         <div class="panel-card analytics-chart-card">
           <div class="panel-header">
             <div class="panel-title">
-              <span>📅 Weekly Focus Trend (Hours / Day)</span>
+              <span>Weekly Focus Trend (Hours / Day)</span>
             </div>
             <span class="analytics-badge" id="analytics-trend-total">0h total</span>
           </div>
@@ -589,7 +589,7 @@
         <div class="panel-card analytics-chart-card">
           <div class="panel-header">
             <div class="panel-title">
-              <span>📚 Focus Share by Course / Track</span>
+              <span>Focus Share by Course / Track</span>
             </div>
           </div>
           <div class="subject-share-list" id="analytics-subject-share">
@@ -609,7 +609,7 @@
               <option value="all">All Subjects</option>
             </select>
             <button id="btn-export-csv" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;" title="Export study sessions as CSV">
-              📥 Export CSV
+              Export CSV
             </button>
           </div>
         </div>
@@ -633,7 +633,7 @@
       <div class="zen-actions">
         <!-- Soundscape in Zen -->
         <div class="zen-soundscape-wrap" style="display: flex; align-items: center; gap: 0.4rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.25rem 0.6rem;">
-          <span style="font-size: 0.8rem;">🎧</span>
+          <span style="font-size: 0.8rem; opacity: 0.7;">♪</span>
           <select id="zen-soundscape-select" class="input-select" style="font-size: 0.75rem; padding: 0.2rem 0.4rem; border: none; background: transparent;">
             <option value="none">Audio: Off</option>
             <option value="rain">Rainfall</option>
@@ -643,8 +643,8 @@
             <option value="cafe">Library / Cafe</option>
           </select>
         </div>
-        <button id="btn-zen-toggle-notes" class="btn btn-secondary" title="Toggle Scratchpad (N)" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">📝 Notes</button>
-        <button id="btn-fullscreen" class="btn btn-icon" title="Toggle Browser Fullscreen (F)">🖥</button>
+        <button id="btn-zen-toggle-notes" class="btn btn-secondary" title="Toggle Scratchpad (N)" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">Notes</button>
+        <button id="btn-fullscreen" class="btn btn-icon" title="Toggle Browser Fullscreen (F)">[ ]</button>
         <button id="btn-exit-zen" class="btn btn-secondary" title="Exit Focus Mode (Esc)">✕ Exit Focus</button>
       </div>
     </div>
@@ -783,7 +783,7 @@
     <!-- Collapsible Focus Scratchpad -->
     <div id="zen-notes-container" class="zen-notes-container collapsed">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-        <label class="notes-label" style="font-size: 0.8rem; margin: 0;">📝 Focus Scratchpad & Real-Time Notes</label>
+        <label class="notes-label" style="font-size: 0.8rem; margin: 0;">Focus Scratchpad & Real-Time Notes</label>
         <button id="btn-zen-close-notes" class="btn btn-icon" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;" title="Hide Notes">✕</button>
       </div>
       <textarea id="zen-notes-area" class="input-textarea zen-textarea" placeholder="Jot down formulas, notes, and questions as you study... (automatically saved to study log)"></textarea>
@@ -793,19 +793,19 @@
   <!-- Mobile Bottom Navigation Bar -->
   <nav class="mobile-nav-bar">
     <button class="mobile-nav-btn nav-tab-btn active" data-view="focus">
-      <span class="mobile-nav-icon">⏱</span>
+      <span class="mobile-nav-icon">◷</span>
       <span>Timer</span>
     </button>
     <button class="mobile-nav-btn nav-tab-btn" data-view="calendar">
-      <span class="mobile-nav-icon">📅</span>
+      <span class="mobile-nav-icon">▦</span>
       <span>Planner</span>
     </button>
     <button class="mobile-nav-btn nav-tab-btn" data-view="subjects">
-      <span class="mobile-nav-icon">🏷</span>
+      <span class="mobile-nav-icon">◈</span>
       <span>Courses</span>
     </button>
     <button class="mobile-nav-btn nav-tab-btn" data-view="history">
-      <span class="mobile-nav-icon">📜</span>
+      <span class="mobile-nav-icon">≡</span>
       <span>History</span>
     </button>
   </nav>
@@ -813,7 +813,7 @@
   <!-- MODAL: Finish Study Session -->
   <div id="finish-session-modal" class="modal">
     <div class="modal-content">
-      <h3 class="modal-title">🎉 Great Session! Save to Log</h3>
+      <h3 class="modal-title">Save Study Session</h3>
       <div class="modal-body">
         <div class="modal-stats-summary">
           <div class="modal-stat-line">Time Studied: <strong id="finish-modal-duration"></strong></div>
@@ -841,7 +841,7 @@
   <!-- MODAL: Log Past Study -->
   <div id="manual-log-modal" class="modal">
     <div class="modal-content">
-      <h3 class="modal-title">📖 Log Past Study Session</h3>
+      <h3 class="modal-title">Log Past Study Session</h3>
       <form id="manual-log-form" class="modal-body">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
           <div class="form-group">
@@ -882,7 +882,7 @@
   <!-- MODAL: Add / Edit Subject -->
   <div id="subject-modal" class="modal">
     <div class="modal-content">
-      <h3 id="subject-modal-title" class="modal-title">🏷 Add Study Subject</h3>
+      <h3 id="subject-modal-title" class="modal-title">Add Study Subject</h3>
       <form id="subject-form" class="modal-body">
         <div class="form-group">
           <label class="form-label">Subject / Course Name</label>
@@ -926,7 +926,7 @@
   <!-- MODAL: Add / Edit Weekly Recurring Event -->
   <div id="weekly-event-modal" class="modal">
     <div class="modal-content">
-      <h3 id="wevent-modal-title" class="modal-title">🗓 Add Recurring Weekly Event / Class</h3>
+      <h3 id="wevent-modal-title" class="modal-title">Add Recurring Weekly Event / Class</h3>
       <form id="weekly-event-form" class="modal-body">
         <input type="hidden" id="wevent-edit-id" value="" />
         <div class="form-group">
@@ -984,7 +984,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" id="btn-delete-wevent" class="btn btn-secondary" style="display: none; color: var(--accent-red); margin-right: auto;">
-            🗑 Delete Event
+            Delete Event
           </button>
           <button type="button" id="btn-cancel-wevent" class="btn btn-secondary">Cancel</button>
           <button type="submit" id="btn-submit-wevent" class="btn btn-primary">Save Event</button>
@@ -996,7 +996,7 @@
   <!-- MODAL: Edit Course Lecture Slot -->
   <div id="lecture-slot-modal" class="modal">
     <div class="modal-content" style="max-width: 480px;">
-      <h3 id="lecture-slot-modal-title" class="modal-title">🏛 Edit Course Lecture Slot</h3>
+      <h3 id="lecture-slot-modal-title" class="modal-title">Edit Course Lecture Slot</h3>
       <form id="lecture-slot-form" class="modal-body">
         <input type="hidden" id="lslot-subject-id" value="" />
         <input type="hidden" id="lslot-index" value="" />
@@ -1036,7 +1036,7 @@
 
         <div class="modal-footer">
           <button type="button" id="btn-delete-lslot" class="btn btn-secondary" style="color: var(--accent-red); margin-right: auto;">
-            🗑 Remove Slot
+            Remove Slot
           </button>
           <button type="button" id="btn-cancel-lslot" class="btn btn-secondary">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -1048,7 +1048,7 @@
   <!-- MODAL: Manage Full Weekly Schedule -->
   <div id="schedule-manager-modal" class="modal">
     <div class="modal-content" style="max-width: 640px;">
-      <h3 class="modal-title">🗓 Weekly Schedule Manager</h3>
+      <h3 class="modal-title">Weekly Schedule Manager</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
           Arrange your weekly commitments and classes. Click on any item below to edit its times or delete it.
@@ -1073,7 +1073,7 @@
   <!-- MODAL: Manage Categories -->
   <div id="categories-modal" class="modal">
     <div class="modal-content" style="max-width: 550px;">
-      <h3 class="modal-title">🏷 Manage Subject Categories</h3>
+      <h3 class="modal-title">Manage Subject Categories</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
           Rename, add, or delete categories to organize your courses and library. Renaming a category automatically updates all subjects inside it.
@@ -1111,7 +1111,7 @@
   <!-- MODAL: Google Calendar Integration -->
   <div id="gcal-modal" class="modal">
     <div class="modal-content" style="max-width: 550px;">
-      <h3 class="modal-title">📅 Google Calendar Integration & Sync</h3>
+      <h3 class="modal-title">Google Calendar Integration & Sync</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
           Keep your study schedule and Google Calendar in sync. You can add individual study events with 1 click or download a full calendar file.
@@ -1119,16 +1119,16 @@
 
         <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
           <div class="gcal-card">
-            <h4>📥 1. Export .ICS Study Calendar</h4>
+            <h4>1. Export .ICS Study Calendar</h4>
             <p>Download your complete weekly study schedule and sessions as an iCal (.ics) file to import into Google Calendar.</p>
             <button id="btn-download-ics" class="btn btn-secondary" style="margin-top: 0.4rem;">
-              ⬇ Download ChronoStudy Schedule (.ics)
+              Download ChronoStudy Schedule (.ics)
             </button>
           </div>
 
           <div class="gcal-card">
-            <h4>🌐 2. One-Click Google Calendar Event Links</h4>
-            <p>On each task in your Weekly Planner, click the <strong>📅</strong> button to immediately open Google Calendar with the title, course, and scheduled time filled in!</p>
+            <h4>2. Google Calendar Event Links</h4>
+            <p>On each task in your Weekly Planner, click the <strong>GCal</strong> button to immediately open Google Calendar with the title, course, and scheduled time filled in!</p>
           </div>
         </div>
       </div>
@@ -1141,20 +1141,20 @@
   <!-- MODAL: Backup & Export -->
   <div id="backup-modal" class="modal">
     <div class="modal-content">
-      <h3 class="modal-title">💾 Backup & Data Management</h3>
+      <h3 class="modal-title">Backup & Data Management</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted);">
           Your data is stored privately on your device. You can download backups anytime or export your logs to CSV for Excel / Google Sheets.
         </p>
         <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem;">
           <button id="btn-export-json" class="btn btn-secondary" style="justify-content: flex-start;">
-            📥 Download Complete Backup (.json)
+            Download Backup (.json)
           </button>
           <button id="btn-export-csv" class="btn btn-secondary" style="justify-content: flex-start;">
-            📊 Export Study Logs to CSV (Excel / Sheets)
+            Export Logs to CSV (Excel / Sheets)
           </button>
           <button id="btn-import-json" class="btn btn-secondary" style="justify-content: flex-start;">
-            📤 Restore / Import from Backup (.json)
+            Restore from Backup (.json)
           </button>
           <input type="file" id="json-file-input" accept=".json" style="display: none;" />
         </div>
@@ -1191,16 +1191,16 @@
         <!-- MS To Do Style Quick Due Date Row -->
         <div class="quick-dates-bar" id="sidebar-quick-dates">
           <button type="button" class="quick-date-chip" data-sidebar-preset="today" title="Due today">
-            ☀️ Today
+            Today
           </button>
           <button type="button" class="quick-date-chip" data-sidebar-preset="tomorrow" title="Due tomorrow">
-            📅 Tomorrow
+            Tomorrow
           </button>
           <button type="button" class="quick-date-chip" data-sidebar-preset="nextweek" title="Due next Monday">
-            🗓 Next Week
+            Next Week
           </button>
           <label class="quick-date-chip quick-date-picker-label" title="Pick specific date from calendar">
-            <span id="sidebar-date-picker-label">📆 Custom</span>
+            <span id="sidebar-date-picker-label">Pick Date</span>
             <input type="date" id="sidebar-task-duedate" class="quick-date-native-input" />
           </label>
           <button type="button" class="quick-date-chip btn-clear-date" id="sidebar-clear-date" title="Clear due date" style="display: none;">
@@ -1214,12 +1214,12 @@
           </select>
           <select id="sidebar-task-recurrence" class="input-select" style="flex: 1.1; min-width: 85px; font-size: 0.8rem;" title="Recurrence Cadence">
             <option value="none">No Repeat</option>
-            <option value="daily">🔁 Daily</option>
-            <option value="weekdays">🔁 Weekdays</option>
-            <option value="weekly">🔁 Weekly</option>
-            <option value="biweekly">🔁 Bi-weekly</option>
-            <option value="triweekly">🔁 Tri-weekly</option>
-            <option value="monthly">🔁 Monthly</option>
+            <option value="daily">Daily</option>
+            <option value="weekdays">Weekdays</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Bi-weekly</option>
+            <option value="triweekly">Tri-weekly</option>
+            <option value="monthly">Monthly</option>
           </select>
           <button type="submit" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; flex-shrink: 0;">
             + Add
@@ -1341,10 +1341,7 @@
   <div id="task-edit-modal" class="modal">
     <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <span style="font-size: 1.15rem;">✏️</span>
-          <h3 class="modal-title" style="margin: 0;">Edit Study Task</h3>
-        </div>
+        <h3 class="modal-title" style="margin: 0;">Edit Study Task</h3>
         <button type="button" id="btn-close-edit-task-modal" class="btn btn-icon" title="Close">✕</button>
       </div>
       <form id="task-edit-form" class="modal-body" style="gap: 0.85rem;">
@@ -1357,18 +1354,25 @@
           <input type="text" id="edit-task-title" class="input-text" required placeholder="e.g. Folland Exercises 1-15" autocomplete="off" />
         </div>
 
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="edit-task-subject" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
+            Course / Subject
+          </label>
+          <select id="edit-task-subject" class="input-select" style="font-size: 0.82rem; padding: 0.4rem 0.5rem;"></select>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label for="edit-task-subject" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
-              Course / Subject
-            </label>
-            <select id="edit-task-subject" class="input-select" style="font-size: 0.82rem; padding: 0.4rem 0.5rem;"></select>
-          </div>
-          <div class="form-group" style="margin-bottom: 0;">
             <label for="edit-task-minutes" style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
-              Target Minutes
+              Target Goal (Mins)
             </label>
             <input type="number" id="edit-task-minutes" class="input-text" min="0" max="720" placeholder="e.g. 50" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="edit-task-time-spent" style="font-size: 0.75rem; font-weight: 600; color: var(--primary); text-transform: uppercase;">
+              Time Spent / Logged (Mins)
+            </label>
+            <input type="number" id="edit-task-time-spent" class="input-text" min="0" max="1440" placeholder="e.g. 60" title="Total minutes spent working on this task" />
           </div>
         </div>
 
@@ -1403,7 +1407,7 @@
 
         <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
           <button type="button" id="btn-delete-from-edit-modal" class="btn btn-secondary" style="color: var(--accent-rose);" title="Delete this task">
-            🗑 Delete
+            Delete Task
           </button>
           <div style="display: flex; gap: 0.5rem;">
             <button type="button" id="btn-cancel-edit-task" class="btn btn-secondary">Cancel</button>
@@ -1501,7 +1505,7 @@
 
             <!-- Sign in button -->
             <button type="button" id="btn-gdrive-signin" class="btn btn-primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.55rem 1rem;">
-              <span>🔑</span> Sign in with Google Drive
+              Sign in with Google Drive
             </button>
           </div>
 
@@ -1541,7 +1545,7 @@
           <!-- Quick Setup Guide Collapsible -->
           <details style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 0.5rem 0.75rem; font-size: 0.76rem; color: var(--text-muted);">
             <summary style="font-weight: 600; color: var(--primary); cursor: pointer; user-select: none;">
-              📖 How to get your free Google Client ID in 2 minutes
+              How to get your free Google Client ID in 2 minutes
             </summary>
             <ol style="margin-top: 0.5rem; padding-left: 1.25rem; line-height: 1.55;">
               <li>Open <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" style="color: var(--primary); text-decoration: underline;">Google Cloud Console Credentials</a> (free).</li>
@@ -1607,7 +1611,7 @@
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <button type="button" id="btn-save-cloud-config" class="btn btn-primary" style="flex: 1;">Save & Connect</button>
             <button type="button" id="btn-copy-supabase-sql" class="btn btn-secondary" title="Copy SQL statement to create the table in Supabase">
-              📋 Copy SQL Setup
+              Copy SQL Setup
             </button>
           </div>
         </div>
@@ -1620,10 +1624,10 @@
 
           <div style="display: flex; gap: 0.5rem; margin-bottom: 0.85rem;">
             <button type="button" id="btn-export-snapshot" class="btn btn-secondary" style="flex: 1;">
-              📤 Copy Snapshot JSON
+              Copy Snapshot JSON
             </button>
             <button type="button" id="btn-download-snapshot-file" class="btn btn-secondary" style="flex: 1;">
-              💾 Download File
+              Download File
             </button>
           </div>
 
@@ -1636,10 +1640,10 @@
 
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
             <button type="button" id="btn-import-snapshot" class="btn btn-primary">
-              📥 Import & Additive Merge
+              Import & Additive Merge
             </button>
             <button type="button" id="btn-rollback-backup" class="btn btn-secondary" style="color: var(--accent-amber);" title="Rollback to snapshot created before last merge">
-              ↺ Restore Pre-Sync Backup
+              Restore Pre-Sync Backup
             </button>
           </div>
         </div>
@@ -1648,25 +1652,25 @@
         <div id="sync-tab-panel-devices" class="sync-tab-panel" style="display: none;">
           <div class="sync-device-card">
             <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
-              📱 Standalone App Mode (No Browser Bar)
+              Standalone App Mode (No Browser Bar)
             </div>
             <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.65rem;">
               ChronoStudy is a Progressive Web App (PWA). You can install it on your Android phone, Windows PC, or Mac to open as an independent window or home-screen icon with zero URL bars.
             </p>
             <button type="button" id="btn-pwa-install-app" class="btn btn-primary btn-sm">
-              📲 Install ChronoStudy as App
+              Install ChronoStudy as App
             </button>
           </div>
 
           <div class="sync-device-card" style="margin-top: 0.85rem;">
             <div style="font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.35rem;">
-              ⏱ Android Lock Screen & Notification Timer
+              Android Lock Screen & Notification Timer
             </div>
             <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-bottom: 0.65rem;">
               Whenever your study timer starts, ChronoStudy automatically streams your course name, elapsed time, and Play / Pause controls straight to your Android lock screen and pull-down notification shade via the MediaSession engine.
             </p>
             <button type="button" id="btn-request-notifications" class="btn btn-secondary btn-sm">
-              🔔 Enable Lecture & Study Notifications
+              Enable Lecture & Study Notifications
             </button>
           </div>
         </div>

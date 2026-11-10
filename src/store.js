@@ -945,9 +945,44 @@ class Store {
   updateTask(taskId, updates) {
     const task = this.state.tasks.find((t) => t.id === taskId);
     if (!task) return;
+    const oldTimeSpent = task.timeSpentSec || 0;
     Object.assign(task, updates);
     task.updatedAt = new Date().toISOString();
     task.synced = false;
+
+    // Automatically record or adjust study session when user logs time spent on a task
+    if (updates.timeSpentSec !== undefined && updates.timeSpentSec !== oldTimeSpent) {
+      const diffSec = updates.timeSpentSec - oldTimeSpent;
+      if (diffSec > 0) {
+        const existingSession = this.state.sessions.find((s) => s.taskId === taskId);
+        if (existingSession) {
+          existingSession.durationSec = Math.max(60, (existingSession.durationSec || 0) + diffSec);
+          existingSession.synced = false;
+        } else {
+          const now = new Date();
+          const start = new Date(now.getTime() - updates.timeSpentSec * 1000);
+          this.state.sessions.unshift({
+            id: 'sess-' + Math.random().toString(36).slice(2, 9),
+            subject: task.subject || 'General',
+            topic: task.title,
+            taskId: task.id,
+            durationSec: updates.timeSpentSec,
+            startTime: start.toISOString(),
+            endTime: now.toISOString(),
+            notes: task.notes || 'Recorded time spent on task',
+            createdAt: now.toISOString(),
+            synced: false
+          });
+        }
+      } else if (diffSec < 0) {
+        const existingSession = this.state.sessions.find((s) => s.taskId === taskId);
+        if (existingSession) {
+          existingSession.durationSec = Math.max(0, (existingSession.durationSec || 0) + diffSec);
+          existingSession.synced = false;
+        }
+      }
+    }
+
     this.saveState();
   }
 

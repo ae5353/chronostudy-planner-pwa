@@ -383,6 +383,7 @@ export class ChronoUI {
     this.editTaskTitle = document.getElementById('edit-task-title');
     this.editTaskSubject = document.getElementById('edit-task-subject');
     this.editTaskMinutes = document.getElementById('edit-task-minutes');
+    this.editTaskTimeSpent = document.getElementById('edit-task-time-spent');
     this.editTaskDueDate = document.getElementById('edit-task-duedate');
     this.editTaskRecurrence = document.getElementById('edit-task-recurrence');
     this.editTaskNotes = document.getElementById('edit-task-notes');
@@ -858,7 +859,7 @@ export class ChronoUI {
         if (this.zenNotesContainer) {
           this.zenNotesContainer.classList.toggle('collapsed');
           const isCollapsed = this.zenNotesContainer.classList.contains('collapsed');
-          this.btnZenToggleNotes.textContent = isCollapsed ? '📝 Notes' : '✕ Hide Notes';
+          this.btnZenToggleNotes.textContent = isCollapsed ? 'Notes' : '✕ Hide Notes';
         }
         playClickSound();
       });
@@ -868,7 +869,7 @@ export class ChronoUI {
       this.btnZenCloseNotes.addEventListener('click', () => {
         if (this.zenNotesContainer) {
           this.zenNotesContainer.classList.add('collapsed');
-          if (this.btnZenToggleNotes) this.btnZenToggleNotes.textContent = '📝 Notes';
+          if (this.btnZenToggleNotes) this.btnZenToggleNotes.textContent = 'Notes';
         }
         playClickSound();
       });
@@ -1066,14 +1067,23 @@ export class ChronoUI {
         const recurrence = this.editTaskRecurrence ? this.editTaskRecurrence.value : 'none';
         const notes = this.editTaskNotes ? this.editTaskNotes.value.trim() : '';
 
-        store.updateTask(taskId, {
+        const updates = {
           title,
           subject,
           targetMinutes,
           dueDate,
           recurrence,
           notes
-        });
+        };
+
+        if (this.editTaskTimeSpent && this.editTaskTimeSpent.value !== '') {
+          const spentMins = parseInt(this.editTaskTimeSpent.value, 10);
+          if (!isNaN(spentMins) && spentMins >= 0) {
+            updates.timeSpentSec = spentMins * 60;
+          }
+        }
+
+        store.updateTask(taskId, updates);
 
         playClickSound();
         this.closeTaskEditModal();
@@ -1495,7 +1505,7 @@ export class ChronoUI {
           <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
           <div style="margin-top: 0.85rem; text-align: center;">
             <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
-              👉 Enable Google Drive API in Google Cloud
+              → Enable Google Drive API in Google Cloud
             </a>
           </div>
           <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
@@ -1565,7 +1575,7 @@ export class ChronoUI {
           <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
           <div style="margin-top: 0.85rem; text-align: center;">
             <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
-              👉 Enable Google Drive API in Google Cloud
+              → Enable Google Drive API in Google Cloud
             </a>
           </div>
           <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
@@ -1642,7 +1652,7 @@ export class ChronoUI {
           <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
           <div style="margin-top: 0.85rem; text-align: center;">
             <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
-              👉 Enable Google Drive API in Google Cloud
+              → Enable Google Drive API in Google Cloud
             </a>
           </div>
           <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
@@ -1804,17 +1814,22 @@ export class ChronoUI {
       if (!status.isOnline) {
         this.modalSyncSubtitle.textContent = 'Changes queued locally; will auto-sync upon reconnection';
       } else if (status.lastError) {
-        const err = status.lastError;
-        const gdriveUrlMatch = err.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
-        if (gdriveUrlMatch) {
+        const err = String(status.lastError);
+        const isDriveDisabled = err.includes('Google Drive API') && (err.includes('disabled') || err.includes('has not been used') || err.includes('403') || err.includes('SERVICE_DISABLED'));
+        if (isDriveDisabled) {
+          const match = err.match(/https?:\/\/[^\s'"\\]+/);
+          const rawUrl = match ? match[0].replace(/\\/g, '') : '';
+          const projectIdMatch = err.match(/project[=\s](\d+)/i) || (status.googleClientId ? status.googleClientId.match(/^(\d+)-/) : null);
+          const projectId = projectIdMatch ? projectIdMatch[1] : '749004251176';
+          const enableUrl = rawUrl || `https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=${projectId}`;
           this.modalSyncSubtitle.innerHTML = `
-            <div style="color: var(--accent-rose); line-height: 1.4;">
-              ⚠️ Google Drive API is not yet enabled in your Google Cloud Project.<br/>
-              <a href="${gdriveUrlMatch[0]}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; margin-top:0.45rem; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none;">
-                👉 Click Here to Enable Google Drive API (1 click)
+            <div style="color: var(--accent-rose); line-height: 1.4; padding: 0.35rem 0;">
+              Google Drive API is disabled in your Google Cloud Project.<br/>
+              <a href="${enableUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; margin-top:0.45rem; padding:0.35rem 0.8rem; font-size:0.75rem; text-decoration:none;">
+                → Click to Enable Google Drive API (1 Click)
               </a>
               <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 0.35rem;">
-                Click "ENABLE" on the Google page, then click "Sync Now" above.
+                Click the blue "ENABLE" button on Google Cloud, then click "Sync Now" above.
               </div>
             </div>
           `;
@@ -1843,7 +1858,7 @@ export class ChronoUI {
         if (this.btnGdriveSignin) {
           this.btnGdriveSignin.style.display = 'flex';
           this.btnGdriveSignin.disabled = false;
-          this.btnGdriveSignin.innerHTML = '<span>🔑</span> Sign in with Google Drive';
+          this.btnGdriveSignin.innerHTML = 'Sign in with Google Drive';
         }
         if (this.btnGdriveDisconnect) this.btnGdriveDisconnect.style.display = 'none';
       }
@@ -1882,12 +1897,12 @@ export class ChronoUI {
 
       if (this.btnGdriveSignin) {
         this.btnGdriveSignin.disabled = false;
-        this.btnGdriveSignin.innerHTML = '<span>🔑</span> Sign in with Google Drive';
+        this.btnGdriveSignin.innerHTML = 'Sign in with Google Drive';
       }
     } catch (err) {
       if (this.btnGdriveSignin) {
         this.btnGdriveSignin.disabled = false;
-        this.btnGdriveSignin.innerHTML = '<span>🔑</span> Sign in with Google Drive';
+        this.btnGdriveSignin.innerHTML = 'Sign in with Google Drive';
       }
       await this.showInAppAlert({
         title: 'Google Sign-In Alert',
@@ -2698,7 +2713,7 @@ create policy "Allow room sync access" on chronostudy_sync
             <div class="task-badges" style="margin-top: 0.2rem;">
               <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}; font-size: 0.65rem;">${task.subject ? this.escapeHTML(task.subject) : 'General'}</span>
               ${task.dueDate ? `<span class="meta-badge date-badge" style="font-size: 0.65rem;">${task.dueDate}</span>` : ''}
-              ${task.recurrence && task.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">🔁 ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}</span>` : ''}
+              ${task.recurrence && task.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}</span>` : ''}
               ${task.targetMinutes ? `<span class="meta-badge" style="font-size: 0.65rem;">${task.targetMinutes}m</span>` : ''}
             </div>
           </div>
@@ -2709,7 +2724,7 @@ create policy "Allow room sync access" on chronostudy_sync
               ▶
             </button>
           ` : ''}
-          <button class="btn btn-icon btn-sidebar-edit-task" data-task-id="${task.id}" title="Edit task" style="font-size: 0.75rem;">✏️</button>
+          <button class="btn btn-icon btn-sidebar-edit-task" data-task-id="${task.id}" title="Edit task" style="font-size: 0.75rem;">✎</button>
           <button class="btn btn-icon btn-del-sidebar-task" data-task-id="${task.id}" title="Delete task" style="font-size: 0.75rem;">✕</button>
         </div>
       `;
@@ -2731,24 +2746,24 @@ create policy "Allow room sync access" on chronostudy_sync
         let groupKey = 'Other';
         if (groupBy === 'dueDate') {
           if (task.completed) {
-            groupKey = '✓ Completed Tasks';
+            groupKey = 'Completed Tasks';
           } else if (!task.dueDate) {
-            groupKey = '📌 No Due Date';
+            groupKey = 'No Due Date';
           } else if (task.dueDate < todayStr) {
-            groupKey = '⚠️ Overdue';
+            groupKey = 'Overdue';
           } else if (task.dueDate === todayStr) {
-            groupKey = '☀️ Today';
+            groupKey = 'Today';
           } else if (task.dueDate === tomorrowStr) {
-            groupKey = '📅 Tomorrow';
+            groupKey = 'Tomorrow';
           } else if (task.dueDate <= endOfWeekStr) {
-            groupKey = '🗓 This Week';
+            groupKey = 'This Week';
           } else {
-            groupKey = '⏳ Later';
+            groupKey = 'Later';
           }
         } else if (groupBy === 'subject') {
-          groupKey = task.subject ? task.subject : '📌 General (No Course)';
+          groupKey = task.subject ? task.subject : 'General (No Course)';
         } else if (groupBy === 'recurrence') {
-          groupKey = (task.recurrence && task.recurrence !== 'none') ? '🔁 Recurring Tasks' : '📌 One-Time Tasks';
+          groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Recurring Tasks' : 'One-Time Tasks';
         }
 
         if (!groupsMap.has(groupKey)) {
@@ -2759,7 +2774,7 @@ create policy "Allow room sync access" on chronostudy_sync
 
       let orderedKeys = Array.from(groupsMap.keys());
       if (groupBy === 'dueDate') {
-        const dueOrder = ['⚠️ Overdue', '☀️ Today', '📅 Tomorrow', '🗓 This Week', '⏳ Later', '📌 No Due Date', '✓ Completed Tasks'];
+        const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed Tasks'];
         orderedKeys.sort((a, b) => {
           const idxA = dueOrder.indexOf(a);
           const idxB = dueOrder.indexOf(b);
@@ -2913,7 +2928,7 @@ create policy "Allow room sync access" on chronostudy_sync
 
     const populateSelect = (selectEl, options = {}) => {
       if (!selectEl) return;
-      const { includeAll = false, includeNoSubject = false, defaultLabel = '📌 No Course / General' } = 
+      const { includeAll = false, includeNoSubject = false, defaultLabel = 'No Course / General' } = 
         typeof options === 'boolean' ? { includeAll: options } : options;
       const currentVal = selectEl.value;
       selectEl.innerHTML = '';
@@ -2945,12 +2960,12 @@ create policy "Allow room sync access" on chronostudy_sync
     };
 
     populateSelect(this.subjectSelect, { includeNoSubject: true, defaultLabel: 'General / No Course' });
-    populateSelect(this.taskSubjectSelect, { includeNoSubject: true, defaultLabel: '📌 No Course / General' });
-    populateSelect(this.sidebarTaskSubject, { includeNoSubject: true, defaultLabel: '📌 No Course / General' });
-    populateSelect(this.sidebarTaskSubjectFilter, { includeAll: true, includeNoSubject: true, defaultLabel: '📌 No Course Only' });
-    populateSelect(this.taskSubjectFilter, { includeAll: true, includeNoSubject: true, defaultLabel: '📌 No Course Only' });
+    populateSelect(this.taskSubjectSelect, { includeNoSubject: true, defaultLabel: 'General / No Course' });
+    populateSelect(this.sidebarTaskSubject, { includeNoSubject: true, defaultLabel: 'General / No Course' });
+    populateSelect(this.sidebarTaskSubjectFilter, { includeAll: true, includeNoSubject: true, defaultLabel: 'No Course Only' });
+    populateSelect(this.taskSubjectFilter, { includeAll: true, includeNoSubject: true, defaultLabel: 'No Course Only' });
     populateSelect(this.historySubjectFilterEl, { includeAll: true, includeNoSubject: true, defaultLabel: 'General / No Course' });
-    populateSelect(this.calSubjectFilter, { includeAll: true, includeNoSubject: true, defaultLabel: '📌 No Course Only' });
+    populateSelect(this.calSubjectFilter, { includeAll: true, includeNoSubject: true, defaultLabel: 'No Course Only' });
 
     const manualSelect = document.getElementById('manual-subject-select');
     populateSelect(manualSelect, { includeNoSubject: true, defaultLabel: 'General / No Course' });
@@ -3002,7 +3017,7 @@ create policy "Allow room sync access" on chronostudy_sync
         this.timerTargetDisplay.textContent = state.topic;
       } else if (state.mode === 'countdown') {
         const targetMins = Math.round(state.targetDurationSec / 60);
-        this.timerTargetDisplay.textContent = `🎯 ${targetMins}m Focus Block`;
+        this.timerTargetDisplay.textContent = `${targetMins}m Focus Block`;
       } else {
         this.timerTargetDisplay.textContent = 'Open Study Session';
       }
@@ -3113,7 +3128,7 @@ create policy "Allow room sync access" on chronostudy_sync
             const task = store.getState().tasks.find((t) => t.id === state.linkedTaskId);
             if (task) {
               this.zenLinkedTaskBadge.style.display = 'inline-block';
-              this.zenLinkedTaskBadge.textContent = `🎯 ${task.title}`;
+              this.zenLinkedTaskBadge.textContent = task.title;
             } else {
               this.zenLinkedTaskBadge.style.display = 'none';
             }
@@ -3148,7 +3163,7 @@ create policy "Allow room sync access" on chronostudy_sync
             this.zenTargetDisplay.textContent = state.topic;
           } else if (state.mode === 'countdown') {
             const targetMins = Math.round(state.targetDurationSec / 60);
-            this.zenTargetDisplay.textContent = `🎯 ${targetMins}m Focus Block`;
+            this.zenTargetDisplay.textContent = `${targetMins}m Focus Block`;
           } else {
             this.zenTargetDisplay.textContent = 'Open Study Session';
           }
@@ -3281,10 +3296,10 @@ create policy "Allow room sync access" on chronostudy_sync
     const pickerLabel = this.sidebarDatePickerLabel;
     if (pickerLabel) {
       if (dateStr && !presetName) {
-        pickerLabel.textContent = `📅 ${dateStr}`;
+        pickerLabel.textContent = dateStr;
         pickerLabel.parentElement.classList.add('active');
       } else {
-        pickerLabel.textContent = '📆 Custom';
+        pickerLabel.textContent = 'Pick Date';
         pickerLabel.parentElement.classList.remove('active');
       }
     }
@@ -3317,12 +3332,12 @@ create policy "Allow room sync access" on chronostudy_sync
     }
   }
 
-  openTaskEditModal(taskId) {
+  openTaskEditModal(taskId, options = {}) {
     const task = store.getState().tasks.find((t) => t.id === taskId);
     if (!task) return;
 
     if (this.editTaskSubject) {
-      this.editTaskSubject.innerHTML = '<option value="">📌 General (No Course)</option>';
+      this.editTaskSubject.innerHTML = '<option value="">General (No Course)</option>';
       const subjects = store.getState().subjects || [];
       subjects.forEach((s) => {
         const opt = document.createElement('option');
@@ -3336,6 +3351,9 @@ create policy "Allow room sync access" on chronostudy_sync
     if (this.editTaskTitle) this.editTaskTitle.value = task.title || '';
     if (this.editTaskSubject) this.editTaskSubject.value = task.subject || '';
     if (this.editTaskMinutes) this.editTaskMinutes.value = task.targetMinutes || '';
+    if (this.editTaskTimeSpent) {
+      this.editTaskTimeSpent.value = task.timeSpentSec ? Math.round(task.timeSpentSec / 60) : '';
+    }
     if (this.editTaskDueDate) this.editTaskDueDate.value = task.dueDate || '';
     if (this.editTaskRecurrence) this.editTaskRecurrence.value = task.recurrence || 'none';
     if (this.editTaskNotes) this.editTaskNotes.value = task.notes || '';
@@ -3343,7 +3361,9 @@ create policy "Allow room sync access" on chronostudy_sync
     if (this.taskEditModal) {
       this.taskEditModal.classList.add('active');
     }
-    if (this.editTaskTitle) {
+    if (options.focusTimeSpent && this.editTaskTimeSpent) {
+      setTimeout(() => this.editTaskTimeSpent.focus(), 50);
+    } else if (this.editTaskTitle) {
       setTimeout(() => this.editTaskTitle.focus(), 50);
     }
   }
@@ -3373,18 +3393,18 @@ create policy "Allow room sync access" on chronostudy_sync
             <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}">
               ${task.subject ? this.escapeHTML(task.subject) : 'General'}
             </span>
-            ${task.targetMinutes ? `<span class="meta-badge">🎯 ${task.targetMinutes}m goal</span>` : ''}
+            ${task.targetMinutes ? `<span class="meta-badge">${task.targetMinutes}m target</span>` : ''}
             ${task.dueDate ? `
               <span class="meta-badge date-badge ${isOverdue ? 'overdue' : ''}" title="${isOverdue ? 'Task is past due!' : 'Target due date'}">
-                📅 ${task.dueDate}${isOverdue ? ' (Overdue)' : ''}
+                Due: ${task.dueDate}${isOverdue ? ' (Overdue)' : ''}
               </span>
-            ` : '<span class="meta-badge date-badge-none">📌 No deadline</span>'}
+            ` : '<span class="meta-badge date-badge-none">No deadline</span>'}
             ${task.recurrence && task.recurrence !== 'none' ? `
               <span class="meta-badge task-recurrence-badge" title="Recurring study item: automatically generates next occurrence when completed">
-                🔁 ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}
+                ↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}
               </span>
             ` : ''}
-            ${timeLoggedMins > 0 ? `<span class="meta-badge logged-badge">⏱ ${timeLoggedMins}m spent</span>` : ''}
+            ${timeLoggedMins > 0 ? `<span class="meta-badge logged-badge">◷ ${timeLoggedMins}m logged</span>` : ''}
           </div>
           ${task.notes ? `<div class="task-notes-preview">${this.escapeHTML(task.notes)}</div>` : ''}
         </div>
@@ -3392,10 +3412,14 @@ create policy "Allow room sync access" on chronostudy_sync
       <div class="task-actions">
         ${!task.completed ? `
           <button class="btn btn-study-now" data-task-id="${task.id}" title="Start timer with this study item">
-            ▶ Study Now
+            ▶ Study
           </button>
-        ` : ''}
-        <button class="btn btn-icon btn-edit-task" data-task-id="${task.id}" title="Edit task">✏️</button>
+        ` : (timeLoggedMins === 0 ? `
+          <button class="btn btn-secondary btn-log-time" data-task-id="${task.id}" title="Record time spent on this completed task" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+            + Log Time
+          </button>
+        ` : '')}
+        <button class="btn btn-icon btn-edit-task" data-task-id="${task.id}" title="Edit task">✎</button>
         <button class="btn btn-icon btn-delete-task" data-task-id="${task.id}" title="Delete task">✕</button>
       </div>
     `;
@@ -3409,6 +3433,15 @@ create policy "Allow room sync access" on chronostudy_sync
     if (btnStudy) {
       btnStudy.addEventListener('click', () => {
         this.startTaskStudySession(task);
+        playClickSound();
+      });
+    }
+
+    const btnLogTime = card.querySelector('.btn-log-time');
+    if (btnLogTime) {
+      btnLogTime.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openTaskEditModal(task.id, { focusTimeSpent: true });
         playClickSound();
       });
     }
@@ -3560,24 +3593,24 @@ create policy "Allow room sync access" on chronostudy_sync
 
       if (groupBy === 'dueDate') {
         if (task.completed) {
-          groupKey = '✓ Completed Tasks';
+          groupKey = 'Completed Tasks';
         } else if (!task.dueDate) {
-          groupKey = '📌 No Due Date';
+          groupKey = 'No Due Date';
         } else if (task.dueDate < todayStr) {
-          groupKey = '⚠️ Overdue';
+          groupKey = 'Overdue';
         } else if (task.dueDate === todayStr) {
-          groupKey = '☀️ Today';
+          groupKey = 'Today';
         } else if (task.dueDate === tomorrowStr) {
-          groupKey = '📅 Tomorrow';
+          groupKey = 'Tomorrow';
         } else if (task.dueDate <= endOfWeekStr) {
-          groupKey = '🗓 This Week';
+          groupKey = 'This Week';
         } else {
-          groupKey = '⏳ Later';
+          groupKey = 'Later';
         }
       } else if (groupBy === 'subject') {
-        groupKey = task.subject ? task.subject : '📌 General (No Course)';
+        groupKey = task.subject ? task.subject : 'General (No Course)';
       } else if (groupBy === 'recurrence') {
-        groupKey = (task.recurrence && task.recurrence !== 'none') ? '🔁 Recurring Tasks' : '📌 One-Time Tasks';
+        groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Recurring Tasks' : 'One-Time Tasks';
       }
 
       if (!groupsMap.has(groupKey)) {
@@ -3589,7 +3622,7 @@ create policy "Allow room sync access" on chronostudy_sync
     // Define priority order for groups when grouping by dueDate
     let orderedKeys = Array.from(groupsMap.keys());
     if (groupBy === 'dueDate') {
-      const dueOrder = ['⚠️ Overdue', '☀️ Today', '📅 Tomorrow', '🗓 This Week', '⏳ Later', '📌 No Due Date', '✓ Completed Tasks'];
+      const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed Tasks'];
       orderedKeys.sort((a, b) => {
         const idxA = dueOrder.indexOf(a);
         const idxB = dueOrder.indexOf(b);
@@ -3710,7 +3743,7 @@ create policy "Allow room sync access" on chronostudy_sync
         <div class="group-block-header">
           <div class="group-title-with-actions">
             <h3 class="group-block-title">${this.escapeHTML(groupName)}</h3>
-            <button class="btn btn-icon btn-rename-group" data-group="${this.escapeHTML(groupName)}" title="Rename category '${this.escapeHTML(groupName)}'">✏</button>
+            <button class="btn btn-icon btn-rename-group" data-group="${this.escapeHTML(groupName)}" title="Rename category '${this.escapeHTML(groupName)}'">✎</button>
           </div>
           <div class="group-header-right">
             <span class="group-block-count">${groupSubjects.length} courses / tracks</span>
@@ -3764,12 +3797,12 @@ create policy "Allow room sync access" on chronostudy_sync
               <div>
                 <span class="subject-code-tag">${this.escapeHTML(sub.code || 'COURSE')}</span>
                 <h3 class="subject-name">${this.escapeHTML(sub.name)}</h3>
-                ${scheduleText ? `<span class="subject-schedule-badge">🏛 ${this.escapeHTML(scheduleText)}</span>` : ''}
+                ${scheduleText ? `<span class="subject-schedule-badge">${this.escapeHTML(scheduleText)}</span>` : ''}
               </div>
             </div>
             <div class="subject-card-menu">
-              <button class="btn btn-icon btn-edit-subject" data-id="${sub.id}" title="Edit subject">✏</button>
-              <button class="btn btn-icon btn-delete-subject" data-id="${sub.id}" title="Delete subject">🗑</button>
+              <button class="btn btn-icon btn-edit-subject" data-id="${sub.id}" title="Edit subject">✎</button>
+              <button class="btn btn-icon btn-delete-subject" data-id="${sub.id}" title="Delete subject">✕</button>
             </div>
           </div>
 
@@ -3785,7 +3818,7 @@ create policy "Allow room sync access" on chronostudy_sync
             </div>
           ` : `
             <div class="subject-progress-box self-paced">
-              <span class="self-paced-label">☕ Self-Paced (No required weekly quota)</span>
+              <span class="self-paced-label">Self-Paced (No required weekly quota)</span>
             </div>
           `}
 
@@ -3807,9 +3840,8 @@ create policy "Allow room sync access" on chronostudy_sync
           <div class="subject-card-footer">
             ${sub.folderPath ? `
               <div class="subject-folder-row" title="${this.escapeHTML(sub.folderPath)}">
-                <span class="folder-icon">📂</span>
                 <span class="folder-path-text">${this.escapeHTML(sub.folderPath)}</span>
-                <button class="btn-copy-path" data-path="${this.escapeHTML(sub.folderPath)}" title="Copy folder path">📋</button>
+                <button class="btn-copy-path" data-path="${this.escapeHTML(sub.folderPath)}" title="Copy folder path">Copy</button>
               </div>
             ` : ''}
             <button class="btn btn-secondary btn-quick-study-subject" data-subject="${this.escapeHTML(sub.name)}" style="width: 100%;">
@@ -3841,7 +3873,7 @@ create policy "Allow room sync access" on chronostudy_sync
           btnCopy.addEventListener('click', () => {
             navigator.clipboard.writeText(btnCopy.dataset.path).then(() => {
               btnCopy.textContent = '✓';
-              setTimeout(() => { btnCopy.textContent = '📋'; }, 1500);
+              setTimeout(() => { btnCopy.textContent = 'Copy'; }, 1500);
             });
             playClickSound();
           });
@@ -3864,7 +3896,7 @@ create policy "Allow room sync access" on chronostudy_sync
   openSubjectModal(subjectToEdit = null) {
     if (subjectToEdit) {
       this.editingSubjectId = subjectToEdit.id;
-      this.subjectModalTitle.textContent = '✏ Edit Subject / Course';
+      this.subjectModalTitle.textContent = 'Edit Subject / Course';
       this.subjectNameInput.value = subjectToEdit.name;
       this.subjectCodeInput.value = subjectToEdit.code || '';
       this.subjectGroupInput.value = subjectToEdit.group || 'İTÜ Courses (Fall 2026)';
@@ -3873,7 +3905,7 @@ create policy "Allow room sync access" on chronostudy_sync
       this.subjectHoursInput.value = subjectToEdit.targetWeeklyHours || '';
     } else {
       this.editingSubjectId = null;
-      this.subjectModalTitle.textContent = '🏷 Add New Subject / Course';
+      this.subjectModalTitle.textContent = 'Add New Subject / Course';
       this.subjectNameInput.value = '';
       this.subjectCodeInput.value = '';
       this.subjectGroupInput.value = 'İTÜ Courses (Fall 2026)';
@@ -3913,10 +3945,10 @@ create policy "Allow room sync access" on chronostudy_sync
         </div>
         <div class="category-row-actions">
           <button class="btn btn-secondary btn-rename-cat" data-group="${this.escapeHTML(groupName)}">
-            ✏ Rename
+            Rename
           </button>
           <button class="btn btn-icon btn-del-cat" data-group="${this.escapeHTML(groupName)}" title="Delete category">
-            🗑
+            ✕
           </button>
         </div>
       `;
@@ -3964,7 +3996,7 @@ create policy "Allow room sync access" on chronostudy_sync
       const ev = (store.getState().weeklyEvents || []).find((e) => e.id === eventId);
       if (ev) {
         if (this.weventEditId) this.weventEditId.value = ev.id;
-        if (this.weventModalTitle) this.weventModalTitle.textContent = '✏ Edit Recurring Event / Routine';
+        if (this.weventModalTitle) this.weventModalTitle.textContent = 'Edit Recurring Event / Routine';
         document.getElementById('wevent-title-input').value = ev.title;
         if (this.weventRecurrenceSelect) this.weventRecurrenceSelect.value = ev.recurrence || 'weekly';
         document.getElementById('wevent-day-select').value = String(ev.day);
@@ -3983,7 +4015,7 @@ create policy "Allow room sync access" on chronostudy_sync
       }
     } else {
       if (this.weventEditId) this.weventEditId.value = '';
-      if (this.weventModalTitle) this.weventModalTitle.textContent = '🗓 Add Recurring Event / Routine';
+      if (this.weventModalTitle) this.weventModalTitle.textContent = 'Add Recurring Event / Routine';
       if (this.weventRecurrenceSelect) this.weventRecurrenceSelect.value = 'weekly';
       document.getElementById('wevent-day-select').value = '4';
       document.getElementById('wevent-start-input').value = '19:00';
@@ -4112,10 +4144,10 @@ create policy "Allow room sync access" on chronostudy_sync
           </div>
           <div class="schedule-mgr-actions">
             <button class="btn btn-secondary btn-edit-sched-item" data-type="${item.type}" data-sub-id="${item.subjectId || ''}" data-slot-idx="${item.slotIndex !== undefined ? item.slotIndex : ''}" data-ev-id="${item.id || ''}">
-              ✏ Edit
+              Edit
             </button>
             <button class="btn btn-icon btn-del-sched-item" data-type="${item.type}" data-sub-id="${item.subjectId || ''}" data-slot-idx="${item.slotIndex !== undefined ? item.slotIndex : ''}" data-ev-id="${item.id || ''}" title="Delete / Remove">
-              🗑
+              ✕
             </button>
           </div>
         </div>
@@ -4262,8 +4294,8 @@ create policy "Allow room sync access" on chronostudy_sync
                     <div class="cal-task-item ${t.completed ? 'completed' : ''}" style="border-left: 3px solid ${color};">
                       <div class="cal-task-top">
                         <span class="cal-subject-badge ${!t.subject ? 'badge-no-course-text' : ''}" style="color: ${color};">${t.subject ? this.escapeHTML(t.subject) : 'General'}</span>
-                        ${t.recurrence && t.recurrence !== 'none' ? `<span class="cal-recurrence-pill" title="Repeats: ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}">🔁 ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
-                        ${t.targetMinutes ? `<span class="cal-time-goal">🎯 ${t.targetMinutes}m</span>` : ''}
+                        ${t.recurrence && t.recurrence !== 'none' ? `<span class="cal-recurrence-pill" title="Repeats: ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}">↻ ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
+                        ${t.targetMinutes ? `<span class="cal-time-goal">${t.targetMinutes}m</span>` : ''}
                       </div>
                       <div class="cal-task-title">${this.escapeHTML(t.title)}</div>
                       <div class="cal-task-actions">
@@ -4275,14 +4307,14 @@ create policy "Allow room sync access" on chronostudy_sync
                             ▶ Study
                           </button>
                         ` : ''}
-                        <button class="btn-cal-edit" data-task-id="${t.id}" title="Edit task">✏️</button>
+                        <button class="btn-cal-edit" data-task-id="${t.id}" title="Edit task">✎</button>
                         <a 
                           href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${dateStr.replace(/-/g, '')}T090000Z/${dateStr.replace(/-/g, '')}T100000Z&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" 
                           target="_blank" 
                           class="btn-cal-gcal" 
                           title="Add to Google Calendar"
                         >
-                          📅
+                          GCal
                         </a>
                         <button class="btn-cal-delete" data-task-id="${t.id}" title="Delete task">✕</button>
                       </div>
@@ -4480,7 +4512,7 @@ create policy "Allow room sync access" on chronostudy_sync
               <div class="day-class-chip itu-lecture-chip" data-subject-id="${c.subjectId}" data-slot-index="${c.slotIndex}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
                 <div class="class-chip-top">
                   <span class="class-code">${this.escapeHTML(c.code)}</span>
-                  <span class="chip-edit-icon" title="Edit lecture time">✏</span>
+                  <span class="chip-edit-icon" title="Edit lecture time">✎</span>
                 </div>
                 <div class="class-chip-sub">
                   <span class="class-time">${c.start} - ${c.end}</span>
@@ -4501,7 +4533,7 @@ create policy "Allow room sync access" on chronostudy_sync
               <div class="day-class-chip seminar-chip wevent-chip" data-event-id="${c.id}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
                 <div class="class-chip-top">
                   <span class="class-code">${this.escapeHTML(c.code)}</span>
-                  <span class="chip-edit-icon" title="Edit event">✏</span>
+                  <span class="chip-edit-icon" title="Edit event">✎</span>
                 </div>
                 <div class="class-chip-sub">
                   <span class="class-time">${c.start} - ${c.end}</span>
@@ -4620,14 +4652,14 @@ create policy "Allow room sync access" on chronostudy_sync
         <div class="backlog-task-info">
           <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
             <span class="subject-badge ${!t.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}">${t.subject ? this.escapeHTML(t.subject) : 'General'}</span>
-            ${t.recurrence && t.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">🔁 ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
+            ${t.recurrence && t.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
           </div>
           <div class="backlog-task-title">${this.escapeHTML(t.title)}</div>
         </div>
         <div class="backlog-task-actions">
           <button class="btn btn-study-now btn-study-backlog" data-id="${t.id}">▶ Study</button>
-          <button class="btn btn-icon btn-edit-backlog" data-id="${t.id}" title="Edit task">✏️</button>
-          <button class="btn btn-secondary btn-schedule-backlog" data-id="${t.id}" title="Assign to a day">📅 Schedule</button>
+          <button class="btn btn-icon btn-edit-backlog" data-id="${t.id}" title="Edit task">✎</button>
+          <button class="btn btn-secondary btn-schedule-backlog" data-id="${t.id}" title="Assign to a day">Schedule</button>
           <button class="btn btn-icon btn-del-backlog" data-id="${t.id}">✕</button>
         </div>
       `;
@@ -4867,7 +4899,7 @@ create policy "Allow room sync access" on chronostudy_sync
               </div>
               ${sess.notes ? `
                 <div class="history-notes-box">
-                  <div class="notes-header">📝 Study Notes & Takeaways:</div>
+                  <div class="notes-header">Study Notes & Takeaways:</div>
                   <div class="notes-body">${this.escapeHTML(sess.notes)}</div>
                 </div>
               ` : ''}

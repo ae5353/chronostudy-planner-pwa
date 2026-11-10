@@ -5,7 +5,7 @@ const STORAGE_KEY = 'chronostudy_v3_state';
 
 export const DEFAULT_GROUPS = [
   'İTÜ Courses (Fall 2026)',
-  'Seminars & Academies'
+  'Kardeşlik ve İhya'
 ];
 
 export const INITIAL_SUBJECTS = [
@@ -104,12 +104,12 @@ export const INITIAL_SUBJECTS = [
     schedule: [{ day: 5, start: '08:30', end: '11:29', label: 'Lecture' }] // Cuma
   },
 
-  // --- Group 2: Seminars & Academies ---
+  // --- Group 2: Kardeşlik ve İhya ---
   {
     id: 'sub-ihya',
     code: 'İHYA',
     name: 'Kardeşlik ve İhya Akademisi',
-    group: 'Seminars & Academies',
+    group: 'Kardeşlik ve İhya',
     color: '#059669',
     targetWeeklyHours: 4,
     folderPath: 'C:\\Users\\Arif E. Yıldırım\\Desktop\\İHYA',
@@ -125,7 +125,7 @@ export const INITIAL_WEEKLY_EVENTS = [
     day: 4, // Perşembe
     start: '19:00',
     end: '21:30',
-    category: 'Seminars & Academies',
+    category: 'Kardeşlik ve İhya',
     color: '#059669',
     recurrence: 'weekly', // 'weekly' | 'biweekly' | 'monthly' | 'weekdays' | 'daily'
     notes: 'Haftalık İhya semineri ve okuma müzakeresi'
@@ -305,102 +305,59 @@ class Store {
     if (!state || typeof state !== 'object') return { ...INITIAL_STATE };
 
     const subjects = Array.isArray(state.subjects) ? state.subjects : [...INITIAL_SUBJECTS];
-    const groups = Array.isArray(state.groups) && state.groups.length > 0 ? [...state.groups] : [...DEFAULT_GROUPS];
+    let groups = Array.isArray(state.groups) && state.groups.length > 0 ? [...state.groups] : [...DEFAULT_GROUPS];
 
-    // Ensure all 9 authentic İTÜ subjects exist and have correct group & properties
-    INITIAL_SUBJECTS.forEach((initSub) => {
-      const existing = subjects.find(
-        (s) => s.id === initSub.id || (s.name && initSub.name && s.name.toLowerCase() === initSub.name.toLowerCase()) || (s.code && initSub.code && s.code === initSub.code)
-      );
-      if (!existing) {
-        subjects.push({ ...initSub });
-      } else {
-        // Heal existing subject properties
-        if (!existing.group || existing.group === 'General' || existing.group === 'undefined') {
-          existing.group = initSub.group;
+    // If state comes from legacy schema before v11, seed missing authentic subjects
+    if (!state.version || state.version < 11) {
+      INITIAL_SUBJECTS.forEach((initSub) => {
+        if (!subjects.some((s) => s.id === initSub.id || (s.name && s.name.toLowerCase() === initSub.name.toLowerCase()))) {
+          subjects.push({ ...initSub });
         }
-        if (!existing.folderPath) existing.folderPath = initSub.folderPath;
-        if (initSub.id === 'sub-ihya' || (existing.name && existing.name.includes('İhya'))) {
-          existing.schedule = []; // Avoid duplicate chip
-        } else if (!existing.schedule || existing.schedule.length === 0) {
-          existing.schedule = initSub.schedule;
-        }
-        if (!existing.code) existing.code = initSub.code;
-        if (!existing.color) existing.color = initSub.color;
-      }
-    });
+      });
+    }
 
+    // Migrate any legacy 'Seminars & Academies' occurrences to user's authentic category 'Kardeşlik ve İhya'
     subjects.forEach((s) => {
-      if (s.id === 'sub-ihya' || (s.name && s.name.includes('İhya')) || s.code === 'İHYA') {
-        s.group = 'Seminars & Academies';
-        s.schedule = []; // Avoid duplicate chip in lecture slots
-      } else if (!s.group || s.group === 'General' || s.group.includes('İTÜ') || s.group.includes('ITU') || s.group.includes('Course')) {
-        s.group = 'İTÜ Courses (Fall 2026)';
+      if ((s.id === 'sub-ihya' || (s.name && s.name.includes('İhya'))) && s.group === 'Seminars & Academies') {
+        s.group = 'Kardeşlik ve İhya';
       }
-      if (!groups.includes(s.group)) groups.push(s.group);
-    });
-
-    const cleanGroups = ['İTÜ Courses (Fall 2026)', 'Seminars & Academies'];
-    groups.forEach((g) => {
-      const trimmed = (g || '').trim();
-      if (trimmed && !trimmed.includes('ITU') && !trimmed.includes('İTÜ') && !trimmed.includes('Seminar') && !cleanGroups.includes(trimmed)) {
-        cleanGroups.push(trimmed);
+      if (s.group && !groups.includes(s.group)) {
+        groups.push(s.group);
       }
     });
 
     // Weekly Events sanitization
     const weeklyEvents = Array.isArray(state.weeklyEvents) ? state.weeklyEvents : [...INITIAL_WEEKLY_EVENTS];
-    INITIAL_WEEKLY_EVENTS.forEach((initEv) => {
-      if (!weeklyEvents.some((ev) => ev.id === initEv.id || (ev.title && ev.title.toLowerCase() === initEv.title.toLowerCase()))) {
-        weeklyEvents.push({ ...initEv });
+    weeklyEvents.forEach((ev) => {
+      if ((ev.id === 'wevent-ihya' || (ev.title && ev.title.includes('İhya'))) && ev.category === 'Seminars & Academies') {
+        ev.category = 'Kardeşlik ve İhya';
+      }
+      if (!ev.recurrence) ev.recurrence = 'weekly';
+      if (ev.category && !groups.includes(ev.category)) {
+        groups.push(ev.category);
       }
     });
-    weeklyEvents.forEach((ev) => {
-      if (!ev.recurrence) ev.recurrence = 'weekly';
-    });
 
-    const unwantedTaskIds = new Set([
-      'task-w7-eef211',
-      'task-w7-ehb235',
-      'task-w7-mtt102',
-      'task-w7-ihya',
-      'task-w7-mat287-fri',
-      'task-backlog-1',
-      'task-backlog-2'
-    ]);
-    const rawTasks = Array.isArray(state.tasks) ? state.tasks : [...INITIAL_STATE.tasks];
-    const tasks = rawTasks.filter((t) => !unwantedTaskIds.has(t.id));
+    // Clean up empty 'Seminars & Academies' group if not used by any subject or event
+    const hasSeminarsSubject = subjects.some((s) => s.group === 'Seminars & Academies');
+    const hasSeminarsEvent = weeklyEvents.some((ev) => ev.category === 'Seminars & Academies');
+    if (!hasSeminarsSubject && !hasSeminarsEvent) {
+      groups = groups.filter((g) => g !== 'Seminars & Academies');
+    }
+
+    // Preserve all existing tasks without altering user's dates or completion states
+    const tasks = Array.isArray(state.tasks) ? state.tasks : [...INITIAL_STATE.tasks];
     tasks.forEach((t) => {
       if (!t.recurrence) t.recurrence = 'none';
-      // Anchor authentic tasks to their intended curriculum calendar dates
-      if (t.id === 'task-w5-eef211') {
-        t.dueDate = '2026-11-09';
-        t.completed = true;
-      } else if (t.id === 'task-folland-mat287' || t.id === 'task-w7-ehb474') {
-        if (!t.dueDate || t.dueDate === '2026-11-11' || t.dueDate === '2026-11-09') t.dueDate = '2026-11-10';
-      } else if (t.id === 'task-ing201-synth') {
-        if (!t.dueDate || t.dueDate === '2026-11-12') t.dueDate = '2026-11-11';
-      } else if (t.id === 'task-ehb208-trees' || t.id === 'task-w7-eef210') {
-        if (!t.dueDate || t.dueDate === '2026-11-13') t.dueDate = '2026-11-12';
-      } else if (t.id === 'task-eef205-kmap') {
-        if (!t.dueDate || t.dueDate === '2026-11-14') t.dueDate = '2026-11-13';
-      }
-    });
-
-    // Entity sync metadata sanitization
-    tasks.forEach((t) => {
       if (!t.createdAt) t.createdAt = new Date().toISOString();
       if (!t.updatedAt) t.updatedAt = t.createdAt;
       if (t.deletedAt === undefined) t.deletedAt = null;
       if (t.synced === undefined) t.synced = true;
     });
 
+    // Entity sync metadata sanitization
     const sessions = Array.isArray(state.sessions) ? state.sessions : [...INITIAL_STATE.sessions];
     sessions.forEach((s) => {
-      if (s.id === 'sess-eef211-1') {
-        s.endTime = '2026-11-09T18:30:00.000Z';
-        s.createdAt = '2026-11-09T18:30:00.000Z';
-      }
       if (!s.createdAt) s.createdAt = s.startTime || new Date().toISOString();
       if (!s.updatedAt) s.updatedAt = s.createdAt;
       if (s.synced === undefined) s.synced = true;
@@ -435,7 +392,7 @@ class Store {
 
     state.version = 12;
     state.subjects = subjects;
-    state.groups = cleanGroups;
+    state.groups = [...new Set(groups)];
     state.weeklyEvents = weeklyEvents;
     state.tasks = tasks;
     state.deletedTaskIds = (state.deletedTaskIds && typeof state.deletedTaskIds === 'object') ? state.deletedTaskIds : {};
@@ -453,76 +410,13 @@ class Store {
       }
       const parsed = JSON.parse(serialized);
 
-      // Upgrade to version 11 (Clean up unwanted auto-injected tasks, lock authentic schedule dates, chronograph timer)
-      if (!parsed.version || parsed.version < 11) {
-        const unwantedTaskIds = new Set([
-          'task-w7-eef211',
-          'task-w7-ehb235',
-          'task-w7-mtt102',
-          'task-w7-ihya',
-          'task-w7-mat287-fri',
-          'task-backlog-1',
-          'task-backlog-2'
-        ]);
-
-        // Merge authentic İTÜ subjects with any user-added subjects
-        const existingSubjects = Array.isArray(parsed.subjects) ? parsed.subjects : [];
-        const cleanExisting = existingSubjects.filter(
-          (s) => s.id !== 'sub-balkan' && s.id !== 'sub-langs' && !s.name.includes('Balkan') && !s.name.includes('Diller')
-        );
-
-        // Ensure all authentic subjects from INITIAL_SUBJECTS exist
-        const mergedSubjects = [...cleanExisting];
-        INITIAL_SUBJECTS.forEach((initSub) => {
-          if (!mergedSubjects.some((s) => s.id === initSub.id || s.name.toLowerCase() === initSub.name.toLowerCase())) {
-            mergedSubjects.push(initSub);
-          }
-        });
-
-        // Ensure only authentic tasks exist and remove unwanted fabricated tasks
-        const existingTasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
-        const cleanTasks = existingTasks.filter(
-          (t) => !unwantedTaskIds.has(t.id) && !t.subject?.includes('Balkan') && !t.subject?.includes('Diller')
-        );
-        const mergedTasks = [...cleanTasks];
-        INITIAL_STATE.tasks.forEach((initTask) => {
-          if (!mergedTasks.some((t) => t.id === initTask.id || t.title.toLowerCase() === initTask.title.toLowerCase())) {
-            mergedTasks.push(initTask);
-          }
-        });
-
-        // Ensure sessions are preserved and 86m session exists
-        const existingSessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
-        const mergedSessions = [...existingSessions];
-        INITIAL_STATE.sessions.forEach((initSess) => {
-          if (!mergedSessions.some((s) => s.id === initSess.id)) {
-            mergedSessions.push(initSess);
-          }
-        });
-
-        // Groups
-        const groups = parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS;
-
-        const candidate = {
-          ...INITIAL_STATE,
-          version: 11,
-          groups: [...new Set(groups)],
-          subjects: mergedSubjects,
-          tasks: mergedTasks,
-          weeklyEvents: parsed.weeklyEvents || INITIAL_WEEKLY_EVENTS,
-          sessions: mergedSessions,
-          settings: { ...INITIAL_STATE.settings, ...(parsed.settings || {}) },
-          activeTimer: { ...INITIAL_STATE.activeTimer, ...(parsed.activeTimer || {}) }
-        };
-        return this.sanitizeState(candidate);
-      }
-
       const candidate = {
         ...INITIAL_STATE,
         ...parsed,
         groups: parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS,
         subjects: parsed.subjects && parsed.subjects.length > 0 ? parsed.subjects : INITIAL_SUBJECTS,
         weeklyEvents: parsed.weeklyEvents || INITIAL_WEEKLY_EVENTS,
+        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : INITIAL_STATE.tasks,
         settings: { ...INITIAL_STATE.settings, ...(parsed.settings || {}) },
         activeTimer: { ...INITIAL_STATE.activeTimer, ...(parsed.activeTimer || {}) }
       };
@@ -812,15 +706,6 @@ class Store {
       base = new Date(y, m - 1, d, 12, 0, 0); // Noon prevents any daylight saving or timezone shifts
     } else {
       base = new Date();
-      base.setHours(12, 0, 0, 0);
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // If the due date was in the past, calculate relative to today
-    if (base < today) {
-      base = new Date(today);
       base.setHours(12, 0, 0, 0);
     }
 

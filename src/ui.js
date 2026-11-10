@@ -1242,7 +1242,7 @@ export class ChronoUI {
         const day = parseInt(document.getElementById('wevent-day-select').value, 10);
         const start = document.getElementById('wevent-start-input').value;
         const end = document.getElementById('wevent-end-input').value;
-        const category = document.getElementById('wevent-cat-input').value.trim() || 'Seminars & Academies';
+        const category = document.getElementById('wevent-cat-input').value.trim() || 'Kardeşlik ve İhya';
         const color = document.getElementById('wevent-color-input').value;
         const notes = document.getElementById('wevent-notes-input').value.trim();
 
@@ -4310,7 +4310,7 @@ create policy "Allow room sync access" on chronostudy_sync
         document.getElementById('wevent-day-select').value = String(ev.day);
         document.getElementById('wevent-start-input').value = ev.start;
         document.getElementById('wevent-end-input').value = ev.end;
-        document.getElementById('wevent-cat-input').value = ev.category || 'Seminars & Academies';
+        document.getElementById('wevent-cat-input').value = ev.category || 'Kardeşlik ve İhya';
         document.getElementById('wevent-color-input').value = ev.color || '#059669';
         document.getElementById('wevent-notes-input').value = ev.notes || '';
         if (this.btnDeleteWevent) this.btnDeleteWevent.style.display = 'inline-flex';
@@ -4328,7 +4328,7 @@ create policy "Allow room sync access" on chronostudy_sync
       document.getElementById('wevent-day-select').value = '4';
       document.getElementById('wevent-start-input').value = '19:00';
       document.getElementById('wevent-end-input').value = '21:30';
-      document.getElementById('wevent-cat-input').value = 'Seminars & Academies';
+      document.getElementById('wevent-cat-input').value = 'Kardeşlik ve İhya';
       document.getElementById('wevent-color-input').value = '#059669';
       if (this.btnDeleteWevent) this.btnDeleteWevent.style.display = 'none';
 
@@ -4387,7 +4387,7 @@ create policy "Allow room sync access" on chronostudy_sync
             start: slot.start,
             end: slot.end,
             color: s.color,
-            category: 'İTÜ Lectures'
+            category: s.group || 'Courses'
           });
         });
       }
@@ -4403,7 +4403,7 @@ create policy "Allow room sync access" on chronostudy_sync
         start: ev.start,
         end: ev.end,
         color: ev.color || '#059669',
-        category: ev.category || 'Seminars & Academies',
+        category: ev.category || 'Events',
         recurrence: ev.recurrence || 'weekly'
       });
     });
@@ -4747,17 +4747,29 @@ create policy "Allow room sync access" on chronostudy_sync
   }
 
   renderDayClassLectures(dayOfWeek) {
-    const subjects = store.getState().subjects;
-    const weeklyEvents = store.getState().weeklyEvents || [];
-    const ituLectures = [];
-    const otherEvents = [];
+    const state = store.getState();
+    const subjects = state.subjects || [];
+    const weeklyEvents = state.weeklyEvents || [];
+    const groupsOrder = Array.isArray(state.groups) ? state.groups : [];
 
-    // 1. İTÜ Course Lectures
+    // Map: categoryName -> items[]
+    const categoriesMap = new Map();
+
+    const getBucket = (catName) => {
+      const cleanName = (catName || 'Courses').trim();
+      if (!categoriesMap.has(cleanName)) {
+        categoriesMap.set(cleanName, []);
+      }
+      return categoriesMap.get(cleanName);
+    };
+
+    // 1. Course Lectures
     subjects.forEach((s) => {
       if (Array.isArray(s.schedule)) {
         s.schedule.forEach((slot, slotIdx) => {
           if (slot.day === dayOfWeek) {
-            ituLectures.push({
+            getBucket(s.group || 'Courses').push({
+              type: 'lecture',
               subjectId: s.id,
               slotIndex: slotIdx,
               code: s.code || s.name,
@@ -4771,7 +4783,7 @@ create policy "Allow room sync access" on chronostudy_sync
       }
     });
 
-    // 2. Additional Recurring Commitments (e.g. Kardeşlik ve İhya, Seminars, Routines)
+    // 2. Additional Recurring Commitments (e.g. Kardeşlik ve İhya, Routines)
     weeklyEvents.forEach((ev) => {
       const rec = ev.recurrence || 'weekly';
       let matches = false;
@@ -4792,7 +4804,8 @@ create policy "Allow room sync access" on chronostudy_sync
         else if (rec === 'weekdays') cadenceBadge = '<span class="cadence-pill">Weekdays</span>';
         else if (rec === 'daily') cadenceBadge = '<span class="cadence-pill">Daily</span>';
 
-        otherEvents.push({
+        getBucket(ev.category || 'Events').push({
+          type: 'wevent',
           id: ev.id,
           code: ev.title,
           cadenceBadge,
@@ -4804,55 +4817,61 @@ create policy "Allow room sync access" on chronostudy_sync
       }
     });
 
-    if (ituLectures.length === 0 && otherEvents.length === 0) return '';
+    if (categoriesMap.size === 0) return '';
 
-    ituLectures.sort((a, b) => a.start.localeCompare(b.start));
-    otherEvents.sort((a, b) => a.start.localeCompare(b.start));
+    // Sort categories: prioritize groupsOrder, then alphabetical
+    const sortedCategories = Array.from(categoriesMap.keys()).sort((a, b) => {
+      const idxA = groupsOrder.indexOf(a);
+      const idxB = groupsOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
 
     let html = '';
+    sortedCategories.forEach((categoryName, idx) => {
+      const items = categoriesMap.get(categoryName);
+      if (!items || items.length === 0) return;
+      items.sort((a, b) => a.start.localeCompare(b.start));
 
-    if (ituLectures.length > 0) {
+      const marginTop = idx > 0 ? 'margin-top: 0.4rem;' : '';
       html += `
-        <div class="day-classes-container">
-          <span class="day-section-sub">İTÜ Lectures:</span>
+        <div class="day-classes-container" style="${marginTop}">
+          <span class="day-section-sub">${this.escapeHTML(categoryName)}:</span>
           <div class="day-classes-list">
-            ${ituLectures.map((c) => `
-              <div class="day-class-chip itu-lecture-chip" data-subject-id="${c.subjectId}" data-slot-index="${c.slotIndex}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
-                <div class="class-chip-top">
-                  <span class="class-code">${this.escapeHTML(c.code)}</span>
-                  <span class="chip-edit-icon" title="Edit lecture time">✎</span>
-                </div>
-                <div class="class-chip-sub">
-                  <span class="class-time">${c.start} - ${c.end}</span>
-                </div>
-              </div>
-            `).join('')}
+            ${items.map((c) => {
+              if (c.type === 'lecture') {
+                return `
+                  <div class="day-class-chip itu-lecture-chip" data-subject-id="${c.subjectId}" data-slot-index="${c.slotIndex}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
+                    <div class="class-chip-top">
+                      <span class="class-code">${this.escapeHTML(c.code)}</span>
+                      <span class="chip-edit-icon" title="Edit lecture time">✎</span>
+                    </div>
+                    <div class="class-chip-sub">
+                      <span class="class-time">${c.start} - ${c.end}</span>
+                    </div>
+                  </div>
+                `;
+              } else {
+                return `
+                  <div class="day-class-chip seminar-chip wevent-chip" data-event-id="${c.id}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
+                    <div class="class-chip-top">
+                      <span class="class-code">${this.escapeHTML(c.code)}</span>
+                      <span class="chip-edit-icon" title="Edit event">✎</span>
+                    </div>
+                    <div class="class-chip-sub">
+                      <span class="class-time">${c.start} - ${c.end}</span>
+                      ${c.cadenceBadge || ''}
+                    </div>
+                  </div>
+                `;
+              }
+            }).join('')}
           </div>
         </div>
       `;
-    }
-
-    if (otherEvents.length > 0) {
-      html += `
-        <div class="day-classes-container" style="margin-top: 0.4rem;">
-          <span class="day-section-sub">Academies & Routines:</span>
-          <div class="day-classes-list">
-            ${otherEvents.map((c) => `
-              <div class="day-class-chip seminar-chip wevent-chip" data-event-id="${c.id}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
-                <div class="class-chip-top">
-                  <span class="class-code">${this.escapeHTML(c.code)}</span>
-                  <span class="chip-edit-icon" title="Edit event">✎</span>
-                </div>
-                <div class="class-chip-sub">
-                  <span class="class-time">${c.start} - ${c.end}</span>
-                  ${c.cadenceBadge || ''}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-    }
+    });
 
     return html;
   }

@@ -1331,7 +1331,8 @@ class Store {
       ...this.state.activeTimer,
       ...partial
     };
-    this.saveState();
+    // Save to localStorage quietly WITHOUT triggering store UI redraws or cloud sync events every second
+    this.saveState({ emitSyncEvent: false, notifyUI: false });
   }
 
   // --- Settings ---

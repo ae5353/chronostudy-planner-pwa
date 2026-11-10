@@ -3,6 +3,7 @@ import { store, toLocalDateStr } from './store.js';
 import { timer } from './timer.js';
 import { playClickSound, setAmbientSound, updateAmbientVolume } from './audio.js';
 import { syncManager } from './sync.js';
+import { wakeLockManager } from './wakelock.js';
 
 export class ChronoUI {
   constructor() {
@@ -34,6 +35,20 @@ export class ChronoUI {
     this.applyTheme(store.getState().settings.theme || 'slate');
     this.applyFont(store.getState().settings.fontStyle || 'sans');
     this.applyTimerStyle(store.getState().settings.timerStyle || 'chronograph');
+
+    // Configure Screen WakeLock (Stays awake during fullscreen, Zen Mode, & active study)
+    wakeLockManager.setConditionChecker(() => {
+      const isFullscreen = typeof document !== 'undefined' && Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+      const timerState = timer.getState();
+      return isFullscreen || timerState.isZenMode || timerState.isRunning;
+    });
+
+    wakeLockManager.subscribe((isActive) => {
+      if (this.zenWakeLockBadge) {
+        this.zenWakeLockBadge.style.display = isActive ? 'inline-flex' : 'none';
+      }
+    });
+
     this.render();
 
     // Subscribe to store updates
@@ -49,6 +64,7 @@ export class ChronoUI {
     // Subscribe to timer updates
     timer.subscribe((timerState) => {
       this.renderTimer(timerState);
+      wakeLockManager.update();
     });
 
     // Initialize and subscribe to Cloud Sync Controller
@@ -105,6 +121,7 @@ export class ChronoUI {
     this.zenSubjectBadge = document.getElementById('zen-subject-badge');
     this.zenTopicDisplay = document.getElementById('zen-topic-display');
     this.zenLinkedTaskBadge = document.getElementById('zen-linked-task-badge');
+    this.zenWakeLockBadge = document.getElementById('zen-wakelock-badge');
     this.zenTimerDigits = document.getElementById('zen-timer-digits');
     this.zenCircleWrap = document.getElementById('zen-circle-wrap');
     this.zenProgressRing = document.getElementById('zen-progress-ring');
@@ -886,12 +903,15 @@ export class ChronoUI {
       });
     }
 
-    this.btnFullscreen.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
+    this.btnFullscreen.addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (e) {}
+      wakeLockManager.update();
     });
 
     // Notes auto-save to timer draft
@@ -2209,6 +2229,8 @@ create policy "Allow room sync access" on chronostudy_sync
     let normalized = style;
     if (normalized === 'chronometer') normalized = 'chronograph';
     if (!validStyles.includes(normalized)) normalized = 'chronograph';
+    if (this._appliedTimerStyle === normalized) return;
+    this._appliedTimerStyle = normalized;
     [this.timerCircleWrap, this.zenCircleWrap].forEach((el) => {
       if (el) {
         el.classList.remove('timer-style-cadran', 'timer-style-chronometer', 'timer-style-chronograph', 'timer-style-minimal');
@@ -3045,12 +3067,18 @@ create policy "Allow room sync access" on chronostudy_sync
       }
     }
 
-    if (state.isRunning) {
-      this.btnTimerToggle.innerHTML = '<span class="icon">⏸</span> Pause';
-      this.btnTimerToggle.className = 'btn btn-primary btn-pause';
-    } else {
-      this.btnTimerToggle.innerHTML = '<span class="icon">▶</span> ' + (state.elapsedSec > 0 ? 'Resume' : 'Start Studying');
-      this.btnTimerToggle.className = 'btn btn-primary btn-start';
+    const isRunning = state.isRunning;
+    const isZero = state.elapsedSec === 0;
+    if (this._lastBtnRunning !== isRunning || this._lastBtnZero !== isZero) {
+      this._lastBtnRunning = isRunning;
+      this._lastBtnZero = isZero;
+      if (isRunning) {
+        this.btnTimerToggle.innerHTML = '<span class="icon">⏸</span> Pause';
+        this.btnTimerToggle.className = 'btn btn-primary btn-pause';
+      } else {
+        this.btnTimerToggle.innerHTML = '<span class="icon">▶</span> ' + (isZero ? 'Start Studying' : 'Resume');
+        this.btnTimerToggle.className = 'btn btn-primary btn-start';
+      }
     }
 
     this.btnTimerFinish.disabled = state.elapsedSec < 5;
@@ -3060,19 +3088,26 @@ create policy "Allow room sync access" on chronostudy_sync
     if (this.timerProgressRing) {
       const radius = 126;
       const circumference = 2 * Math.PI * radius;
-      this.timerProgressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+      if (!this._timerRingDashSet) {
+        this.timerProgressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+        this._timerRingDashSet = true;
+      }
       const strokeOffset = state.mode === 'countdown'
         ? circumference * (1 - state.progress)
         : circumference;
       this.timerProgressRing.style.strokeDashoffset = strokeOffset;
-      this.timerProgressRing.style.stroke = store.getSubjectColor(state.subject);
+      const subColor = store.getSubjectColor(state.subject);
+      if (this._lastTimerRingStroke !== subColor) {
+        this.timerProgressRing.style.stroke = subColor;
+        this._lastTimerRingStroke = subColor;
+      }
     }
 
-    // Central Sweep Hand (Breguet Long Hand)
+    // Central Sweep Hand (Breguet Long Hand: smooth cumulative clockwise rotation)
     if (this.timerCadranHandGroup) {
       const angle = state.mode === 'countdown'
         ? (state.progress * 360)
-        : (((state.elapsedSec % 60) / 60) * 360);
+        : (state.elapsedSec * 6);
       this.timerCadranHandGroup.style.transform = `rotate(${angle}deg)`;
     }
 
@@ -3080,13 +3115,13 @@ create policy "Allow room sync access" on chronostudy_sync
     if (this.timerSubdialMinHand) {
       const minAngle = state.mode === 'countdown'
         ? (state.progress * 360)
-        : (((state.elapsedSec % 1800) / 1800) * 360);
+        : ((state.elapsedSec / 1800) * 360);
       this.timerSubdialMinHand.style.transform = `rotate(${minAngle}deg)`;
     }
 
     // Bi-Compax Subdial 2: 60-Second Small-Seconds (Lower at 6 o'clock)
     if (this.timerSubdialSecHand) {
-      const secAngle = ((state.elapsedSec % 60) / 60) * 360;
+      const secAngle = state.elapsedSec * 6;
       this.timerSubdialSecHand.style.transform = `rotate(${secAngle}deg)`;
     }
 
@@ -3102,9 +3137,6 @@ create policy "Allow room sync access" on chronostudy_sync
     if (zenOverlay) {
       zenOverlay.style.display = isZen ? 'flex' : 'none';
       if (isZen) {
-        // Ensure active timer style is applied to Zen dial
-        this.applyTimerStyle(store.getState().settings.timerStyle || 'chronograph');
-
         // Digits
         if (this.zenTimerDigits) this.zenTimerDigits.textContent = state.formattedTime;
 
@@ -3195,19 +3227,25 @@ create policy "Allow room sync access" on chronostudy_sync
         if (this.zenProgressRing) {
           const radius = 126;
           const circumference = 2 * Math.PI * radius;
-          this.zenProgressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+          if (!this._zenRingDashSet) {
+            this.zenProgressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+            this._zenRingDashSet = true;
+          }
           const strokeOffset = state.mode === 'countdown'
             ? circumference * (1 - state.progress)
             : circumference;
           this.zenProgressRing.style.strokeDashoffset = strokeOffset;
-          this.zenProgressRing.style.stroke = color;
+          if (this._lastZenRingStroke !== color) {
+            this.zenProgressRing.style.stroke = color;
+            this._lastZenRingStroke = color;
+          }
         }
 
-        // Zen Horology Central Sweep Needle
+        // Zen Horology Central Sweep Needle (smooth cumulative rotation)
         if (this.zenCadranHandGroup) {
           const angle = state.mode === 'countdown'
             ? (state.progress * 360)
-            : (((state.elapsedSec % 60) / 60) * 360);
+            : (state.elapsedSec * 6);
           this.zenCadranHandGroup.style.transform = `rotate(${angle}deg)`;
         }
 
@@ -3215,24 +3253,30 @@ create policy "Allow room sync access" on chronostudy_sync
         if (this.zenSubdialMinHand) {
           const minAngle = state.mode === 'countdown'
             ? (state.progress * 360)
-            : (((state.elapsedSec % 1800) / 1800) * 360);
+            : ((state.elapsedSec / 1800) * 360);
           this.zenSubdialMinHand.style.transform = `rotate(${minAngle}deg)`;
         }
 
         // Zen Bi-Compax Subdial 2: 60-Second Small-Seconds
         if (this.zenSubdialSecHand) {
-          const secAngle = ((state.elapsedSec % 60) / 60) * 360;
+          const secAngle = state.elapsedSec * 6;
           this.zenSubdialSecHand.style.transform = `rotate(${secAngle}deg)`;
         }
 
         // In-Theater Controls
         if (this.btnZenTimerToggle) {
-          if (state.isRunning) {
-            this.btnZenTimerToggle.innerHTML = '<span class="icon">⏸</span> Pause';
-            this.btnZenTimerToggle.className = 'btn btn-primary btn-pause';
-          } else {
-            this.btnZenTimerToggle.innerHTML = '<span class="icon">▶</span> ' + (state.elapsedSec > 0 ? 'Resume' : 'Start Studying');
-            this.btnZenTimerToggle.className = 'btn btn-primary btn-start';
+          const isRunning = state.isRunning;
+          const isZero = state.elapsedSec === 0;
+          if (this._lastZenBtnRunning !== isRunning || this._lastZenBtnZero !== isZero) {
+            this._lastZenBtnRunning = isRunning;
+            this._lastZenBtnZero = isZero;
+            if (isRunning) {
+              this.btnZenTimerToggle.innerHTML = '<span class="icon">⏸</span> Pause';
+              this.btnZenTimerToggle.className = 'btn btn-primary btn-pause';
+            } else {
+              this.btnZenTimerToggle.innerHTML = '<span class="icon">▶</span> ' + (isZero ? 'Start Studying' : 'Resume');
+              this.btnZenTimerToggle.className = 'btn btn-primary btn-start';
+            }
           }
         }
 

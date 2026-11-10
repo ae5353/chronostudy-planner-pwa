@@ -2374,6 +2374,32 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   letter-spacing: -0.01em;
 }
 
+.wakelock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.18rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--accent-green);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.wakelock-badge::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+}
+
 .zen-actions {
   display: flex;
   align-items: center;
@@ -3367,7 +3393,7 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 }
 
 .chrono-subdial-hand {
-  transition: transform 0.4s cubic-bezier(0.4, 2.08, 0.55, 1);
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1);
 }
 
 .chrono-subdial-needle {
@@ -3382,7 +3408,7 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 
 /* Central Sweep Needle & Jewels */
 .timer-circle-container .cadran-hand-group {
-  transition: transform 0.4s cubic-bezier(0.4, 2.08, 0.55, 1);
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1);
 }
 
 .timer-circle-container .cadran-hand-needle {

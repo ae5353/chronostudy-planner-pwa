@@ -612,7 +612,14 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   grid-template-columns: minmax(460px, 1fr) minmax(400px, 460px);
   gap: 1.25rem;
   align-items: start;
-  transition: grid-template-columns 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pc-dashboard-grid > .panel-card {
+  contain: layout style;
+}
+
+.task-planner-panel {
+  contain: layout style;
 }
 
 .pc-dashboard-grid.tasks-expanded {
@@ -3393,7 +3400,8 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 }
 
 .chrono-subdial-hand {
-  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1);
+  transition: none !important;
+  transform-box: view-box;
 }
 
 .chrono-subdial-needle {
@@ -3409,6 +3417,7 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 /* Central Sweep Needle & Jewels */
 .timer-circle-container .cadran-hand-group {
   transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1);
+  transform-box: view-box;
 }
 
 .timer-circle-container .cadran-hand-needle {

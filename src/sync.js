@@ -761,30 +761,42 @@ export class SyncManager {
     }
 
     try {
-      if (timerState.isRunning) {
-        navigator.mediaSession.playbackState = 'playing';
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: `${timerState.subject} • ${timerState.formattedTime}`,
-          artist: timerState.topic ? `${timerState.topic} (ChronoStudy)` : 'ChronoStudy Focus Timer',
-          album: 'ChronoStudy Study Tracker & Planner',
-          artwork: [
-            { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-            { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-          ]
+      const isRunning = Boolean(timerState.isRunning);
+      const isPaused = !isRunning && timerState.elapsedSec > 0;
+      const statusKey = isRunning ? 'playing' : (isPaused ? 'paused' : 'none');
+      const subject = timerState.subject || 'Study Session';
+      const topic = timerState.topic || '';
+      const metaKey = `${statusKey}|${subject}|${topic}`;
+
+      if (this._lastMediaSessionKey !== metaKey) {
+        this._lastMediaSessionKey = metaKey;
+        navigator.mediaSession.playbackState = statusKey;
+
+        if (statusKey === 'none') {
+          navigator.mediaSession.metadata = null;
+        } else {
+          const title = isRunning ? `${subject} (Focusing)` : `Paused: ${subject}`;
+          const artist = topic ? `${topic} • ChronoStudy` : 'ChronoStudy Study Tracker';
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title,
+            artist,
+            album: 'ChronoStudy Horology Studio',
+            artwork: [
+              { src: './icon.svg', sizes: '192x192', type: 'image/svg+xml' },
+              { src: './icon.svg', sizes: '512x512', type: 'image/svg+xml' }
+            ]
+          });
+        }
+      }
+
+      // Update position state natively if browser supports it (zero network & zero metadata churn)
+      if (typeof navigator.mediaSession.setPositionState === 'function' && timerState.elapsedSec > 0) {
+        const totalDuration = timerState.mode === 'countdown' ? Math.max(1, timerState.targetSec) : Math.max(1, timerState.elapsedSec + 3600);
+        navigator.mediaSession.setPositionState({
+          duration: totalDuration,
+          playbackRate: isRunning ? 1 : 0,
+          position: Math.min(timerState.elapsedSec, totalDuration)
         });
-      } else if (timerState.elapsedSec > 0) {
-        navigator.mediaSession.playbackState = 'paused';
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: `Paused: ${timerState.subject} • ${timerState.formattedTime}`,
-          artist: 'ChronoStudy Focus Timer',
-          album: 'ChronoStudy Study Tracker & Planner',
-          artwork: [
-            { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-            { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
-          ]
-        });
-      } else {
-        navigator.mediaSession.playbackState = 'none';
       }
     } catch (err) {
       // Graceful fallback on browsers with partial MediaSession support

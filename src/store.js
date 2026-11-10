@@ -1326,13 +1326,17 @@ class Store {
   }
 
   // --- Active Timer State ---
-  updateActiveTimer(partial) {
+  updateActiveTimer(partial, { forceSave = false } = {}) {
     this.state.activeTimer = {
       ...this.state.activeTimer,
       ...partial
     };
-    // Save to localStorage quietly WITHOUT triggering store UI redraws or cloud sync events every second
-    this.saveState({ emitSyncEvent: false, notifyUI: false });
+    const now = Date.now();
+    // Throttle synchronous flash disk writes to once every 5 seconds unless forceSave is requested
+    if (forceSave || !this._lastTimerDiskSave || now - this._lastTimerDiskSave >= 5000) {
+      this._lastTimerDiskSave = now;
+      this.saveState({ emitSyncEvent: false, notifyUI: false });
+    }
   }
 
   // --- Settings ---

@@ -62,9 +62,15 @@ export class ChronoUI {
     });
 
     // Subscribe to timer updates
+    let lastRunningState = null;
+    let lastZenState = null;
     timer.subscribe((timerState) => {
       this.renderTimer(timerState);
-      wakeLockManager.update();
+      if (lastRunningState !== timerState.isRunning || lastZenState !== timerState.isZenMode) {
+        lastRunningState = timerState.isRunning;
+        lastZenState = timerState.isZenMode;
+        wakeLockManager.update();
+      }
     });
 
     // Initialize and subscribe to Cloud Sync Controller
@@ -3021,8 +3027,9 @@ create policy "Allow room sync access" on chronostudy_sync
   }
 
   renderTimer(state) {
-    if (this.timerDisplay) {
+    if (this.timerDisplay && this._lastTimerDisplay !== state.formattedTime) {
       this.timerDisplay.textContent = state.formattedTime;
+      this._lastTimerDisplay = state.formattedTime;
     }
 
     let badgeText = 'READY';
@@ -3034,55 +3041,68 @@ create policy "Allow room sync access" on chronostudy_sync
       badgeText = state.hasFinishedCountdown ? 'COMPLETED' : 'PAUSED';
       badgeClass = state.hasFinishedCountdown ? 'badge-completed' : 'badge-paused';
     }
-    if (this.timerStateBadge) {
+    if (this.timerStateBadge && this._lastBadgeText !== badgeText) {
       this.timerStateBadge.textContent = badgeText;
       this.timerStateBadge.className = `timer-state-badge ${badgeClass}`;
+      this._lastBadgeText = badgeText;
     }
 
     // Digital Instrument Panel Telemetry
     if (this.timerActiveModeLabel) {
-      this.timerActiveModeLabel.textContent = state.mode === 'countdown' ? 'COUNTDOWN' : 'STOPWATCH';
+      const modeText = state.mode === 'countdown' ? 'COUNTDOWN' : 'STOPWATCH';
+      if (this._lastActiveModeText !== modeText) {
+        this.timerActiveModeLabel.textContent = modeText;
+        this._lastActiveModeText = modeText;
+      }
     }
 
     if (this.timerTargetDisplay) {
+      let targetText = 'Open Study Session';
       if (state.topic) {
-        this.timerTargetDisplay.textContent = state.topic;
+        targetText = state.topic;
       } else if (state.mode === 'countdown') {
         const targetMins = Math.round(state.targetDurationSec / 60);
-        this.timerTargetDisplay.textContent = `${targetMins}m Focus Block`;
-      } else {
-        this.timerTargetDisplay.textContent = 'Open Study Session';
+        targetText = `${targetMins}m Focus Block`;
+      }
+      if (this._lastTargetText !== targetText) {
+        this.timerTargetDisplay.textContent = targetText;
+        this._lastTargetText = targetText;
       }
     }
 
     if (this.timerProgressPct) {
+      let pctText = '';
       if (state.mode === 'countdown') {
         const pct = Math.min(100, Math.round(state.progress * 100));
-        this.timerProgressPct.textContent = `${pct}%`;
+        pctText = `${pct}%`;
       } else {
         const elapsedMins = Math.floor(state.elapsedSec / 60);
-        this.timerProgressPct.textContent = `${elapsedMins}m elapsed`;
+        pctText = `${elapsedMins}m elapsed`;
+      }
+      if (this._lastProgressPctText !== pctText) {
+        this.timerProgressPct.textContent = pctText;
+        this._lastProgressPctText = pctText;
       }
     }
 
     if (this.timerDigitalProgressBar) {
       const color = store.getSubjectColor(state.subject);
-      this.timerDigitalProgressBar.style.backgroundColor = color;
+      if (this._lastProgressBarColor !== color) {
+        this.timerDigitalProgressBar.style.backgroundColor = color;
+        this._lastProgressBarColor = color;
+      }
+      let pctStr = '0%';
       if (state.mode === 'countdown') {
         const pct = Math.min(100, Math.round(state.progress * 100));
-        this.timerDigitalProgressBar.style.width = `${pct}%`;
+        pctStr = `${pct}%`;
       } else {
         const secInMin = state.elapsedSec % 60;
-        if (secInMin === 0 && state.elapsedSec > 0) {
-          this.timerDigitalProgressBar.style.transition = 'none';
-          this.timerDigitalProgressBar.style.width = '0%';
-          requestAnimationFrame(() => {
-            if (this.timerDigitalProgressBar) this.timerDigitalProgressBar.style.transition = '';
-          });
-        } else {
-          const pct = Math.min(100, Math.round((secInMin / 60) * 100));
-          this.timerDigitalProgressBar.style.width = `${pct}%`;
-        }
+        const pct = Math.min(100, Math.round((secInMin / 60) * 100));
+        pctStr = `${pct}%`;
+      }
+      if (this._lastProgressBarWidth !== pctStr) {
+        this.timerDigitalProgressBar.style.width = pctStr;
+        this._lastProgressBarWidth = pctStr;
       }
     }
 
@@ -3100,8 +3120,14 @@ create policy "Allow room sync access" on chronostudy_sync
       }
     }
 
-    this.btnTimerFinish.disabled = state.elapsedSec < 5;
-    this.btnTimerReset.disabled = state.elapsedSec === 0 && !state.isRunning;
+    const canFinish = state.elapsedSec >= 5;
+    if (this.btnTimerFinish.disabled !== !canFinish) {
+      this.btnTimerFinish.disabled = !canFinish;
+    }
+    const canReset = !(state.elapsedSec === 0 && !state.isRunning);
+    if (this.btnTimerReset.disabled !== !canReset) {
+      this.btnTimerReset.disabled = !canReset;
+    }
 
     // Horology Chronograph Outer Ring
     if (this.timerProgressRing) {
@@ -3114,7 +3140,10 @@ create policy "Allow room sync access" on chronostudy_sync
       const strokeOffset = state.mode === 'countdown'
         ? circumference * (1 - state.progress)
         : circumference;
-      this.timerProgressRing.style.strokeDashoffset = strokeOffset;
+      if (this._lastTimerRingOffset !== strokeOffset) {
+        this.timerProgressRing.style.strokeDashoffset = strokeOffset;
+        this._lastTimerRingOffset = strokeOffset;
+      }
       const subColor = store.getSubjectColor(state.subject);
       if (this._lastTimerRingStroke !== subColor) {
         this.timerProgressRing.style.stroke = subColor;
@@ -3127,7 +3156,10 @@ create policy "Allow room sync access" on chronostudy_sync
       const angle = state.mode === 'countdown'
         ? (state.progress * 360)
         : (state.elapsedSec * 6);
-      this.timerCadranHandGroup.style.transform = `rotate(${angle}deg)`;
+      if (this._lastCadranAngle !== angle) {
+        this.timerCadranHandGroup.style.transform = `rotate(${angle}deg)`;
+        this._lastCadranAngle = angle;
+      }
     }
 
     // Bi-Compax Subdial 1: 30-Minute Chronograph Counter (Upper at 12 o'clock)
@@ -3135,206 +3167,226 @@ create policy "Allow room sync access" on chronostudy_sync
       const minAngle = state.mode === 'countdown'
         ? (state.progress * 360)
         : ((state.elapsedSec / 1800) * 360);
-      this.timerSubdialMinHand.style.transform = `rotate(${minAngle}deg)`;
+      if (this._lastSubdialMinAngle !== minAngle) {
+        this.timerSubdialMinHand.style.transform = `rotate(${minAngle}deg)`;
+        this._lastSubdialMinAngle = minAngle;
+      }
     }
 
     // Bi-Compax Subdial 2: 60-Second Small-Seconds (Lower at 6 o'clock)
     if (this.timerSubdialSecHand) {
       const secAngle = state.elapsedSec * 6;
-      this.timerSubdialSecHand.style.transform = `rotate(${secAngle}deg)`;
+      if (this._lastSubdialSecAngle !== secAngle) {
+        this.timerSubdialSecHand.style.transform = `rotate(${secAngle}deg)`;
+        this._lastSubdialSecAngle = secAngle;
+      }
     }
 
-    this.updatePiPCanvas(state);
-    this.renderZenMode(state.isZenMode, state);
+    if (document.pictureInPictureElement) {
+      this.updatePiPCanvas(state);
+    }
+    if (state.isZenMode || this._lastZenActive) {
+      this.renderZenMode(state.isZenMode, state);
+    }
   }
 
   renderZenMode(isZen, state) {
-    document.body.classList.toggle('zen-mode-active', isZen);
+    if (this._lastZenActive !== isZen) {
+      this._lastZenActive = isZen;
+      document.body.classList.toggle('zen-mode-active', isZen);
+      const zenOverlay = document.getElementById('zen-overlay-container');
+      if (zenOverlay) {
+        zenOverlay.style.display = isZen ? 'flex' : 'none';
+      }
+    }
+
+    if (!isZen) return;
+
     const zenOverlay = document.getElementById('zen-overlay-container');
     const zenNotes = document.getElementById('zen-notes-area');
 
     if (zenOverlay) {
-      zenOverlay.style.display = isZen ? 'flex' : 'none';
-      if (isZen) {
-        // Digits
-        if (this.zenTimerDigits) this.zenTimerDigits.textContent = state.formattedTime;
+      // Digits
+      if (this.zenTimerDigits && this._lastZenDigits !== state.formattedTime) {
+        this.zenTimerDigits.textContent = state.formattedTime;
+        this._lastZenDigits = state.formattedTime;
+      }
 
-        // Subject Badge & Styling
-        const color = store.getSubjectColor(state.subject);
-        if (this.zenSubjectBadge) {
-          this.zenSubjectBadge.textContent = state.subject || 'General Study';
-          this.zenSubjectBadge.style.backgroundColor = `${color}25`;
-          this.zenSubjectBadge.style.color = color;
-          this.zenSubjectBadge.style.borderColor = color;
-        }
+      // Subject Badge & Styling
+      const color = store.getSubjectColor(state.subject);
+      if (this.zenSubjectBadge) {
+        this.zenSubjectBadge.textContent = state.subject || 'General Study';
+        this.zenSubjectBadge.style.backgroundColor = `${color}25`;
+        this.zenSubjectBadge.style.color = color;
+        this.zenSubjectBadge.style.borderColor = color;
+      }
 
-        // Topic Title
-        if (this.zenTopicDisplay) {
-          this.zenTopicDisplay.textContent = state.topic || 'Deep Focus Session';
-        }
+      // Topic Title
+      if (this.zenTopicDisplay) {
+        this.zenTopicDisplay.textContent = state.topic || 'Deep Focus Session';
+      }
 
-        // Linked Task Badge
-        if (this.zenLinkedTaskBadge) {
-          if (state.linkedTaskId) {
-            const task = store.getState().tasks.find((t) => t.id === state.linkedTaskId);
-            if (task) {
-              this.zenLinkedTaskBadge.style.display = 'inline-block';
-              this.zenLinkedTaskBadge.textContent = task.title;
-            } else {
-              this.zenLinkedTaskBadge.style.display = 'none';
-            }
+      // Linked Task Badge
+      if (this.zenLinkedTaskBadge) {
+        if (state.linkedTaskId) {
+          const task = store.getState().tasks.find((t) => t.id === state.linkedTaskId);
+          if (task) {
+            this.zenLinkedTaskBadge.style.display = 'inline-block';
+            this.zenLinkedTaskBadge.textContent = task.title;
           } else {
             this.zenLinkedTaskBadge.style.display = 'none';
           }
+        } else {
+          this.zenLinkedTaskBadge.style.display = 'none';
         }
+      }
 
-        // State Badge
-        let badgeText = 'READY';
-        let badgeClass = 'badge-ready';
-        if (state.isRunning) {
-          badgeText = 'FOCUSING';
-          badgeClass = 'badge-studying';
-        } else if (state.elapsedSec > 0) {
-          badgeText = state.hasFinishedCountdown ? 'COMPLETED' : 'PAUSED';
-          badgeClass = state.hasFinishedCountdown ? 'badge-completed' : 'badge-paused';
-        }
-        if (this.zenStateBadge) {
-          this.zenStateBadge.textContent = badgeText;
-          this.zenStateBadge.className = `timer-state-badge ${badgeClass}`;
-        }
+      // State Badge
+      let badgeText = 'READY';
+      let badgeClass = 'badge-ready';
+      if (state.isRunning) {
+        badgeText = 'FOCUSING';
+        badgeClass = 'badge-studying';
+      } else if (state.elapsedSec > 0) {
+        badgeText = state.hasFinishedCountdown ? 'COMPLETED' : 'PAUSED';
+        badgeClass = state.hasFinishedCountdown ? 'badge-completed' : 'badge-paused';
+      }
+      if (this.zenStateBadge) {
+        this.zenStateBadge.textContent = badgeText;
+        this.zenStateBadge.className = `timer-state-badge ${badgeClass}`;
+      }
 
-        // Active Mode Tag
-        if (this.zenActiveModeLabel) {
-          this.zenActiveModeLabel.textContent = state.mode === 'countdown' ? 'COUNTDOWN' : 'STOPWATCH';
-        }
+      // Active Mode Tag
+      if (this.zenActiveModeLabel) {
+        this.zenActiveModeLabel.textContent = state.mode === 'countdown' ? 'COUNTDOWN' : 'STOPWATCH';
+      }
 
-        // Target Display
-        if (this.zenTargetDisplay) {
-          if (state.topic) {
-            this.zenTargetDisplay.textContent = state.topic;
-          } else if (state.mode === 'countdown') {
-            const targetMins = Math.round(state.targetDurationSec / 60);
-            this.zenTargetDisplay.textContent = `${targetMins}m Focus Block`;
+      // Target Display
+      if (this.zenTargetDisplay) {
+        if (state.topic) {
+          this.zenTargetDisplay.textContent = state.topic;
+        } else if (state.mode === 'countdown') {
+          const targetMins = Math.round(state.targetDurationSec / 60);
+          this.zenTargetDisplay.textContent = `${targetMins}m Focus Block`;
+        } else {
+          this.zenTargetDisplay.textContent = 'Open Study Session';
+        }
+      }
+
+      // Progress Telemetry
+      if (this.zenProgressPct) {
+        if (state.mode === 'countdown') {
+          const pct = Math.min(100, Math.round(state.progress * 100));
+          this.zenProgressPct.textContent = `${pct}%`;
+        } else {
+          const elapsedMins = Math.floor(state.elapsedSec / 60);
+          this.zenProgressPct.textContent = `${elapsedMins}m elapsed`;
+        }
+      }
+
+      if (this.zenDigitalProgressBar) {
+        this.zenDigitalProgressBar.style.backgroundColor = color;
+        if (state.mode === 'countdown') {
+          const pct = Math.min(100, Math.round(state.progress * 100));
+          this.zenDigitalProgressBar.style.width = `${pct}%`;
+        } else {
+          const secInMin = state.elapsedSec % 60;
+          if (secInMin === 0 && state.elapsedSec > 0) {
+            this.zenDigitalProgressBar.style.transition = 'none';
+            this.zenDigitalProgressBar.style.width = '0%';
+            requestAnimationFrame(() => {
+              if (this.zenDigitalProgressBar) this.zenDigitalProgressBar.style.transition = '';
+            });
           } else {
-            this.zenTargetDisplay.textContent = 'Open Study Session';
-          }
-        }
-
-        // Progress Telemetry
-        if (this.zenProgressPct) {
-          if (state.mode === 'countdown') {
-            const pct = Math.min(100, Math.round(state.progress * 100));
-            this.zenProgressPct.textContent = `${pct}%`;
-          } else {
-            const elapsedMins = Math.floor(state.elapsedSec / 60);
-            this.zenProgressPct.textContent = `${elapsedMins}m elapsed`;
-          }
-        }
-
-        if (this.zenDigitalProgressBar) {
-          this.zenDigitalProgressBar.style.backgroundColor = color;
-          if (state.mode === 'countdown') {
-            const pct = Math.min(100, Math.round(state.progress * 100));
+            const pct = Math.min(100, Math.round((secInMin / 60) * 100));
             this.zenDigitalProgressBar.style.width = `${pct}%`;
+          }
+        }
+      }
+
+      // Zen Horology Progress Ring
+      if (this.zenProgressRing) {
+        const radius = 126;
+        const circumference = 2 * Math.PI * radius;
+        if (!this._zenRingDashSet) {
+          this.zenProgressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+          this._zenRingDashSet = true;
+        }
+        const strokeOffset = state.mode === 'countdown'
+          ? circumference * (1 - state.progress)
+          : circumference;
+        this.zenProgressRing.style.strokeDashoffset = strokeOffset;
+        if (this._lastZenRingStroke !== color) {
+          this.zenProgressRing.style.stroke = color;
+          this._lastZenRingStroke = color;
+        }
+      }
+
+      // Zen Horology Central Sweep Needle (smooth cumulative rotation)
+      if (this.zenCadranHandGroup) {
+        const angle = state.mode === 'countdown'
+          ? (state.progress * 360)
+          : (state.elapsedSec * 6);
+        this.zenCadranHandGroup.style.transform = `rotate(${angle}deg)`;
+      }
+
+      // Zen Bi-Compax Subdial 1: 30-Minute Counter
+      if (this.zenSubdialMinHand) {
+        const minAngle = state.mode === 'countdown'
+          ? (state.progress * 360)
+          : ((state.elapsedSec / 1800) * 360);
+        this.zenSubdialMinHand.style.transform = `rotate(${minAngle}deg)`;
+      }
+
+      // Zen Bi-Compax Subdial 2: 60-Second Small-Seconds
+      if (this.zenSubdialSecHand) {
+        const secAngle = state.elapsedSec * 6;
+        this.zenSubdialSecHand.style.transform = `rotate(${secAngle}deg)`;
+      }
+
+      // In-Theater Controls
+      if (this.btnZenTimerToggle) {
+        const isRunning = state.isRunning;
+        const isZero = state.elapsedSec === 0;
+        if (this._lastZenBtnRunning !== isRunning || this._lastZenBtnZero !== isZero) {
+          this._lastZenBtnRunning = isRunning;
+          this._lastZenBtnZero = isZero;
+          if (isRunning) {
+            this.btnZenTimerToggle.innerHTML = '<span class="icon">⏸</span> Pause';
+            this.btnZenTimerToggle.className = 'btn btn-primary btn-pause';
           } else {
-            const secInMin = state.elapsedSec % 60;
-            if (secInMin === 0 && state.elapsedSec > 0) {
-              this.zenDigitalProgressBar.style.transition = 'none';
-              this.zenDigitalProgressBar.style.width = '0%';
-              requestAnimationFrame(() => {
-                if (this.zenDigitalProgressBar) this.zenDigitalProgressBar.style.transition = '';
-              });
-            } else {
-              const pct = Math.min(100, Math.round((secInMin / 60) * 100));
-              this.zenDigitalProgressBar.style.width = `${pct}%`;
-            }
+            this.btnZenTimerToggle.innerHTML = '<span class="icon">▶</span> ' + (isZero ? 'Start Studying' : 'Resume');
+            this.btnZenTimerToggle.className = 'btn btn-primary btn-start';
           }
         }
+      }
 
-        // Zen Horology Progress Ring
-        if (this.zenProgressRing) {
-          const radius = 126;
-          const circumference = 2 * Math.PI * radius;
-          if (!this._zenRingDashSet) {
-            this.zenProgressRing.style.strokeDasharray = `${circumference} ${circumference}`;
-            this._zenRingDashSet = true;
-          }
-          const strokeOffset = state.mode === 'countdown'
-            ? circumference * (1 - state.progress)
-            : circumference;
-          this.zenProgressRing.style.strokeDashoffset = strokeOffset;
-          if (this._lastZenRingStroke !== color) {
-            this.zenProgressRing.style.stroke = color;
-            this._lastZenRingStroke = color;
-          }
-        }
+      if (this.btnZenFinishSession) {
+        this.btnZenFinishSession.disabled = state.elapsedSec < 5;
+      }
+      if (this.btnZenResetTimer) {
+        this.btnZenResetTimer.disabled = state.elapsedSec === 0 && !state.isRunning;
+      }
 
-        // Zen Horology Central Sweep Needle (smooth cumulative rotation)
-        if (this.zenCadranHandGroup) {
-          const angle = state.mode === 'countdown'
-            ? (state.progress * 360)
-            : (state.elapsedSec * 6);
-          this.zenCadranHandGroup.style.transform = `rotate(${angle}deg)`;
+      // Soundscape Sync
+      if (this.zenSoundscapeSelect) {
+        const currentSound = store.getState().settings.ambientSound || 'none';
+        if (this.zenSoundscapeSelect.value !== currentSound) {
+          this.zenSoundscapeSelect.value = currentSound;
         }
+      }
 
-        // Zen Bi-Compax Subdial 1: 30-Minute Counter
-        if (this.zenSubdialMinHand) {
-          const minAngle = state.mode === 'countdown'
-            ? (state.progress * 360)
-            : ((state.elapsedSec / 1800) * 360);
-          this.zenSubdialMinHand.style.transform = `rotate(${minAngle}deg)`;
-        }
+      // Notes sync
+      if (zenNotes && document.activeElement !== zenNotes) {
+        zenNotes.value = state.draftNotes || this.sessionNotesArea.value || '';
+      }
 
-        // Zen Bi-Compax Subdial 2: 60-Second Small-Seconds
-        if (this.zenSubdialSecHand) {
-          const secAngle = state.elapsedSec * 6;
-          this.zenSubdialSecHand.style.transform = `rotate(${secAngle}deg)`;
-        }
-
-        // In-Theater Controls
-        if (this.btnZenTimerToggle) {
-          const isRunning = state.isRunning;
-          const isZero = state.elapsedSec === 0;
-          if (this._lastZenBtnRunning !== isRunning || this._lastZenBtnZero !== isZero) {
-            this._lastZenBtnRunning = isRunning;
-            this._lastZenBtnZero = isZero;
-            if (isRunning) {
-              this.btnZenTimerToggle.innerHTML = '<span class="icon">⏸</span> Pause';
-              this.btnZenTimerToggle.className = 'btn btn-primary btn-pause';
-            } else {
-              this.btnZenTimerToggle.innerHTML = '<span class="icon">▶</span> ' + (isZero ? 'Start Studying' : 'Resume');
-              this.btnZenTimerToggle.className = 'btn btn-primary btn-start';
-            }
-          }
-        }
-
-        if (this.btnZenFinishSession) {
-          this.btnZenFinishSession.disabled = state.elapsedSec < 5;
-        }
-        if (this.btnZenResetTimer) {
-          this.btnZenResetTimer.disabled = state.elapsedSec === 0 && !state.isRunning;
-        }
-
-        // Soundscape Sync
-        if (this.zenSoundscapeSelect) {
-          const currentSound = store.getState().settings.ambientSound || 'none';
-          if (this.zenSoundscapeSelect.value !== currentSound) {
-            this.zenSoundscapeSelect.value = currentSound;
-          }
-        }
-
-        // Notes sync
-        if (zenNotes && document.activeElement !== zenNotes) {
-          zenNotes.value = state.draftNotes || this.sessionNotesArea.value || '';
-        }
-
-        if (zenNotes && !zenNotes.dataset.bound) {
-          zenNotes.dataset.bound = 'true';
-          zenNotes.addEventListener('input', () => {
-            this.sessionNotesArea.value = zenNotes.value;
-            timer.setDraftNotes(zenNotes.value);
-          });
-        }
+      if (zenNotes && !zenNotes.dataset.bound) {
+        zenNotes.dataset.bound = 'true';
+        zenNotes.addEventListener('input', () => {
+          this.sessionNotesArea.value = zenNotes.value;
+          timer.setDraftNotes(zenNotes.value);
+        });
       }
     }
   }

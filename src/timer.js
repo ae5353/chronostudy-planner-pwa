@@ -33,6 +33,26 @@ class StudyTimer {
       }
       this.start(false);
     }
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      const flushState = () => {
+        store.updateActiveTimer({
+          mode: this.mode,
+          targetSec: this.targetSec,
+          elapsedSec: this.elapsedSec,
+          isRunning: this.isRunning,
+          startedAt: this.sessionStartTime ? this.sessionStartTime.toISOString() : null,
+          lastTickAt: new Date().toISOString(),
+          subject: this.subject,
+          topic: this.topic,
+          linkedTaskId: this.linkedTaskId,
+          draftNotes: this.draftNotes,
+          isZenMode: this.isZenMode
+        }, { forceSave: true });
+      };
+      window.addEventListener('beforeunload', flushState);
+      window.addEventListener('pagehide', flushState);
+    }
   }
 
   subscribe(listener) {
@@ -41,7 +61,7 @@ class StudyTimer {
     return () => this.listeners.delete(listener);
   }
 
-  notify() {
+  notify(forceSave = false) {
     const currentState = this.getState();
     for (const listener of this.listeners) {
       try {
@@ -63,7 +83,7 @@ class StudyTimer {
       linkedTaskId: this.linkedTaskId,
       draftNotes: this.draftNotes,
       isZenMode: this.isZenMode
-    });
+    }, { forceSave });
   }
 
   getState() {
@@ -147,11 +167,11 @@ class StudyTimer {
           }
         }
 
-        this.notify();
+        this.notify(false);
       }
     }, 250);
 
-    this.notify();
+    this.notify(true);
   }
 
   pause() {
@@ -159,7 +179,7 @@ class StudyTimer {
     clearInterval(this.intervalId);
     this.intervalId = null;
     this.isRunning = false;
-    this.notify();
+    this.notify(true);
   }
 
   toggle() {
@@ -174,7 +194,7 @@ class StudyTimer {
     this.pause();
     this.elapsedSec = 0;
     this.sessionStartTime = null;
-    this.notify();
+    this.notify(true);
   }
 
   finishSession() {
@@ -198,7 +218,7 @@ class StudyTimer {
     this.sessionStartTime = null;
     this.draftNotes = '';
     this.isZenMode = false;
-    this.notify();
+    this.notify(true);
 
     return sessionData;
   }

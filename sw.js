@@ -1,5 +1,5 @@
 // sw.js — Service Worker for Offline PWA Capabilities (Network-First with Cache Fallback)
-const CACHE_NAME = 'chronostudy-clean-v19';
+const CACHE_NAME = 'chronostudy-clean-v20';
 const ASSETS = [
   './',
   './index.html',

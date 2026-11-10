@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./src/styles.css?v=11" />
+  <link rel="stylesheet" href="./src/styles.css" />
   <!-- Google Identity Services for 1-Click Google Drive Sync -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -28,7 +28,7 @@
         <img src="./icon.svg" alt="ChronoStudy Logo" class="logo-icon" />
         <div>
           <span class="app-title">ChronoStudy</span>
-          <span class="app-subtitle">Study Tracker &amp; Planner <button type="button" id="btn-force-update" onclick="window.forceUpdateApp()" style="background: none; border: 1px solid var(--border-color); color: var(--text-dim); border-radius: 4px; font-size: 0.65rem; padding: 1px 5px; cursor: pointer; margin-left: 4px;" title="Click to force update app &amp; purge offline cache">v2.4.2 ↻</button></span>
+          <span class="app-subtitle">Study Tracker & Planner</span>
         </div>
       </div>
 
@@ -1157,9 +1157,6 @@
           <button id="btn-import-json" class="btn btn-secondary" style="justify-content: flex-start;">
             Restore from Backup (.json)
           </button>
-          <button id="btn-purge-cache-reload" class="btn btn-secondary" style="justify-content: flex-start; color: var(--text-dim);" onclick="window.forceUpdateApp()">
-            ↻ Force Update &amp; Purge App Cache (v2.4.2)
-          </button>
           <input type="file" id="json-file-input" accept=".json" style="display: none;" />
         </div>
       </div>
@@ -1687,6 +1684,6 @@
   </div>
 
   <!-- App Bootstrap -->
-  <script type="module" src="./src/app.js?v=11"></script>
+  <script type="module" src="./src/app.js"></script>
 </body>
 </html>

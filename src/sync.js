@@ -763,45 +763,28 @@ export class SyncManager {
     try {
       if (timerState.isRunning) {
         navigator.mediaSession.playbackState = 'playing';
-        const sessionKey = `${timerState.subject}-${timerState.topic}-running`;
-        if (this._lastMediaSessionKey !== sessionKey) {
-          this._lastMediaSessionKey = sessionKey;
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title: `${timerState.subject || 'Focus Session'}`,
-            artist: timerState.topic ? `${timerState.topic} (ChronoStudy)` : 'ChronoStudy Focus Timer',
-            album: 'ChronoStudy Study Tracker & Planner',
-            artwork: [
-              { src: './icon.svg', sizes: '512x512', type: 'image/svg+xml' }
-            ]
-          });
-        }
-
-        if ('setPositionState' in navigator.mediaSession) {
-          try {
-            navigator.mediaSession.setPositionState({
-              duration: timerState.mode === 'countdown' ? Math.max(1, timerState.targetSec) : Math.max(1, timerState.elapsedSec + 3600),
-              playbackRate: 1,
-              position: Math.min(timerState.mode === 'countdown' ? timerState.targetSec : timerState.elapsedSec + 3600, timerState.elapsedSec)
-            });
-          } catch (e) {}
-        }
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: `${timerState.subject} • ${timerState.formattedTime}`,
+          artist: timerState.topic ? `${timerState.topic} (ChronoStudy)` : 'ChronoStudy Focus Timer',
+          album: 'ChronoStudy Study Tracker & Planner',
+          artwork: [
+            { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
+          ]
+        });
       } else if (timerState.elapsedSec > 0) {
         navigator.mediaSession.playbackState = 'paused';
-        const sessionKey = `${timerState.subject}-${timerState.topic}-paused`;
-        if (this._lastMediaSessionKey !== sessionKey) {
-          this._lastMediaSessionKey = sessionKey;
-          navigator.mediaSession.metadata = new MediaMetadata({
-            title: `Paused: ${timerState.subject || 'Study Session'}`,
-            artist: timerState.topic ? `${timerState.topic} (ChronoStudy)` : 'ChronoStudy Focus Timer',
-            album: 'ChronoStudy Study Tracker & Planner',
-            artwork: [
-              { src: './icon.svg', sizes: '512x512', type: 'image/svg+xml' }
-            ]
-          });
-        }
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: `Paused: ${timerState.subject} • ${timerState.formattedTime}`,
+          artist: 'ChronoStudy Focus Timer',
+          album: 'ChronoStudy Study Tracker & Planner',
+          artwork: [
+            { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+            { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' }
+          ]
+        });
       } else {
         navigator.mediaSession.playbackState = 'none';
-        this._lastMediaSessionKey = 'none';
       }
     } catch (err) {
       // Graceful fallback on browsers with partial MediaSession support

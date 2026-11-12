@@ -243,27 +243,49 @@ export class SyncManager {
       this.notify();
     });
 
-    // Reactive auto-sync when local store changes (debounced by 4 seconds)
+    // Reactive auto-sync when local store changes (debounced by 1.5 seconds)
     window.addEventListener('chronostudy:state-changed', () => {
       if (store.getState().sync.autoSync && this.isConfigured() && this.networkOnline) {
         this.scheduleDebouncedSync();
       }
     });
 
-    // Immediate sync check when user switches back to ChronoStudy app/tab
+    // Immediate sync check when user switches back to ChronoStudy app/tab, and flush pending changes when leaving
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && this.networkOnline && this.isConfigured()) {
+        this.performSync({ silent: true });
+      } else if (document.visibilityState === 'hidden' && this.networkOnline && this.isConfigured()) {
+        if (store.getUnsyncedChanges().hasChanges) {
+          this.performSync({ silent: true });
+        }
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      if (this.networkOnline && this.isConfigured() && store.getUnsyncedChanges().hasChanges) {
         this.performSync({ silent: true });
       }
     });
 
-    // Periodic background sync every 120 seconds when online
+    // Proactive background Google Drive token refresh on user interactions
+    const renewOnUserGesture = () => {
+      const syncState = store.getState().sync || {};
+      if (syncState.provider === 'gdrive' && syncState.googleClientId && (this.gdriveAccessToken || syncState.googleUserEmail)) {
+        if (!this.gdriveAccessToken || (this.gdriveTokenExpiry && Date.now() >= this.gdriveTokenExpiry - 300000)) {
+          this.requestGoogleAccessToken({ clientId: syncState.googleClientId, interactive: true }).catch(() => {});
+        }
+      }
+    };
+    window.addEventListener('click', renewOnUserGesture, { passive: true });
+    window.addEventListener('keydown', renewOnUserGesture, { passive: true });
+
+    // Periodic background sync every 30 seconds when online
     if (this.backgroundPollTimer) clearInterval(this.backgroundPollTimer);
     this.backgroundPollTimer = setInterval(() => {
       if (this.networkOnline && this.isConfigured() && store.getState().sync.autoSync && !this.isSyncing) {
         this.performSync({ silent: true });
       }
-    }, 120000);
+    }, 30000);
 
     // Setup Android lock-screen and notification bar MediaSession controls
     this.initMediaSession();
@@ -289,7 +311,7 @@ export class SyncManager {
         return; // No local changes to upload
       }
       this.performSync({ silent: true });
-    }, 4000);
+    }, 1500);
   }
 
   /**
@@ -313,10 +335,10 @@ export class SyncManager {
       return { success: false, reason: 'unconfigured' };
     }
 
-    // Prevent unnecessary redundant network roundtrips if there are no unsynced changes and we synced in the last 60 seconds
+    // Prevent redundant network roundtrips if there are no unsynced changes and we synced in the last 10 seconds
     if (!force && !store.getUnsyncedChanges().hasChanges) {
       const lastSynced = syncState.lastSyncedAt;
-      if (lastSynced && (Date.now() - new Date(lastSynced).getTime() < 60000)) {
+      if (lastSynced && (Date.now() - new Date(lastSynced).getTime() < 10000)) {
         return { success: true, reason: 'recently-synced' };
       }
     }

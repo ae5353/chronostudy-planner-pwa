@@ -140,120 +140,34 @@ export function toLocalDateStr(d = new Date()) {
   return `${year}-${month}-${day}`;
 }
 
-// Authentic study tasks aligned with user schedule
+export const LEGACY_SEED_TASK_IDS = [
+  'task-w5-eef211',
+  'task-folland-mat287',
+  'task-w7-ehb474',
+  'task-ing201-synth',
+  'task-ehb208-trees',
+  'task-w7-eef210',
+  'task-eef205-kmap',
+  'task-w7-mtt102',
+  'task-w7-ihya',
+  'task-w7-mat287-fri',
+  'task-backlog-1',
+  'task-backlog-2'
+];
+
+// Clean initial state — user starts with their authentic courses and commitments, zero fabricated tasks
 const INITIAL_STATE = {
   version: 12,
   groups: DEFAULT_GROUPS,
   subjects: INITIAL_SUBJECTS,
   weeklyEvents: INITIAL_WEEKLY_EVENTS,
-  tasks: [
-    // --- Day 9 (Pazartesi) ---
-    {
-      id: 'task-w5-eef211',
-      title: 'EEF 211E: Week 5 Methods of Analysis & Graph Theory Problems',
-      subject: 'Circuit Analysis',
-      targetMinutes: 60,
-      dueDate: '2026-11-09',
-      notes: 'Nodal and mesh analysis problems from course notes (Desktop/İTÜ/EEF211E)',
-      completed: true,
-      createdAt: '2026-11-09T09:00:00.000Z',
-      completedAt: '2026-11-09T18:30:00.000Z',
-      timeSpentSec: 5160
-    },
-
-    // --- Day 10 (Salı) ---
-    {
-      id: 'task-folland-mat287',
-      title: 'MAT 287: Folland Advanced Calculus Handout 1 Exercises',
-      subject: 'Advanced Calculus',
-      targetMinutes: 60,
-      dueDate: '2026-11-10',
-      notes: 'Multivariable calculus exercises (MAT287 folder)',
-      completed: false,
-      createdAt: '2026-11-09T10:00:00.000Z',
-      completedAt: null,
-      timeSpentSec: 0
-    },
-    {
-      id: 'task-w7-ehb474',
-      title: 'EHB 474E: Introduction to Optimization - Convex Sets & Calafiore Models',
-      subject: 'Introduction to Optimization',
-      targetMinutes: 45,
-      dueDate: '2026-11-10',
-      notes: 'Calafiore optimization models & gradient search exercises (EHB474E)',
-      completed: false,
-      createdAt: '2026-11-09T10:00:00.000Z',
-      completedAt: null,
-      timeSpentSec: 0
-    },
-
-    // --- Day 11 (Çarşamba) ---
-    {
-      id: 'task-ing201-synth',
-      title: 'ING 201A: Academic Writing Synthesis & Pacing Guide Assignment',
-      subject: 'English for Academic Purposes',
-      targetMinutes: 40,
-      dueDate: '2026-11-11',
-      notes: 'APA in-text referencing and synthesis matrix (Desktop/İTÜ/ING201A)',
-      completed: false,
-      createdAt: '2026-11-09T10:00:00.000Z',
-      completedAt: null,
-      timeSpentSec: 0
-    },
-
-    // --- Day 12 (Perşembe) ---
-    {
-      id: 'task-ehb208-trees',
-      title: 'EHB 208E: Data Structures - Binary Trees & Linked List Operations',
-      subject: 'Data Structures',
-      targetMinutes: 45,
-      dueDate: '2026-11-12',
-      notes: 'Binary search tree traversal, pointer operations and Midterm 1 review (Desktop/İTÜ/EHB208E)',
-      completed: false,
-      createdAt: '2026-11-09T10:00:00.000Z',
-      completedAt: null,
-      timeSpentSec: 0
-    },
-    {
-      id: 'task-w7-eef210',
-      title: 'EEF 210E: Differential Equations - 2nd Order Linear Differential Equations',
-      subject: 'Differential Equations',
-      targetMinutes: 50,
-      dueDate: '2026-11-12',
-      notes: 'Boyce & DiPrima undetermined coefficients & variation of parameters',
-      completed: false,
-      createdAt: '2026-11-09T10:00:00.000Z',
-      completedAt: null,
-      timeSpentSec: 0
-    },
-
-    // --- Day 13 (Cuma) ---
-    {
-      id: 'task-eef205-kmap',
-      title: 'EEF 205E: Digital Design - K-Map Minimization & OneWare VHDL Simulation',
-      subject: 'Digital Design',
-      targetMinutes: 45,
-      dueDate: '2026-11-13',
-      notes: 'Digital Design Global Edition Chapter 5 problems and OneWare Studio simulation',
-      completed: false,
-      createdAt: '2026-11-09T10:00:00.000Z',
-      completedAt: null,
-      timeSpentSec: 0
-    }
-  ],
-  sessions: [
-    {
-      id: 'sess-eef211-1',
-      subject: 'Circuit Analysis',
-      topic: 'EEF 211E: Week 5 Methods of Analysis & Graph Theory Problems',
-      taskId: 'task-w5-eef211',
-      durationSec: 5160, // 86m studied on Pazartesi Day 9
-      startTime: '2026-11-09T17:04:00.000Z',
-      endTime: '2026-11-09T18:30:00.000Z',
-      notes: 'Nodal and mesh analysis problems solved.',
-      createdAt: '2026-11-09T18:30:00.000Z'
-    }
-  ],
+  tasks: [],
+  sessions: [],
+  deletedTaskIds: {},
+  deletedSessionIds: {},
+  deletedSubjectIds: {},
+  deletedWeeklyEventIds: {},
+  deletedGroups: {},
   activeTimer: {
     isRunning: false,
     mode: 'stopwatch',
@@ -290,6 +204,7 @@ const INITIAL_STATE = {
     lastSyncedAt: null,
     status: 'idle', // 'idle' | 'syncing' | 'synced' | 'offline' | 'error'
     lastError: null,
+    hasChanges: false,
     autoSync: true
   }
 };
@@ -306,6 +221,13 @@ class Store {
 
     const subjects = Array.isArray(state.subjects) ? state.subjects : [...INITIAL_SUBJECTS];
     let groups = Array.isArray(state.groups) && state.groups.length > 0 ? [...state.groups] : [...DEFAULT_GROUPS];
+
+    // Ensure all tombstone maps exist
+    state.deletedTaskIds = (state.deletedTaskIds && typeof state.deletedTaskIds === 'object') ? state.deletedTaskIds : {};
+    state.deletedSessionIds = (state.deletedSessionIds && typeof state.deletedSessionIds === 'object') ? state.deletedSessionIds : {};
+    state.deletedSubjectIds = (state.deletedSubjectIds && typeof state.deletedSubjectIds === 'object') ? state.deletedSubjectIds : {};
+    state.deletedWeeklyEventIds = (state.deletedWeeklyEventIds && typeof state.deletedWeeklyEventIds === 'object') ? state.deletedWeeklyEventIds : {};
+    state.deletedGroups = (state.deletedGroups && typeof state.deletedGroups === 'object') ? state.deletedGroups : {};
 
     // If state comes from legacy schema before v11, seed missing authentic subjects
     if (!state.version || state.version < 11) {
@@ -345,8 +267,26 @@ class Store {
       groups = groups.filter((g) => g !== 'Seminars & Academies');
     }
 
-    // Preserve all existing tasks without altering user's dates or completion states
-    const tasks = Array.isArray(state.tasks) ? state.tasks : [...INITIAL_STATE.tasks];
+    // Raw tasks array
+    const rawTasks = Array.isArray(state.tasks) ? state.tasks : [];
+    
+    // Ensure legacy seed tasks that are not present are tombstoned so cloud sync never resurrects them
+    LEGACY_SEED_TASK_IDS.forEach((id) => {
+      if (!rawTasks.some((t) => t.id === id)) {
+        state.deletedTaskIds[id] = state.deletedTaskIds[id] || '2026-11-12T00:00:00.000Z';
+      }
+    });
+
+    // Prune any task that has a tombstone
+    const tasks = rawTasks.filter((t) => {
+      const delTime = state.deletedTaskIds[t.id];
+      if (delTime) {
+        const taskUpdated = new Date(t.updatedAt || t.createdAt || 0).getTime();
+        return new Date(delTime).getTime() < taskUpdated;
+      }
+      return true;
+    });
+
     tasks.forEach((t) => {
       if (!t.recurrence) t.recurrence = 'none';
       if (!t.createdAt) t.createdAt = new Date().toISOString();
@@ -355,8 +295,12 @@ class Store {
       if (t.synced === undefined) t.synced = true;
     });
 
-    // Entity sync metadata sanitization
-    const sessions = Array.isArray(state.sessions) ? state.sessions : [...INITIAL_STATE.sessions];
+    // Sessions sanitization with tombstone pruning
+    const rawSessions = Array.isArray(state.sessions) ? state.sessions : [];
+    if (!rawSessions.some((s) => s.id === 'sess-eef211-1')) {
+      state.deletedSessionIds['sess-eef211-1'] = state.deletedSessionIds['sess-eef211-1'] || '2026-11-12T00:00:00.000Z';
+    }
+    const sessions = rawSessions.filter((s) => !state.deletedSessionIds[s.id]);
     sessions.forEach((s) => {
       if (!s.createdAt) s.createdAt = s.startTime || new Date().toISOString();
       if (!s.updatedAt) s.updatedAt = s.createdAt;
@@ -364,15 +308,22 @@ class Store {
     });
     state.sessions = sessions;
 
-    subjects.forEach((s) => {
+    // Prune subjects by tombstone
+    const cleanSubjects = subjects.filter((s) => !state.deletedSubjectIds[s.id]);
+    cleanSubjects.forEach((s) => {
       if (!s.updatedAt) s.updatedAt = new Date().toISOString();
       if (s.deletedAt === undefined) s.deletedAt = null;
     });
 
-    weeklyEvents.forEach((e) => {
+    // Prune weekly events by tombstone
+    const cleanWeeklyEvents = weeklyEvents.filter((e) => !state.deletedWeeklyEventIds[e.id]);
+    cleanWeeklyEvents.forEach((e) => {
       if (!e.updatedAt) e.updatedAt = new Date().toISOString();
       if (e.deletedAt === undefined) e.deletedAt = null;
     });
+
+    // Prune groups by tombstone
+    const cleanGroups = groups.filter((g) => !state.deletedGroups[g]);
 
     if (!state.settings) state.settings = { ...INITIAL_STATE.settings };
     if (!state.settings.fontStyle) state.settings.fontStyle = 'sans';
@@ -391,11 +342,10 @@ class Store {
     }
 
     state.version = 12;
-    state.subjects = subjects;
-    state.groups = [...new Set(groups)];
-    state.weeklyEvents = weeklyEvents;
+    state.subjects = cleanSubjects;
+    state.groups = [...new Set(cleanGroups)];
+    state.weeklyEvents = cleanWeeklyEvents;
     state.tasks = tasks;
-    state.deletedTaskIds = (state.deletedTaskIds && typeof state.deletedTaskIds === 'object') ? state.deletedTaskIds : {};
     return state;
   }
 
@@ -416,7 +366,8 @@ class Store {
         groups: parsed.groups && parsed.groups.length > 0 ? parsed.groups : DEFAULT_GROUPS,
         subjects: parsed.subjects && parsed.subjects.length > 0 ? parsed.subjects : INITIAL_SUBJECTS,
         weeklyEvents: parsed.weeklyEvents || INITIAL_WEEKLY_EVENTS,
-        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : INITIAL_STATE.tasks,
+        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+        sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
         settings: { ...INITIAL_STATE.settings, ...(parsed.settings || {}) },
         activeTimer: { ...INITIAL_STATE.activeTimer, ...(parsed.activeTimer || {}) }
       };
@@ -429,6 +380,9 @@ class Store {
 
   saveState({ emitSyncEvent = true, notifyUI = true } = {}) {
     try {
+      if (emitSyncEvent && this.state && this.state.sync) {
+        this.state.sync.hasChanges = true;
+      }
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
       }
@@ -484,11 +438,15 @@ class Store {
       version: this.state.version,
       exportedAt: new Date().toISOString(),
       groups: this.state.groups,
+      deletedGroups: this.state.deletedGroups || {},
       subjects: this.state.subjects,
+      deletedSubjectIds: this.state.deletedSubjectIds || {},
       weeklyEvents: this.state.weeklyEvents,
+      deletedWeeklyEventIds: this.state.deletedWeeklyEventIds || {},
       tasks: this.state.tasks,
       deletedTaskIds: this.state.deletedTaskIds || {},
       sessions: this.state.sessions,
+      deletedSessionIds: this.state.deletedSessionIds || {},
       settings: this.state.settings
     };
   }
@@ -506,6 +464,7 @@ class Store {
     this.state.tasks.forEach((t) => { t.synced = true; });
     this.state.sessions.forEach((s) => { s.synced = true; });
     if (!this.state.sync) this.state.sync = { ...INITIAL_STATE.sync };
+    this.state.sync.hasChanges = false;
     this.state.sync.lastSyncedAt = syncTimestamp;
     this.state.sync.status = 'synced';
     this.state.sync.lastError = null;
@@ -515,10 +474,12 @@ class Store {
   getUnsyncedChanges() {
     const unsyncedTasks = this.state.tasks.filter((t) => t.synced === false);
     const unsyncedSessions = this.state.sessions.filter((s) => s.synced === false);
+    const hasDirty = Boolean(this.state.sync && this.state.sync.hasChanges);
     return {
-      hasChanges: unsyncedTasks.length > 0 || unsyncedSessions.length > 0,
+      hasChanges: hasDirty || unsyncedTasks.length > 0 || unsyncedSessions.length > 0,
       tasks: unsyncedTasks,
-      sessions: unsyncedSessions
+      sessions: unsyncedSessions,
+      count: unsyncedTasks.length + unsyncedSessions.length + (hasDirty ? 1 : 0)
     };
   }
 
@@ -534,10 +495,23 @@ class Store {
     let changesCount = 0;
     const nowIso = new Date().toISOString();
 
-    // 2. Additive Merge for Study Sessions (Zero loss, deduplicated by ID)
+    // 2. Additive Merge for Study Sessions with Tombstone Protection (Zero loss, deduplicated by ID)
+    if (!this.state.deletedSessionIds) this.state.deletedSessionIds = {};
+    if (remote.deletedSessionIds && typeof remote.deletedSessionIds === 'object') {
+      Object.entries(remote.deletedSessionIds).forEach(([delId, delTime]) => {
+        const existing = this.state.deletedSessionIds[delId];
+        if (!existing || new Date(delTime) > new Date(existing)) {
+          this.state.deletedSessionIds[delId] = delTime;
+        }
+      });
+    }
+    // Prune locally deleted sessions
+    this.state.sessions = this.state.sessions.filter((s) => !this.state.deletedSessionIds[s.id]);
+
     if (Array.isArray(remote.sessions)) {
       const localSessionIds = new Set(this.state.sessions.map((s) => s.id));
       remote.sessions.forEach((remoteSess) => {
+        if (this.state.deletedSessionIds[remoteSess.id]) return; // NEVER resurrect deleted session
         if (!localSessionIds.has(remoteSess.id)) {
           this.state.sessions.push({ ...remoteSess, synced: true });
           localSessionIds.add(remoteSess.id);
@@ -604,10 +578,22 @@ class Store {
       });
     }
 
-    // 4. Merge Subjects
+    // 5. Merge Subjects with Tombstone Protection
+    if (!this.state.deletedSubjectIds) this.state.deletedSubjectIds = {};
+    if (remote.deletedSubjectIds && typeof remote.deletedSubjectIds === 'object') {
+      Object.entries(remote.deletedSubjectIds).forEach(([delId, delTime]) => {
+        const existing = this.state.deletedSubjectIds[delId];
+        if (!existing || new Date(delTime) > new Date(existing)) {
+          this.state.deletedSubjectIds[delId] = delTime;
+        }
+      });
+    }
+    this.state.subjects = this.state.subjects.filter((s) => !this.state.deletedSubjectIds[s.id]);
+
     if (Array.isArray(remote.subjects)) {
       const localSubMap = new Map(this.state.subjects.map((s) => [s.id, s]));
       remote.subjects.forEach((remoteSub) => {
+        if (this.state.deletedSubjectIds[remoteSub.id]) return; // NEVER resurrect deleted subject
         const localSub = localSubMap.get(remoteSub.id);
         if (!localSub) {
           if (!remoteSub.deletedAt) {
@@ -629,10 +615,22 @@ class Store {
       });
     }
 
-    // 5. Merge Weekly Events
+    // 6. Merge Weekly Events with Tombstone Protection
+    if (!this.state.deletedWeeklyEventIds) this.state.deletedWeeklyEventIds = {};
+    if (remote.deletedWeeklyEventIds && typeof remote.deletedWeeklyEventIds === 'object') {
+      Object.entries(remote.deletedWeeklyEventIds).forEach(([delId, delTime]) => {
+        const existing = this.state.deletedWeeklyEventIds[delId];
+        if (!existing || new Date(delTime) > new Date(existing)) {
+          this.state.deletedWeeklyEventIds[delId] = delTime;
+        }
+      });
+    }
+    this.state.weeklyEvents = this.state.weeklyEvents.filter((e) => !this.state.deletedWeeklyEventIds[e.id]);
+
     if (Array.isArray(remote.weeklyEvents)) {
       const localEvMap = new Map(this.state.weeklyEvents.map((e) => [e.id, e]));
       remote.weeklyEvents.forEach((remoteEv) => {
+        if (this.state.deletedWeeklyEventIds[remoteEv.id]) return; // NEVER resurrect deleted event
         const localEv = localEvMap.get(remoteEv.id);
         if (!localEv) {
           if (!remoteEv.deletedAt) {
@@ -654,10 +652,25 @@ class Store {
       });
     }
 
-    // 6. Merge Groups
+    // 7. Merge Groups with Tombstone Protection
+    if (!this.state.deletedGroups) this.state.deletedGroups = {};
+    if (remote.deletedGroups && typeof remote.deletedGroups === 'object') {
+      Object.entries(remote.deletedGroups).forEach(([delGrp, delTime]) => {
+        const existing = this.state.deletedGroups[delGrp];
+        if (!existing || new Date(delTime) > new Date(existing)) {
+          this.state.deletedGroups[delGrp] = delTime;
+        }
+      });
+    }
+    this.state.groups = this.state.groups.filter((g) => !this.state.deletedGroups[g]);
+
     if (Array.isArray(remote.groups)) {
       remote.groups.forEach((g) => {
-        if (!this.state.groups.includes(g)) this.state.groups.push(g);
+        if (this.state.deletedGroups[g]) return; // NEVER resurrect deleted category
+        if (!this.state.groups.includes(g)) {
+          this.state.groups.push(g);
+          changesCount++;
+        }
       });
     }
 
@@ -755,7 +768,14 @@ class Store {
     if (!title || !title.trim()) return null;
 
     const parsedMins = targetMinutes ? parseInt(targetMinutes, 10) : null;
-    const cleanDueDate = dueDate && dueDate.trim() ? dueDate.trim() : null;
+    const isRecurring = recurrence && recurrence !== 'none';
+    let cleanDueDate = dueDate && dueDate.trim() ? dueDate.trim() : null;
+
+    // If task is set as repeated task but no due date was chosen, default to TODAY so it's immediately seen in today's tasks
+    if (isRecurring && !cleanDueDate) {
+      cleanDueDate = toLocalDateStr(new Date());
+    }
+
     const cleanSubject = subject && subject.trim() && subject.trim().toLowerCase() !== 'none' && subject.trim().toLowerCase() !== 'all' ? subject.trim() : null;
     const nowIso = new Date().toISOString();
 
@@ -765,7 +785,7 @@ class Store {
       subject: cleanSubject,
       targetMinutes: parsedMins && parsedMins > 0 ? parsedMins : null,
       dueDate: cleanDueDate,
-      recurrence: recurrence && recurrence !== 'none' ? recurrence : 'none',
+      recurrence: isRecurring ? recurrence : 'none',
       recurrenceInterval: recurrenceInterval ? parseInt(recurrenceInterval, 10) : null,
       parentRecurringId: null,
       notes: notes ? notes.trim() : '',
@@ -835,6 +855,16 @@ class Store {
     const task = this.state.tasks.find((t) => t.id === taskId);
     if (!task) return;
     const oldTimeSpent = task.timeSpentSec || 0;
+
+    const isRecurring = updates.recurrence && updates.recurrence !== 'none';
+    if (isRecurring) {
+      if (updates.dueDate === undefined && !task.dueDate) {
+        updates.dueDate = toLocalDateStr(new Date());
+      } else if (updates.dueDate === null || updates.dueDate === '') {
+        updates.dueDate = toLocalDateStr(new Date());
+      }
+    }
+
     Object.assign(task, updates);
     task.updatedAt = new Date().toISOString();
     task.synced = false;
@@ -938,6 +968,8 @@ class Store {
   }
 
   deleteSession(sessionId) {
+    if (!this.state.deletedSessionIds) this.state.deletedSessionIds = {};
+    this.state.deletedSessionIds[sessionId] = new Date().toISOString();
     this.state.sessions = this.state.sessions.filter((s) => s.id !== sessionId);
     this.saveState();
   }
@@ -1018,6 +1050,8 @@ class Store {
   }
 
   deleteSubject(subjectId) {
+    if (!this.state.deletedSubjectIds) this.state.deletedSubjectIds = {};
+    this.state.deletedSubjectIds[subjectId] = new Date().toISOString();
     this.state.subjects = this.state.subjects.filter((s) => s.id !== subjectId);
     this.saveState();
   }
@@ -1077,6 +1111,8 @@ class Store {
 
   deleteCategory(groupName, fallbackGroup = 'İTÜ Courses (Fall 2026)') {
     if (!groupName) return false;
+    if (!this.state.deletedGroups) this.state.deletedGroups = {};
+    this.state.deletedGroups[groupName] = new Date().toISOString();
     this.state.groups = this.state.groups.filter((g) => g !== groupName);
     if (this.state.groups.length === 0) {
       this.state.groups = [fallbackGroup];
@@ -1158,6 +1194,8 @@ class Store {
 
   deleteWeeklyEvent(eventId) {
     if (!Array.isArray(this.state.weeklyEvents)) return;
+    if (!this.state.deletedWeeklyEventIds) this.state.deletedWeeklyEventIds = {};
+    this.state.deletedWeeklyEventIds[eventId] = new Date().toISOString();
     this.state.weeklyEvents = this.state.weeklyEvents.filter((e) => e.id !== eventId);
     this.saveState();
   }

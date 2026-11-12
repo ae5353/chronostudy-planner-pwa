@@ -2824,7 +2824,7 @@ create policy "Allow room sync access" on chronostudy_sync
     if (sFilter === 'pending') {
       filtered = filtered.filter((t) => !t.completed);
     } else if (sFilter === 'today') {
-      filtered = filtered.filter((t) => !t.completed && t.dueDate === todayStr);
+      filtered = filtered.filter((t) => !t.completed && (t.dueDate === todayStr || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr))));
     } else if (sFilter === 'planned') {
       filtered = filtered.filter((t) => !t.completed && t.dueDate && t.dueDate >= todayStr);
     } else if (sFilter === 'completed') {
@@ -2944,9 +2944,9 @@ create policy "Allow room sync access" on chronostudy_sync
           if (task.completed) {
             groupKey = 'Completed Tasks';
           } else if (!task.dueDate) {
-            groupKey = 'No Due Date';
+            groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
           } else if (task.dueDate < todayStr) {
-            groupKey = 'Overdue';
+            groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'Overdue';
           } else if (task.dueDate === todayStr) {
             groupKey = 'Today';
           } else if (task.dueDate === tomorrowStr) {
@@ -3822,7 +3822,7 @@ create policy "Allow room sync access" on chronostudy_sync
     if (view === 'todo') {
       filtered = filtered.filter((t) => !t.completed);
     } else if (view === 'today') {
-      filtered = filtered.filter((t) => t.dueDate === todayStr || (t.createdAt && t.createdAt.startsWith(todayStr)));
+      filtered = filtered.filter((t) => t.dueDate === todayStr || (t.createdAt && t.createdAt.startsWith(todayStr)) || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr)));
     } else if (view === 'planned') {
       filtered = filtered.filter((t) => Boolean(t.dueDate));
     } else if (view === 'general') {
@@ -3902,9 +3902,9 @@ create policy "Allow room sync access" on chronostudy_sync
         if (task.completed) {
           groupKey = 'Completed Tasks';
         } else if (!task.dueDate) {
-          groupKey = 'No Due Date';
+          groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
         } else if (task.dueDate < todayStr) {
-          groupKey = 'Overdue';
+          groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'Overdue';
         } else if (task.dueDate === todayStr) {
           groupKey = 'Today';
         } else if (task.dueDate === tomorrowStr) {

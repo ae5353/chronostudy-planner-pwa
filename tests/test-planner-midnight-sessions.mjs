@@ -206,4 +206,31 @@ assert.equal(timer.getState().linkedTaskId, null, 'finishSession must reset link
 assert.equal(timer.getState().topic, '', 'finishSession must reset topic');
 assert.equal(timer.getState().subject, '', 'finishSession must reset subject to empty string');
 
+// --- Test 5: Per-Day Checking for Daily / Routine Tasks Across Days ---
+console.log('Test 5: Per-day checking for daily/routine tasks (including past days)...');
+const routineTask = store.addTask({
+  title: 'Morning Quran Reading',
+  subject: null,
+  recurrence: 'daily',
+  dueDate: '2026-11-16'
+});
+// Today is 2026-11-17; check off yesterday (2026-11-16) independently
+store.toggleTaskForDate(routineTask.id, '2026-11-16');
+assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-16'), true, 'Yesterday (2026-11-16) should be marked done');
+assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-17'), false, 'Today (2026-11-17) must remain unchecked');
+assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-16'), true, 'Yesterday remains visible on planner');
+assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-17'), true, 'Today remains visible on planner');
+
+// Check off today (2026-11-17) as well
+store.toggleTaskForDate(routineTask.id, '2026-11-17');
+assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-17'), true, 'Today (2026-11-17) should now be marked done');
+assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-18'), false, 'Tomorrow (2026-11-18) remains unchecked');
+assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-16'), true, 'Past checked day stays visible');
+assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-17'), true, 'Checked today stays visible');
+
+// Uncheck yesterday (2026-11-16) without affecting today (2026-11-17)
+store.toggleTaskForDate(routineTask.id, '2026-11-16');
+assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-16'), false, 'Yesterday should uncheck cleanly');
+assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-17'), true, 'Today must remain checked');
+
 console.log('ALL PLANNER, MIDNIGHT, TASK-SUBJECT SYNC & SESSION COUNT TESTS PASSED!');

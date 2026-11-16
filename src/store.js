@@ -1051,6 +1051,7 @@ class Store {
       parentRecurringId: null,
       notes: notes ? notes.trim() : '',
       completed: false,
+      completedDates: {},
       createdAt: nowIso,
       updatedAt: nowIso,
       deletedAt: null,
@@ -1061,6 +1062,57 @@ class Store {
     this.state.tasks.unshift(newTask);
     this.saveState();
     return newTask;
+  }
+
+  isTaskCompletedOnDate(task, dateStr) {
+    if (!task) return false;
+    const rec = task.recurrence || 'none';
+    if (rec === 'none') return Boolean(task.completed);
+    if (task.completedDates && dateStr && task.completedDates[dateStr]) return true;
+    if (task.completed) {
+      const doneDateStr = task.completedAt ? toLocalDateStr(task.completedAt) : task.dueDate;
+      return doneDateStr === dateStr;
+    }
+    return false;
+  }
+
+  toggleTaskForDate(taskId, dateStr) {
+    const task = this.state.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    const rec = task.recurrence || 'none';
+    if (!dateStr || rec === 'none') {
+      this.toggleTask(taskId);
+      return;
+    }
+
+    if (!task.completedDates || typeof task.completedDates !== 'object') {
+      task.completedDates = {};
+    }
+
+    const nowIso = new Date().toISOString();
+    const todayStr = toLocalDateStr(new Date());
+    const wasDone = this.isTaskCompletedOnDate(task, dateStr);
+
+    if (wasDone) {
+      delete task.completedDates[dateStr];
+      if (task.completed) {
+        task.completed = false;
+        task.completedAt = null;
+      }
+    } else {
+      task.completedDates[dateStr] = nowIso;
+      if (task.dueDate === dateStr || (!task.dueDate && dateStr === todayStr)) {
+        const nextDate = this.calculateNextRecurrenceDate(dateStr, rec, task.recurrenceInterval);
+        if (nextDate) {
+          task.dueDate = nextDate;
+        }
+      }
+    }
+
+    task.updatedAt = nowIso;
+    task.synced = false;
+    this.saveState();
   }
 
   toggleTask(taskId) {
@@ -1615,12 +1667,20 @@ class Store {
       return task.dueDate === targetDateStr;
     }
 
+    if (task.completedDates && task.completedDates[targetDateStr]) {
+      return true;
+    }
+
     if (task.completed) {
       const doneDateStr = task.completedAt ? toLocalDateStr(task.completedAt) : task.dueDate;
       return doneDateStr === targetDateStr;
     }
 
-    const anchorStr = task.dueDate || toLocalDateStr(task.createdAt || new Date());
+    const createdStr = task.createdAt ? toLocalDateStr(task.createdAt) : null;
+    let anchorStr = task.dueDate || createdStr;
+    if (task.completedDates && Object.keys(task.completedDates).length > 0 && createdStr && (!anchorStr || createdStr < anchorStr)) {
+      anchorStr = createdStr;
+    }
     if (!anchorStr) return false;
     if (targetDateStr < anchorStr) return false;
     if (targetDateStr === anchorStr) return true;

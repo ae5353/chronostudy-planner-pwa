@@ -4772,9 +4772,10 @@ create policy "Allow room sync access" on chronostudy_sync
               <div class="day-tasks-list">
                 ${dayTasks.map((t) => {
                   const color = store.getSubjectColor(t.subject);
-                  const isProjectedRoutine = t.recurrence && t.recurrence !== 'none' && t.dueDate !== dateStr && !t.completed;
-                  const isDoneForDay = isProjectedRoutine ? false : t.completed;
-                  const isMidnightDone = Boolean(isDoneForDay && store.isMidnightTimestamp(t.completedAt));
+                  const isDoneForDay = store.isTaskCompletedOnDate(t, dateStr);
+                  const isProjectedRoutine = t.recurrence && t.recurrence !== 'none' && t.dueDate !== dateStr && !isDoneForDay;
+                  const completedTsForDay = (t.completedDates && t.completedDates[dateStr]) || t.completedAt;
+                  const isMidnightDone = Boolean(isDoneForDay && store.isMidnightTimestamp(completedTsForDay));
                   const sessStats = store.getTaskSessionStats(t);
                   return `
                     <div class="cal-task-item ${isDoneForDay ? 'completed' : ''} ${isProjectedRoutine ? 'cal-task-routine' : ''}" style="border-left: 3px solid ${color};">
@@ -4784,14 +4785,14 @@ create policy "Allow room sync access" on chronostudy_sync
                         ${t.targetMinutes ? `<span class="cal-time-goal">${t.targetMinutes}m</span>` : ''}
                       </div>
                       <div class="cal-task-title">${this.escapeHTML(t.title)}</div>
-                      ${(!isProjectedRoutine && (sessStats.sessionCount > 0 || isMidnightDone)) ? `
+                      ${((!isProjectedRoutine || isDoneForDay) && (sessStats.sessionCount > 0 || isMidnightDone)) ? `
                         <div class="cal-task-stats-row">
                           ${sessStats.sessionCount > 0 ? `<span class="cal-sessions-pill" title="Studied across ${sessStats.sessionCount} session(s)">◷ ${sessStats.sessionCount} sess (${sessStats.totalMins}m)</span>` : ''}
                           ${isMidnightDone ? `<span class="cal-midnight-pill" title="Completed during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
                         </div>
                       ` : ''}
                       <div class="cal-task-actions">
-                        <button class="btn-cal-check" data-task-id="${t.id}" title="${isDoneForDay ? 'Mark undone' : 'Mark done'}">
+                        <button class="btn-cal-check" data-task-id="${t.id}" data-date="${dateStr}" title="${isDoneForDay ? 'Mark undone for this day' : 'Mark done for this day'}">
                           ${isDoneForDay ? '✓' : '○'}
                         </button>
                         ${!isDoneForDay ? `
@@ -4841,7 +4842,7 @@ create policy "Allow room sync access" on chronostudy_sync
     // Bind events inside week view
     this.calendarViewContainer.querySelectorAll('.btn-cal-check').forEach((btn) => {
       btn.addEventListener('click', () => {
-        store.toggleTask(btn.dataset.taskId);
+        store.toggleTaskForDate(btn.dataset.taskId, btn.dataset.date);
         playClickSound();
       });
     });
@@ -5258,7 +5259,8 @@ create policy "Allow room sync access" on chronostudy_sync
       summary += `Tasks Scheduled:\n` + tasks.map((t) => {
         const st = store.getTaskSessionStats(t);
         const sessInfo = st.sessionCount > 0 ? ` (${st.sessionCount} sess, ${st.totalMins}m)` : '';
-        return `• [${t.completed ? 'DONE' : 'TODO'}] ${t.subject || 'General'}: ${t.title}${sessInfo}`;
+        const isDoneOnDay = store.isTaskCompletedOnDate(t, dateStr);
+        return `• [${isDoneOnDay ? 'DONE' : 'TODO'}] ${t.subject || 'General'}: ${t.title}${sessInfo}`;
       }).join('\n') + `\n\n`;
     }
     if (sessions.length > 0) {

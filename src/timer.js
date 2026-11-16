@@ -14,7 +14,16 @@ class StudyTimer {
     this.targetSec = state.targetSec || 1500;
     this.elapsedSec = state.elapsedSec || 0;
     this.isRunning = false;
-    this.subject = state.subject || 'Circuit Analysis';
+    const linkedTask = state.linkedTaskId
+      ? (store.getState().tasks || []).find((t) => t.id === state.linkedTaskId)
+      : null;
+    if (linkedTask) {
+      this.subject = linkedTask.subject || '';
+    } else if (state.subject === 'Circuit Analysis' && !state.isRunning && !state.topic) {
+      this.subject = '';
+    } else {
+      this.subject = state.subject !== undefined && state.subject !== null ? state.subject : '';
+    }
     this.topic = state.topic || '';
     this.linkedTaskId = state.linkedTaskId || null;
     this.draftNotes = state.draftNotes || '';
@@ -203,9 +212,16 @@ class StudyTimer {
     const now = new Date();
     const start = this.sessionStartTime || new Date(now.getTime() - durationSec * 1000);
 
+    const linkedTask = this.linkedTaskId
+      ? (store.getState().tasks || []).find((t) => t.id === this.linkedTaskId)
+      : null;
+    const resolvedSubject = linkedTask
+      ? ((linkedTask.subject && linkedTask.subject.trim()) ? linkedTask.subject.trim() : 'General')
+      : ((this.subject && this.subject.trim()) ? this.subject.trim() : 'General');
+
     const sessionData = {
-      subject: this.subject,
-      topic: this.topic || 'Focused Study Session',
+      subject: resolvedSubject,
+      topic: this.topic || (linkedTask ? linkedTask.title : 'Focused Study Session'),
       taskId: this.linkedTaskId,
       durationSec,
       startTime: start.toISOString(),
@@ -213,9 +229,12 @@ class StudyTimer {
       notes: this.draftNotes
     };
 
-    // Reset active session state
+    // Reset active session state so finished task never bleeds into the next session
     this.elapsedSec = 0;
     this.sessionStartTime = null;
+    this.linkedTaskId = null;
+    this.topic = '';
+    this.subject = '';
     this.draftNotes = '';
     this.isZenMode = false;
     this.notify(true);

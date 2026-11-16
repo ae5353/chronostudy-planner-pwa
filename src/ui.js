@@ -438,6 +438,7 @@ export class ChronoUI {
     this.editTaskDueDate = document.getElementById('edit-task-duedate');
     this.editTaskRecurrence = document.getElementById('edit-task-recurrence');
     this.editTaskNotes = document.getElementById('edit-task-notes');
+    this.editTaskSessionsSummary = document.getElementById('edit-task-sessions-summary');
   }
 
   bindEvents() {
@@ -850,9 +851,34 @@ export class ChronoUI {
     });
 
     this.topicInput.addEventListener('input', () => {
-      timer.setContext({ topic: this.topicInput.value });
+      const val = this.topicInput.value;
+      const norm = val.trim().toLowerCase();
+      const tasks = store.getState().tasks || [];
+      const currentLinkedId = timer.getState().linkedTaskId;
+      const matched = norm
+        ? (tasks.find((t) => !t.completed && (t.title || '').trim().toLowerCase() === norm)
+          || tasks.find((t) => (t.title || '').trim().toLowerCase() === norm))
+        : null;
+
+      if (matched) {
+        const matchedSubject = matched.subject || '';
+        timer.setContext({ topic: val, linkedTaskId: matched.id, subject: matchedSubject });
+        if (this.subjectSelect) this.subjectSelect.value = matchedSubject;
+        this.renderLinkedTaskBanner(matched.id);
+      } else if (currentLinkedId) {
+        const curTask = tasks.find((t) => t.id === currentLinkedId);
+        if (!curTask || (curTask.title || '').trim().toLowerCase() !== norm) {
+          timer.setContext({ topic: val, linkedTaskId: null });
+          this.renderLinkedTaskBanner(null);
+        } else {
+          timer.setContext({ topic: val });
+        }
+      } else {
+        timer.setContext({ topic: val });
+      }
+
       if (this.zenTopicDisplay) {
-        this.zenTopicDisplay.textContent = this.topicInput.value || 'Focus Session';
+        this.zenTopicDisplay.textContent = val || 'Focus Session';
       }
     });
 
@@ -2939,20 +2965,23 @@ create policy "Allow room sync access" on chronostudy_sync
 
     const createSidebarCard = (task) => {
       const color = store.getSubjectColor(task.subject);
-      const timeLoggedMins = Math.round((task.timeSpentSec || 0) / 60);
+      const sessStats = store.getTaskSessionStats(task);
+      const timeLoggedMins = sessStats.totalMins;
+      const sessLabel = `${sessStats.sessionCount} ${sessStats.sessionCount === 1 ? 'sess' : 'sess'}`;
+      const isMidnightDone = Boolean(task.completed && store.isMidnightTimestamp(task.completedAt));
       let targetProgressBadge = '';
       if (task.targetMinutes) {
         const targetMins = task.targetMinutes;
         const pct = Math.min(100, Math.round((timeLoggedMins / targetMins) * 100));
         const isMet = timeLoggedMins >= targetMins;
         targetProgressBadge = `
-          <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" style="font-size: 0.65rem;" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%)">
+          <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" style="font-size: 0.65rem;" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%) across ${sessStats.sessionCount} session(s)">
             <span class="task-progress-mini-bar" style="width: ${pct}%;"></span>
-            <span class="task-progress-mini-text">◷ ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
+            <span class="task-progress-mini-text">◷ ${timeLoggedMins}/${targetMins}m (${pct}%)${sessStats.sessionCount > 0 ? ` · ${sessStats.sessionCount} sess` : ''}</span>
           </span>
         `;
-      } else if (timeLoggedMins > 0) {
-        targetProgressBadge = `<span class="meta-badge logged-badge" style="font-size: 0.65rem;">◷ ${timeLoggedMins}m</span>`;
+      } else if (timeLoggedMins > 0 || sessStats.sessionCount > 0) {
+        targetProgressBadge = `<span class="meta-badge logged-badge" style="font-size: 0.65rem;" title="${sessStats.sessionCount} session(s)">◷ ${sessStats.sessionCount} sess · ${timeLoggedMins}m</span>`;
       }
 
       const card = document.createElement('div');
@@ -2970,6 +2999,7 @@ create policy "Allow room sync access" on chronostudy_sync
               <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}; font-size: 0.65rem;">${task.subject ? this.escapeHTML(task.subject) : 'General'}</span>
               ${task.dueDate ? `<span class="meta-badge date-badge" style="font-size: 0.65rem;">${task.dueDate}</span>` : ''}
               ${task.recurrence && task.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}</span>` : ''}
+              ${isMidnightDone ? `<span class="meta-badge midnight-badge" style="font-size: 0.63rem;" title="Completed during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
               ${targetProgressBadge}
             </div>
           </div>
@@ -3002,7 +3032,9 @@ create policy "Allow room sync access" on chronostudy_sync
         let groupKey = 'Other';
         if (groupBy === 'dueDate') {
           if (task.completed) {
-            groupKey = 'Completed Tasks';
+            groupKey = store.isMidnightTimestamp(task.completedAt)
+              ? 'Completed (Midnight 00:00–05:00)'
+              : 'Completed Tasks';
           } else if (!task.dueDate) {
             groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
           } else if (task.dueDate < todayStr) {
@@ -3030,7 +3062,7 @@ create policy "Allow room sync access" on chronostudy_sync
 
       let orderedKeys = Array.from(groupsMap.keys());
       if (groupBy === 'dueDate') {
-        const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed Tasks'];
+        const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
         orderedKeys.sort((a, b) => {
           const idxA = dueOrder.indexOf(a);
           const idxB = dueOrder.indexOf(b);
@@ -3172,8 +3204,8 @@ create policy "Allow room sync access" on chronostudy_sync
     this.updateTimerModeButtons(timerState.mode);
     this.sessionNotesArea.value = timerState.draftNotes || '';
     this.topicInput.value = timerState.topic || '';
-    if (timerState.subject) {
-      this.subjectSelect.value = timerState.subject;
+    if (this.subjectSelect) {
+      this.subjectSelect.value = timerState.subject || '';
     }
     this.renderLinkedTaskBanner(timerState.linkedTaskId);
     this.renderZenMode(timerState.isZenMode, timerState);
@@ -3708,6 +3740,31 @@ create policy "Allow room sync access" on chronostudy_sync
     if (this.editTaskRecurrence) this.editTaskRecurrence.value = task.recurrence || 'none';
     if (this.editTaskNotes) this.editTaskNotes.value = task.notes || '';
 
+    if (this.editTaskSessionsSummary) {
+      const sessStats = store.getTaskSessionStats(task);
+      if (sessStats.sessionCount > 0 || sessStats.sessions.length > 0) {
+        this.editTaskSessionsSummary.style.display = 'block';
+        const rowsHtml = sessStats.sessions.slice(0, 6).map((s) => {
+          const dStr = store.getSessionDateStr(s);
+          const tStr = s.startTime ? new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+          const mins = Math.max(1, Math.round((s.durationSec || 0) / 60));
+          const midMark = store.isMidnightTimestamp(s.startTime || s.endTime) ? ' 🌙' : '';
+          return `<div class="task-session-mini-row"><span>${dStr}${tStr ? ` · ${tStr}` : ''}${midMark}</span><strong>${mins}m</strong></div>`;
+        }).join('');
+        const extraNote = sessStats.sessions.length > 6 ? `<div class="task-session-mini-more">+${sessStats.sessions.length - 6} more session segments</div>` : '';
+        this.editTaskSessionsSummary.innerHTML = `
+          <div class="task-sessions-summary-header">
+            <span>Recorded Study History</span>
+            <strong>${sessStats.sessionCount} ${sessStats.sessionCount === 1 ? 'session' : 'sessions'} · ${sessStats.totalMins}m total</strong>
+          </div>
+          ${rowsHtml ? `<div class="task-sessions-mini-list">${rowsHtml}${extraNote}</div>` : ''}
+        `;
+      } else {
+        this.editTaskSessionsSummary.style.display = 'none';
+        this.editTaskSessionsSummary.innerHTML = '';
+      }
+    }
+
     if (this.taskEditModal) {
       this.taskEditModal.classList.add('active');
     }
@@ -3728,8 +3785,14 @@ create policy "Allow room sync access" on chronostudy_sync
     const card = document.createElement('div');
     card.className = `task-card ${task.completed ? 'task-completed' : ''}`;
     const color = store.getSubjectColor(task.subject);
-    const timeLoggedMins = Math.round((task.timeSpentSec || 0) / 60);
+    const sessStats = store.getTaskSessionStats(task);
+    const timeLoggedMins = sessStats.totalMins;
+    const sessWord = sessStats.sessionCount === 1 ? 'session' : 'sessions';
     const isOverdue = Boolean(task.dueDate && task.dueDate < todayStr && !task.completed);
+    const isMidnightDone = Boolean(task.completed && store.isMidnightTimestamp(task.completedAt));
+    const midnightTimeStr = isMidnightDone
+      ? new Date(task.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '';
 
     let targetProgressBadgeHTML = '';
     if (task.targetMinutes) {
@@ -3737,13 +3800,15 @@ create policy "Allow room sync access" on chronostudy_sync
       const pct = Math.min(100, Math.round((timeLoggedMins / targetMins) * 100));
       const isMet = timeLoggedMins >= targetMins;
       targetProgressBadgeHTML = `
-        <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%)">
+        <span class="task-target-progress-pill ${isMet ? 'target-met' : ''}" title="Target: ${targetMins}m • Studied: ${timeLoggedMins}m (${pct}%) across ${sessStats.sessionCount} ${sessWord}">
           <span class="task-progress-mini-bar" style="width: ${pct}%;"></span>
-          <span class="task-progress-mini-text">◷ ${timeLoggedMins}/${targetMins}m (${pct}%)</span>
+          <span class="task-progress-mini-text">◷ ${timeLoggedMins}/${targetMins}m (${pct}%)${sessStats.sessionCount > 0 ? ` · ${sessStats.sessionCount} ${sessWord}` : ''}</span>
         </span>
       `;
-    } else if (timeLoggedMins > 0) {
-      targetProgressBadgeHTML = `<span class="meta-badge logged-badge">◷ ${timeLoggedMins}m logged</span>`;
+    } else if (sessStats.sessionCount > 0 || timeLoggedMins > 0) {
+      targetProgressBadgeHTML = task.completed
+        ? `<span class="meta-badge logged-badge task-sessions-done-badge" title="Completed in ${sessStats.sessionCount} ${sessWord}">✓ ${sessStats.sessionCount} ${sessWord} (${timeLoggedMins}m)</span>`
+        : `<span class="meta-badge logged-badge" title="${sessStats.sessionCount} ${sessWord}">◷ ${sessStats.sessionCount} ${sessWord} · ${timeLoggedMins}m</span>`;
     }
 
     card.innerHTML = `
@@ -3759,6 +3824,11 @@ create policy "Allow room sync access" on chronostudy_sync
               ${task.subject ? this.escapeHTML(task.subject) : 'General'}
             </span>
             ${targetProgressBadgeHTML}
+            ${isMidnightDone ? `
+              <span class="meta-badge midnight-badge" title="Completed during midnight hours (00:00–04:59)">
+                🌙 Midnight (${midnightTimeStr})
+              </span>
+            ` : ''}
             ${task.dueDate ? `
               <span class="meta-badge date-badge ${isOverdue ? 'overdue' : ''}" title="${isOverdue ? 'Task is past due!' : 'Target due date'}">
                 Due: ${task.dueDate}${isOverdue ? ' (Overdue)' : ''}
@@ -3960,7 +4030,9 @@ create policy "Allow room sync access" on chronostudy_sync
 
       if (groupBy === 'dueDate') {
         if (task.completed) {
-          groupKey = 'Completed Tasks';
+          groupKey = store.isMidnightTimestamp(task.completedAt)
+            ? 'Completed (Midnight 00:00–05:00)'
+            : 'Completed Tasks';
         } else if (!task.dueDate) {
           groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
         } else if (task.dueDate < todayStr) {
@@ -3989,7 +4061,7 @@ create policy "Allow room sync access" on chronostudy_sync
     // Define priority order for groups when grouping by dueDate
     let orderedKeys = Array.from(groupsMap.keys());
     if (groupBy === 'dueDate') {
-      const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed Tasks'];
+      const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
       orderedKeys.sort((a, b) => {
         const idxA = dueOrder.indexOf(a);
         const idxB = dueOrder.indexOf(b);
@@ -4619,8 +4691,24 @@ create policy "Allow room sync access" on chronostudy_sync
       const dayNum = dateObj.getDate();
       const dayNumOfWeek = dateObj.getDay() || 7;
 
-      // Filter tasks for this day (including routine/recurring tasks occurring on this date)
-      let dayTasks = tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
+      // Filter & deduplicate tasks for this day (including routine/recurring tasks occurring on this date)
+      const rawDayTasks = tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
+      const dayTaskDedupMap = new Map();
+      rawDayTasks.forEach((t) => {
+        const familyKey = `${(t.title || '').trim().toLowerCase()}|${t.subject || ''}`;
+        const existing = dayTaskDedupMap.get(familyKey);
+        if (!existing) {
+          dayTaskDedupMap.set(familyKey, t);
+        } else {
+          // Prefer exact dueDate / completed instance for this day over a projected routine occurrence
+          const existingExact = existing.dueDate === dateStr || (existing.completed && existing.completedAt && toLocalDateStr(existing.completedAt) === dateStr);
+          const curExact = t.dueDate === dateStr || (t.completed && t.completedAt && toLocalDateStr(t.completedAt) === dateStr);
+          if (curExact && !existingExact) {
+            dayTaskDedupMap.set(familyKey, t);
+          }
+        }
+      });
+      let dayTasks = Array.from(dayTaskDedupMap.values());
       if (this.calendarSubjectFilter !== 'all') {
         if (this.calendarSubjectFilter === '') {
           dayTasks = dayTasks.filter((t) => !t.subject);
@@ -4629,16 +4717,42 @@ create policy "Allow room sync access" on chronostudy_sync
         }
       }
 
-      // Filter sessions for this day
-      let daySessions = sessions.filter((s) => {
-        const sDate = toLocalDateStr(s.endTime || s.createdAt);
-        return sDate === dateStr;
-      });
+      // Filter sessions for this day (respecting startTime / midnight split boundary)
+      let daySessions = sessions.filter((s) => store.getSessionDateStr(s) === dateStr);
       if (this.calendarSubjectFilter !== 'all') {
-        daySessions = daySessions.filter((s) => s.subject === this.calendarSubjectFilter);
+        if (this.calendarSubjectFilter === '') {
+          daySessions = daySessions.filter((s) => !s.subject || s.subject === 'General');
+        } else {
+          daySessions = daySessions.filter((s) => s.subject === this.calendarSubjectFilter);
+        }
       }
 
       const totalMinsStudied = Math.round(daySessions.reduce((acc, s) => acc + (s.durationSec || 0), 0) / 60);
+
+      // Hide sessions already represented by a dayTask card so nothing appears twice, and group remaining standalone sessions
+      const displayedTaskIds = new Set(dayTasks.map((t) => t.id));
+      const displayedTaskNormTitles = new Set(dayTasks.map((t) => `${(t.title || '').trim().toLowerCase()}|${t.subject || ''}`));
+      const standaloneMap = new Map();
+      daySessions.forEach((s) => {
+        const normKey = `${(s.topic || '').trim().toLowerCase()}|${s.subject === 'General' ? '' : (s.subject || '')}`;
+        if ((s.taskId && displayedTaskIds.has(s.taskId)) || displayedTaskNormTitles.has(normKey)) {
+          return;
+        }
+        const grpKey = `${(s.topic || 'Focus Session').trim().toLowerCase()}|${s.subject || ''}`;
+        if (!standaloneMap.has(grpKey)) {
+          standaloneMap.set(grpKey, {
+            topic: s.topic || 'Focus Session',
+            subject: s.subject || 'General',
+            totalSec: 0,
+            count: 0,
+            notes: s.notes || ''
+          });
+        }
+        const entry = standaloneMap.get(grpKey);
+        entry.totalSec += (s.durationSec || 0);
+        entry.count += 1;
+      });
+      const groupedStandaloneSessions = Array.from(standaloneMap.values());
 
       html += `
         <div class="calendar-day-column ${isToday ? 'today-col' : ''}" data-date="${dateStr}">
@@ -4654,12 +4768,14 @@ create policy "Allow room sync access" on chronostudy_sync
 
             <!-- Scheduled Study Tasks for the day -->
             <div class="day-tasks-section">
-              <span class="day-section-sub">Study Tasks:</span>
+              ${dayTasks.length > 0 ? `<span class="day-section-sub">Study Tasks:</span>` : ''}
               <div class="day-tasks-list">
                 ${dayTasks.map((t) => {
                   const color = store.getSubjectColor(t.subject);
-                  const isProjectedRoutine = t.recurrence && t.recurrence !== 'none' && t.dueDate !== dateStr;
+                  const isProjectedRoutine = t.recurrence && t.recurrence !== 'none' && t.dueDate !== dateStr && !t.completed;
                   const isDoneForDay = isProjectedRoutine ? false : t.completed;
+                  const isMidnightDone = Boolean(isDoneForDay && store.isMidnightTimestamp(t.completedAt));
+                  const sessStats = store.getTaskSessionStats(t);
                   return `
                     <div class="cal-task-item ${isDoneForDay ? 'completed' : ''} ${isProjectedRoutine ? 'cal-task-routine' : ''}" style="border-left: 3px solid ${color};">
                       <div class="cal-task-top">
@@ -4668,6 +4784,12 @@ create policy "Allow room sync access" on chronostudy_sync
                         ${t.targetMinutes ? `<span class="cal-time-goal">${t.targetMinutes}m</span>` : ''}
                       </div>
                       <div class="cal-task-title">${this.escapeHTML(t.title)}</div>
+                      ${(!isProjectedRoutine && (sessStats.sessionCount > 0 || isMidnightDone)) ? `
+                        <div class="cal-task-stats-row">
+                          ${sessStats.sessionCount > 0 ? `<span class="cal-sessions-pill" title="Studied across ${sessStats.sessionCount} session(s)">◷ ${sessStats.sessionCount} sess (${sessStats.totalMins}m)</span>` : ''}
+                          ${isMidnightDone ? `<span class="cal-midnight-pill" title="Completed during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
+                        </div>
+                      ` : ''}
                       <div class="cal-task-actions">
                         <button class="btn-cal-check" data-task-id="${t.id}" title="${isDoneForDay ? 'Mark undone' : 'Mark done'}">
                           ${isDoneForDay ? '✓' : '○'}
@@ -4694,14 +4816,14 @@ create policy "Allow room sync access" on chronostudy_sync
               </div>
             </div>
 
-            <!-- Completed study sessions on this day -->
-            ${daySessions.length > 0 ? `
+            <!-- Standalone completed study sessions on this day (excluding sessions already displayed on tasks above) -->
+            ${groupedStandaloneSessions.length > 0 ? `
               <div class="day-sessions-summary">
-                <span class="day-section-sub">Completed Sessions:</span>
-                ${daySessions.map((s) => `
-                  <div class="cal-session-snippet" title="${this.escapeHTML(s.notes || '')}">
-                    <span class="cal-session-dur">${Math.round(s.durationSec / 60)}m</span>
-                    <span class="cal-session-title">${this.escapeHTML(s.topic)}</span>
+                <span class="day-section-sub">Focus Sessions:</span>
+                ${groupedStandaloneSessions.map((gs) => `
+                  <div class="cal-session-snippet" title="${this.escapeHTML(gs.notes || gs.subject)}">
+                    <span class="cal-session-dur">${Math.max(1, Math.round(gs.totalSec / 60))}m${gs.count > 1 ? ` (${gs.count}x)` : ''}</span>
+                    <span class="cal-session-title">${this.escapeHTML(gs.topic)}</span>
                   </div>
                 `).join('')}
               </div>
@@ -4814,15 +4936,19 @@ create policy "Allow room sync access" on chronostudy_sync
     const weeklyEvents = state.weeklyEvents || [];
     const groupsOrder = Array.isArray(state.groups) ? state.groups : [];
 
-    // Map: categoryName -> items[]
+    // Map: categoryName -> items[], deduplicated across lectures and weekly events
     const categoriesMap = new Map();
+    const seenKeys = new Set();
 
-    const getBucket = (catName) => {
+    const pushBucketItem = (catName, item) => {
       const cleanName = (catName || 'Courses').trim();
+      const dedupKey = `${(item.code || '').trim().toLowerCase()}|${item.start || ''}|${item.end || ''}`;
+      if (seenKeys.has(dedupKey)) return;
+      seenKeys.add(dedupKey);
       if (!categoriesMap.has(cleanName)) {
         categoriesMap.set(cleanName, []);
       }
-      return categoriesMap.get(cleanName);
+      categoriesMap.get(cleanName).push(item);
     };
 
     // 1. Course Lectures
@@ -4830,7 +4956,7 @@ create policy "Allow room sync access" on chronostudy_sync
       if (Array.isArray(s.schedule)) {
         s.schedule.forEach((slot, slotIdx) => {
           if (slot.day === dayOfWeek) {
-            getBucket(s.group || 'Courses').push({
+            pushBucketItem(s.group || 'Courses', {
               type: 'lecture',
               subjectId: s.id,
               slotIndex: slotIdx,
@@ -4866,7 +4992,7 @@ create policy "Allow room sync access" on chronostudy_sync
         else if (rec === 'weekdays') cadenceBadge = '<span class="cadence-pill">Weekdays</span>';
         else if (rec === 'daily') cadenceBadge = '<span class="cadence-pill">Daily</span>';
 
-        getBucket(ev.category || 'Events').push({
+        pushBucketItem(ev.category || 'Events', {
           type: 'wevent',
           id: ev.id,
           code: ev.title,
@@ -4973,7 +5099,13 @@ create policy "Allow room sync access" on chronostudy_sync
       const dateStr = toLocalDateStr(curDate);
       const isToday = dateStr === todayStr;
 
-      let dayTasks = tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
+      const rawDayTasks = tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
+      const monthDedup = new Map();
+      rawDayTasks.forEach((t) => {
+        const key = `${(t.title || '').trim().toLowerCase()}|${t.subject || ''}`;
+        if (!monthDedup.has(key)) monthDedup.set(key, t);
+      });
+      let dayTasks = Array.from(monthDedup.values());
       if (this.calendarSubjectFilter !== 'all') {
         if (this.calendarSubjectFilter === '') {
           dayTasks = dayTasks.filter((t) => !t.subject);
@@ -4982,7 +5114,7 @@ create policy "Allow room sync access" on chronostudy_sync
         }
       }
 
-      let daySessions = sessions.filter((s) => toLocalDateStr(s.endTime || s.createdAt) === dateStr);
+      let daySessions = sessions.filter((s) => store.getSessionDateStr(s) === dateStr);
       const dayMins = Math.round(daySessions.reduce((acc, s) => acc + (s.durationSec || 0), 0) / 60);
 
       html += `
@@ -5022,7 +5154,9 @@ create policy "Allow room sync access" on chronostudy_sync
   renderBacklogTasks() {
     if (!this.backlogTasksContainer) return;
 
-    const backlogTasks = store.getState().tasks.filter((t) => !t.dueDate && !t.completed);
+    const backlogTasks = store.getState().tasks.filter(
+      (t) => !t.dueDate && !t.completed && (!t.recurrence || t.recurrence === 'none')
+    );
 
     if (backlogTasks.length === 0) {
       this.backlogTasksContainer.innerHTML = `
@@ -5109,13 +5243,23 @@ create policy "Allow room sync access" on chronostudy_sync
   }
 
   async openDayInspector(dateStr) {
-    const tasks = store.getState().tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
-    const sessions = store.getState().sessions.filter((s) => toLocalDateStr(s.endTime || s.createdAt) === dateStr);
+    const rawTasks = store.getState().tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
+    const dedupMap = new Map();
+    rawTasks.forEach((t) => {
+      const k = `${(t.title || '').trim().toLowerCase()}|${t.subject || ''}`;
+      if (!dedupMap.has(k)) dedupMap.set(k, t);
+    });
+    const tasks = Array.from(dedupMap.values());
+    const sessions = store.getState().sessions.filter((s) => store.getSessionDateStr(s) === dateStr);
     const totalMins = Math.round(sessions.reduce((acc, s) => acc + (s.durationSec || 0), 0) / 60);
 
     let summary = `Date: ${dateStr}\nTotal Study Time: ${totalMins} mins\n\n`;
     if (tasks.length > 0) {
-      summary += `Tasks Scheduled:\n` + tasks.map((t) => `• [${t.completed ? 'DONE' : 'TODO'}] ${t.subject || 'General'}: ${t.title}`).join('\n') + `\n\n`;
+      summary += `Tasks Scheduled:\n` + tasks.map((t) => {
+        const st = store.getTaskSessionStats(t);
+        const sessInfo = st.sessionCount > 0 ? ` (${st.sessionCount} sess, ${st.totalMins}m)` : '';
+        return `• [${t.completed ? 'DONE' : 'TODO'}] ${t.subject || 'General'}: ${t.title}${sessInfo}`;
+      }).join('\n') + `\n\n`;
     }
     if (sessions.length > 0) {
       summary += `Sessions Logged:\n` + sessions.map((s) => `• ${Math.round(s.durationSec / 60)}m: ${s.subject} - ${s.topic}`).join('\n');
@@ -5361,7 +5505,7 @@ create policy "Allow room sync access" on chronostudy_sync
     const yesterday = new Date(Date.now() - 86400000).toDateString();
 
     filtered.forEach((sess) => {
-      const sDate = new Date(sess.endTime || sess.createdAt);
+      const sDate = new Date(sess.startTime || sess.endTime || sess.createdAt);
       let dateLabel = sDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
       if (sDate.toDateString() === todayStr) {
         dateLabel = 'Today';
@@ -5393,6 +5537,7 @@ create policy "Allow room sync access" on chronostudy_sync
         const mins = Math.max(1, Math.round(sess.durationSec / 60));
         const startTimeStr = sess.startTime ? new Date(sess.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         const endTimeStr = sess.endTime ? new Date(sess.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const isMidnightSess = store.isMidnightTimestamp(sess.startTime || sess.endTime);
 
         const card = document.createElement('div');
         card.className = 'history-card';
@@ -5406,6 +5551,7 @@ create policy "Allow room sync access" on chronostudy_sync
               <div class="history-title-row">
                 <span class="subject-badge" style="--badge-color: ${color}">${this.escapeHTML(sess.subject || 'General')}</span>
                 <strong class="history-topic">${this.escapeHTML(sess.topic || 'Focus Session')}</strong>
+                ${isMidnightSess ? `<span class="meta-badge midnight-badge" title="Studied during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
               </div>
               ${sess.notes ? `
                 <div class="history-notes-box">
@@ -5446,7 +5592,7 @@ create policy "Allow room sync access" on chronostudy_sync
     const durationMins = Math.max(1, Math.round(state.elapsedSec / 60));
 
     this.finishModalDuration.textContent = `${durationMins} minutes (${state.formattedTime})`;
-    this.finishModalSubject.textContent = state.subject;
+    this.finishModalSubject.textContent = state.subject || 'General';
     this.finishModalTopic.textContent = state.topic || 'General Focus Session';
     this.finishModalNotes.value = state.draftNotes || this.sessionNotesArea.value || '';
 
@@ -5456,7 +5602,9 @@ create policy "Allow room sync access" on chronostudy_sync
         this.finishModalTaskCompleteGroup.style.display = 'flex';
         this.finishModalTaskName.textContent = task.title;
 
-        const priorSec = task.timeSpentSec || 0;
+        const sessStats = store.getTaskSessionStats(task);
+        const priorSec = Math.max(task.timeSpentSec || 0, sessStats.totalSec || 0);
+        const nextSessionNum = sessStats.sessionCount + 1;
         const newTotalSec = priorSec + state.elapsedSec;
         const newTotalMins = Math.round(newTotalSec / 60);
 
@@ -5468,7 +5616,7 @@ create policy "Allow room sync access" on chronostudy_sync
           if (this.finishModalTaskProgressWrap) {
             this.finishModalTaskProgressWrap.style.display = 'block';
             if (this.finishModalTaskStats) {
-              this.finishModalTaskStats.textContent = `${newTotalMins}m / ${targetMins}m (${progressPct}%)`;
+              this.finishModalTaskStats.textContent = `Session #${nextSessionNum} · ${newTotalMins}m / ${targetMins}m (${progressPct}%)`;
             }
             if (this.finishModalTaskDelta) {
               this.finishModalTaskDelta.textContent = `+${durationMins}m this session`;
@@ -5498,7 +5646,7 @@ create policy "Allow room sync access" on chronostudy_sync
           if (this.finishModalTaskProgressWrap) {
             this.finishModalTaskProgressWrap.style.display = 'block';
             if (this.finishModalTaskStats) {
-              this.finishModalTaskStats.textContent = `Total studied: ${newTotalMins}m`;
+              this.finishModalTaskStats.textContent = `Session #${nextSessionNum} · Total studied: ${newTotalMins}m`;
             }
             if (this.finishModalTaskDelta) {
               this.finishModalTaskDelta.textContent = `+${durationMins}m this session`;

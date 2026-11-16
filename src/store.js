@@ -174,7 +174,7 @@ const INITIAL_STATE = {
     targetSec: 1500,
     elapsedSec: 0,
     startedAt: null,
-    subject: 'Circuit Analysis',
+    subject: '',
     topic: '',
     linkedTaskId: null,
     draftNotes: '',
@@ -190,7 +190,6 @@ const INITIAL_STATE = {
     volume: 0.5,
     calendarView: 'week'
   },
-  deletedTaskIds: {},
   sync: {
     enabled: false,
     provider: 'gdrive', // 'gdrive' | 'supabase' | 'offline' | 'none'
@@ -214,6 +213,252 @@ class Store {
     this.listeners = new Set();
     this.state = this.sanitizeState(this.loadState());
     this.saveState();
+  }
+
+  isMidnightTimestamp(isoOrDate) {
+    if (!isoOrDate) return false;
+    const d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+    if (Number.isNaN(d.getTime())) return false;
+    const hr = d.getHours();
+    return hr >= 0 && hr < 5;
+  }
+
+  getSessionDateStr(s) {
+    if (!s) return toLocalDateStr(new Date());
+    return toLocalDateStr(s.startTime || s.endTime || s.createdAt || new Date());
+  }
+
+  splitSessionAcrossMidnights(sessionObj) {
+    if (!sessionObj) return [];
+    const origDur = Math.max(1, Math.round(sessionObj.durationSec || 0));
+    const rawEnd = sessionObj.endTime ? new Date(sessionObj.endTime) : (sessionObj.createdAt ? new Date(sessionObj.createdAt) : new Date());
+    const rawStart = sessionObj.startTime ? new Date(sessionObj.startTime) : new Date(rawEnd.getTime() - origDur * 1000);
+
+    if (Number.isNaN(rawStart.getTime()) || Number.isNaN(rawEnd.getTime()) || rawEnd <= rawStart) {
+      return [sessionObj];
+    }
+
+    const startDateStr = toLocalDateStr(rawStart);
+    const endDateStr = toLocalDateStr(rawEnd);
+    if (startDateStr === endDateStr) {
+      return [sessionObj];
+    }
+
+    const totalMs = Math.max(1000, rawEnd.getTime() - rawStart.getTime());
+    const segments = [];
+    let curStart = new Date(rawStart.getTime());
+    let remainingSec = origDur;
+    let idx = 0;
+
+    while (toLocalDateStr(curStart) < endDateStr && idx < 7) {
+      const nextMidnight = new Date(curStart);
+      nextMidnight.setHours(24, 0, 0, 0);
+      const segEnd = nextMidnight < rawEnd ? nextMidnight : rawEnd;
+      const segMs = Math.max(0, segEnd.getTime() - curStart.getTime());
+      const segSec = Math.max(1, Math.min(remainingSec - 1, Math.round((segMs / totalMs) * origDur)));
+      remainingSec = Math.max(1, remainingSec - segSec);
+
+      segments.push({
+        ...sessionObj,
+        id: idx === 0 ? sessionObj.id : `${sessionObj.id}-m${idx + 1}`,
+        durationSec: segSec,
+        startTime: curStart.toISOString(),
+        endTime: new Date(segEnd.getTime() - (segEnd.getTime() === nextMidnight.getTime() ? 1 : 0)).toISOString(),
+        isMidnightSplit: idx > 0
+      });
+
+      curStart = new Date(nextMidnight.getTime());
+      idx += 1;
+    }
+
+    // Final segment (from last midnight boundary to rawEnd)
+    segments.push({
+      ...sessionObj,
+      id: idx === 0 ? sessionObj.id : `${sessionObj.id}-m${idx + 1}`,
+      durationSec: Math.max(1, remainingSec),
+      startTime: curStart.toISOString(),
+      endTime: rawEnd.toISOString(),
+      isMidnightSplit: idx > 0
+    });
+
+    return segments;
+  }
+
+  reconcileTasksAndSessions(state) {
+    if (!state) return;
+    if (!state.deletedTaskIds) state.deletedTaskIds = {};
+    if (!state.deletedSessionIds) state.deletedSessionIds = {};
+    if (!state.deletedWeeklyEventIds) state.deletedWeeklyEventIds = {};
+
+    const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+    const subjects = Array.isArray(state.subjects) ? state.subjects : [];
+    const weeklyEvents = Array.isArray(state.weeklyEvents) ? state.weeklyEvents : [];
+
+    // 1. Deduplicate subject lecture schedule slots
+    subjects.forEach((s) => {
+      if (Array.isArray(s.schedule) && s.schedule.length > 1) {
+        const seenSlots = new Set();
+        s.schedule = s.schedule.filter((slot) => {
+          const key = `${slot.day}-${slot.start}-${slot.end}`;
+          if (seenSlots.has(key)) return false;
+          seenSlots.add(key);
+          return true;
+        });
+      }
+    });
+
+    // 2. Deduplicate weeklyEvents
+    if (weeklyEvents.length > 1) {
+      const seenEvents = new Set();
+      const dedupedEvents = [];
+      weeklyEvents.forEach((ev) => {
+        const key = `${(ev.title || '').trim().toLowerCase()}|${ev.day}|${ev.start}|${ev.end}|${ev.recurrence || 'weekly'}`;
+        if (seenEvents.has(key)) {
+          if (ev.id) state.deletedWeeklyEventIds[ev.id] = state.deletedWeeklyEventIds[ev.id] || new Date().toISOString();
+          return;
+        }
+        seenEvents.add(key);
+        dedupedEvents.push(ev);
+      });
+      state.weeklyEvents = dedupedEvents;
+    }
+
+    // 3. Ensure active recurring tasks have a dueDate and deduplicate uncompleted recurring duplicates
+    const seenRecurring = new Set();
+    const dedupedTasks = [];
+    tasks.forEach((t) => {
+      if (t.recurrence && t.recurrence !== 'none' && !t.completed) {
+        if (!t.dueDate) {
+          t.dueDate = toLocalDateStr(t.createdAt || new Date());
+        }
+        const recKey = `${(t.title || '').trim().toLowerCase()}|${t.recurrence}|${t.subject || ''}`;
+        if (seenRecurring.has(recKey)) {
+          if (t.id) state.deletedTaskIds[t.id] = state.deletedTaskIds[t.id] || new Date().toISOString();
+          return;
+        }
+        seenRecurring.add(recKey);
+      }
+      dedupedTasks.push(t);
+    });
+    state.tasks = dedupedTasks;
+
+    // 4. Split any midnight-crossing sessions & preserve existing split tombstones
+    const rawSessions = Array.isArray(state.sessions) ? state.sessions : [];
+    const existingSessIds = new Set(rawSessions.map((s) => s.id));
+    const expandedSessions = [];
+    rawSessions.forEach((s) => {
+      if (state.deletedSessionIds[s.id]) return;
+      const splitAlreadyExists = existingSessIds.has(`${s.id}-m2`) || Boolean(state.deletedSessionIds[`${s.id}-m2`]);
+      if (s.isMidnightSplit || splitAlreadyExists) {
+        expandedSessions.push(s);
+      } else {
+        const parts = this.splitSessionAcrossMidnights(s);
+        parts.forEach((p) => {
+          if (!state.deletedSessionIds[p.id]) {
+            expandedSessions.push(p);
+          }
+        });
+      }
+    });
+
+    // 5. Reconcile task-subject relationships across tasks & sessions
+    const taskById = new Map();
+    const taskByNormTitle = new Map();
+    dedupedTasks.forEach((t) => {
+      taskById.set(t.id, t);
+      const norm = (t.title || '').trim().toLowerCase();
+      if (norm) {
+        // Prefer uncompleted task when ambiguous, otherwise first (most recent)
+        const existing = taskByNormTitle.get(norm);
+        if (!existing || (existing.completed && !t.completed)) {
+          taskByNormTitle.set(norm, t);
+        }
+      }
+    });
+
+    expandedSessions.forEach((s) => {
+      let matchedTask = s.taskId ? taskById.get(s.taskId) : null;
+      if (!matchedTask && s.topic) {
+        const normTopic = s.topic.trim().toLowerCase();
+        const candidate = taskByNormTitle.get(normTopic);
+        if (candidate) {
+          matchedTask = candidate;
+          if (!s.taskId) {
+            s.taskId = candidate.id;
+            s.synced = false;
+          }
+        }
+      }
+      if (matchedTask) {
+        const expectedSubject = (matchedTask.subject && matchedTask.subject.trim()) ? matchedTask.subject.trim() : 'General';
+        if (s.subject !== expectedSubject) {
+          s.subject = expectedSubject;
+          s.synced = false;
+        }
+      }
+    });
+
+    // Fix split-subject topics where Circuit Analysis leaked alongside General on non-Circuit tasks
+    const sessionsByTopic = new Map();
+    expandedSessions.forEach((s) => {
+      const normTopic = (s.topic || '').trim().toLowerCase();
+      if (!normTopic) return;
+      if (!sessionsByTopic.has(normTopic)) sessionsByTopic.set(normTopic, []);
+      sessionsByTopic.get(normTopic).push(s);
+    });
+
+    sessionsByTopic.forEach((groupSessions, normTopic) => {
+      const hasCircuit = groupSessions.some((s) => s.subject === 'Circuit Analysis');
+      const nonCircuit = groupSessions.find((s) => s.subject && s.subject !== 'Circuit Analysis');
+      const task = taskByNormTitle.get(normTopic);
+      if (hasCircuit && (nonCircuit || (task && !task.subject))) {
+        const targetSubj = task
+          ? ((task.subject && task.subject.trim()) ? task.subject.trim() : 'General')
+          : nonCircuit.subject;
+        if (!task || task.subject !== 'Circuit Analysis') {
+          groupSessions.forEach((s) => {
+            if (s.subject === 'Circuit Analysis') {
+              s.subject = targetSubj;
+              if (task && !s.taskId) s.taskId = task.id;
+              s.synced = false;
+            }
+          });
+        }
+      }
+    });
+
+    state.sessions = expandedSessions;
+  }
+
+  getTaskSessionStats(taskOrId) {
+    const task = typeof taskOrId === 'string'
+      ? this.state.tasks.find((t) => t.id === taskOrId)
+      : taskOrId;
+    if (!task) {
+      return { sessionCount: 0, totalSec: 0, totalMins: 0, sessions: [] };
+    }
+
+    const normTitle = (task.title || '').trim().toLowerCase();
+    const linked = (this.state.sessions || []).filter((s) => {
+      if (s.taskId === task.id) return true;
+      if (!s.taskId && !task.parentRecurringId && normTitle && s.topic && s.topic.trim().toLowerCase() === normTitle) {
+        return true;
+      }
+      return false;
+    });
+
+    const logicalIds = new Set(linked.map((s) => String(s.id || '').replace(/-m\d+$/, '')));
+    const sumSessionsSec = linked.reduce((acc, s) => acc + (s.durationSec || 0), 0);
+    const totalSec = Math.max(task.timeSpentSec || 0, sumSessionsSec);
+    const totalMins = Math.round(totalSec / 60);
+    const sessionCount = linked.length > 0 ? logicalIds.size : (totalMins > 0 ? 1 : 0);
+
+    return {
+      sessionCount,
+      totalSec,
+      totalMins,
+      sessions: linked
+    };
   }
 
   sanitizeState(state) {
@@ -341,11 +586,25 @@ class Store {
       state.sync = { ...INITIAL_STATE.sync, ...state.sync };
     }
 
+    if (!state.activeTimer) {
+      state.activeTimer = { ...INITIAL_STATE.activeTimer };
+    } else if (state.activeTimer.linkedTaskId) {
+      const linked = tasks.find((t) => t.id === state.activeTimer.linkedTaskId);
+      if (linked) {
+        state.activeTimer.subject = linked.subject || '';
+        state.activeTimer.topic = linked.title;
+      }
+    } else if (state.activeTimer.subject === 'Circuit Analysis' && !state.activeTimer.isRunning && !state.activeTimer.topic) {
+      state.activeTimer.subject = '';
+    }
+
     state.version = 12;
     state.subjects = cleanSubjects;
     state.groups = [...new Set(cleanGroups)];
     state.weeklyEvents = cleanWeeklyEvents;
     state.tasks = tasks;
+
+    this.reconcileTasksAndSessions(state);
     return state;
   }
 
@@ -679,6 +938,8 @@ class Store {
       this.state.settings = { ...this.state.settings, ...remote.settings };
     }
 
+    this.reconcileTasksAndSessions(this.state);
+
     if (!this.state.sync) this.state.sync = { ...INITIAL_STATE.sync };
     this.state.sync.lastSyncedAt = nowIso;
     this.state.sync.status = 'synced';
@@ -855,6 +1116,8 @@ class Store {
     const task = this.state.tasks.find((t) => t.id === taskId);
     if (!task) return;
     const oldTimeSpent = task.timeSpentSec || 0;
+    const oldTitle = task.title;
+    const oldNormTitle = (oldTitle || '').trim().toLowerCase();
 
     const isRecurring = updates.recurrence && updates.recurrence !== 'none';
     if (isRecurring) {
@@ -868,6 +1131,28 @@ class Store {
     Object.assign(task, updates);
     task.updatedAt = new Date().toISOString();
     task.synced = false;
+
+    const resolvedSubject = (task.subject && task.subject.trim()) ? task.subject.trim() : 'General';
+    // Cascade task title/subject updates to all linked or topic-matched sessions
+    (this.state.sessions || []).forEach((s) => {
+      const sNormTopic = (s.topic || '').trim().toLowerCase();
+      const matchesById = s.taskId === taskId;
+      const matchesByOldTopic = !s.taskId && oldNormTitle && sNormTopic === oldNormTitle;
+      if (matchesById || matchesByOldTopic) {
+        if (!s.taskId) s.taskId = taskId;
+        if (s.subject !== resolvedSubject || s.topic !== task.title) {
+          s.subject = resolvedSubject;
+          s.topic = task.title;
+          s.updatedAt = task.updatedAt;
+          s.synced = false;
+        }
+      }
+    });
+
+    if (this.state.activeTimer && this.state.activeTimer.linkedTaskId === taskId) {
+      this.state.activeTimer.subject = task.subject || '';
+      this.state.activeTimer.topic = task.title;
+    }
 
     // Automatically record or adjust study session when user logs time spent on a task
     if (updates.timeSpentSec !== undefined && updates.timeSpentSec !== oldTimeSpent) {
@@ -940,14 +1225,35 @@ class Store {
     const end = endTime ? new Date(endTime) : now;
     const start = startTime ? new Date(startTime) : new Date(end.getTime() - durationSec * 1000);
 
-    const cleanSubject = subject && subject.trim() && subject.trim().toLowerCase() !== 'none' ? subject.trim() : 'General';
-    const nowIso = now.toISOString();
+    const trimmedTopic = topic ? topic.trim() : '';
+    let resolvedTaskId = taskId || null;
+    let linkedTask = resolvedTaskId ? this.state.tasks.find((t) => t.id === resolvedTaskId) : null;
 
+    if (!linkedTask && trimmedTopic) {
+      const normTopic = trimmedTopic.toLowerCase();
+      linkedTask = this.state.tasks.find((t) => !t.completed && (t.title || '').trim().toLowerCase() === normTopic)
+        || this.state.tasks.find((t) => (t.title || '').trim().toLowerCase() === normTopic)
+        || null;
+      if (linkedTask) {
+        resolvedTaskId = linkedTask.id;
+      }
+    }
+
+    let cleanSubject;
+    if (linkedTask) {
+      cleanSubject = (linkedTask.subject && linkedTask.subject.trim())
+        ? linkedTask.subject.trim()
+        : ((subject && subject.trim() && subject.trim() !== 'Circuit Analysis' && subject.trim().toLowerCase() !== 'none') ? subject.trim() : 'General');
+    } else {
+      cleanSubject = subject && subject.trim() && subject.trim().toLowerCase() !== 'none' ? subject.trim() : 'General';
+    }
+
+    const nowIso = now.toISOString();
     const newSession = {
       id: 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       subject: cleanSubject,
-      topic: topic ? topic.trim() : 'Study Session',
-      taskId: taskId || null,
+      topic: trimmedTopic || (linkedTask ? linkedTask.title : 'Study Session'),
+      taskId: resolvedTaskId,
       durationSec: Math.max(1, Math.round(durationSec)),
       startTime: start.toISOString(),
       endTime: end.toISOString(),
@@ -957,14 +1263,18 @@ class Store {
       synced: false
     };
 
-    this.state.sessions.unshift(newSession);
+    const segments = this.splitSessionAcrossMidnights(newSession);
+    // Unshift in reverse so later chronological segments stay on top
+    for (let i = segments.length - 1; i >= 0; i--) {
+      this.state.sessions.unshift(segments[i]);
+    }
 
-    if (taskId) {
-      this.addTimeSpentToTask(taskId, newSession.durationSec);
+    if (resolvedTaskId) {
+      this.addTimeSpentToTask(resolvedTaskId, newSession.durationSec);
     }
 
     this.saveState();
-    return newSession;
+    return segments[0];
   }
 
   deleteSession(sessionId) {
@@ -1279,11 +1589,9 @@ class Store {
   getTodayStats() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
+    const todayStr = toLocalDateStr(startOfToday);
 
-    const todaySessions = this.state.sessions.filter((s) => {
-      const sDate = new Date(s.endTime || s.createdAt);
-      return sDate >= startOfToday;
-    });
+    const todaySessions = this.state.sessions.filter((s) => this.getSessionDateStr(s) === todayStr);
 
     const totalSecondsToday = todaySessions.reduce((acc, s) => acc + (s.durationSec || 0), 0);
     const completedTasksToday = this.state.tasks.filter((t) => {
@@ -1305,6 +1613,11 @@ class Store {
     const rec = task.recurrence || 'none';
     if (rec === 'none') {
       return task.dueDate === targetDateStr;
+    }
+
+    if (task.completed) {
+      const doneDateStr = task.completedAt ? toLocalDateStr(task.completedAt) : task.dueDate;
+      return doneDateStr === targetDateStr;
     }
 
     const anchorStr = task.dueDate || toLocalDateStr(task.createdAt || new Date());

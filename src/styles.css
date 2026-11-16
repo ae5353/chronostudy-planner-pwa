@@ -4322,6 +4322,95 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.025) 25%, transparent 25%);
 }
 
+/* Midnight badge, Planner task session counts & Task Edit Modal session summary */
+.midnight-badge,
+.cal-midnight-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--radius-full);
+  background-color: rgba(99, 102, 241, 0.14);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.32);
+}
+
+.cal-task-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.2rem;
+  margin-bottom: 0.25rem;
+}
+
+.cal-sessions-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.64rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--primary);
+  background-color: rgba(224, 109, 67, 0.1);
+  border: 1px solid rgba(224, 109, 67, 0.25);
+  border-radius: var(--radius-full);
+  padding: 0.08rem 0.4rem;
+}
+
+.task-sessions-done-badge {
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+  background-color: rgba(16, 185, 129, 0.12);
+}
+
+.task-sessions-summary-box {
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.8rem;
+  font-size: 0.78rem;
+}
+
+.task-sessions-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.task-sessions-summary-header strong {
+  color: var(--primary);
+  font-family: var(--font-mono);
+}
+
+.task-sessions-mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 0.4rem;
+}
+
+.task-session-mini-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 0.74rem;
+  font-family: var(--font-mono);
+}
+
+.task-session-mini-more {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 0.15rem;
+}
+
 @media (max-width: 640px) {
   .analytics-week-select {
     min-width: 0;

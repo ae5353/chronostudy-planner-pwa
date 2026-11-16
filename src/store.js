@@ -1299,24 +1299,87 @@ class Store {
     };
   }
 
+  // --- Routine / Recurring Task Date Matcher ---
+  doesTaskOccurOnDate(task, targetDateStr) {
+    if (!task || !targetDateStr) return false;
+    const rec = task.recurrence || 'none';
+    if (rec === 'none') {
+      return task.dueDate === targetDateStr;
+    }
+
+    const anchorStr = task.dueDate || toLocalDateStr(task.createdAt || new Date());
+    if (!anchorStr) return false;
+    if (targetDateStr < anchorStr) return false;
+    if (targetDateStr === anchorStr) return true;
+
+    const anchorDate = new Date(`${anchorStr}T12:00:00`);
+    const targetDate = new Date(`${targetDateStr}T12:00:00`);
+    if (Number.isNaN(anchorDate.getTime()) || Number.isNaN(targetDate.getTime())) {
+      return false;
+    }
+
+    const diffDays = Math.round((targetDate.getTime() - anchorDate.getTime()) / 86400000);
+    if (diffDays < 0) return false;
+
+    const interval = Math.max(1, parseInt(task.recurrenceInterval || 1, 10) || 1);
+    switch (rec) {
+      case 'daily':
+        return diffDays % interval === 0;
+      case 'weekdays': {
+        const day = targetDate.getDay() || 7; // Mon=1 .. Sun=7
+        return day >= 1 && day <= 5;
+      }
+      case 'weekly':
+        return diffDays % (7 * interval) === 0;
+      case 'biweekly':
+        return diffDays % 14 === 0;
+      case 'monthly':
+        return targetDate.getDate() === anchorDate.getDate();
+      case 'custom':
+        return diffDays % interval === 0;
+      default:
+        return task.dueDate === targetDateStr;
+    }
+  }
+
   // --- Comprehensive Analytics Engine ---
-  getAnalyticsData() {
+  getAnalyticsData(options = {}) {
+    const weekOffset = Number.isFinite(options.weekOffset) ? options.weekOffset : 0;
+    const subjectScope = options.subjectScope === 'all' ? 'all' : 'week';
+
     const sessions = this.state.sessions || [];
     const tasks = this.state.tasks || [];
     const subjects = this.state.subjects || [];
 
-    // Total focus stats
+    const getMondayOfDate = (dateObj) => {
+      const d = new Date(dateObj);
+      const day = d.getDay();
+      const distToMon = (day + 6) % 7;
+      d.setDate(d.getDate() - distToMon);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    };
+
+    const formatDurationHM = (sec) => {
+      const totalMins = Math.round((sec || 0) / 60);
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      return h > 0 ? `${h}h ${m}m` : `${m}m`;
+    };
+
+    // Total focus stats (all-time)
     let totalSec = 0;
     sessions.forEach((s) => {
       totalSec += (s.durationSec || 0);
     });
 
-    // Current Monday - Sunday boundary
+    // Current week Monday
     const now = new Date();
-    const currentDay = now.getDay(); // 0 is Sun, 1 is Mon...
-    const distToMon = (currentDay + 6) % 7;
-    const mon = new Date(now);
-    mon.setDate(now.getDate() - distToMon);
+    const currentMon = getMondayOfDate(now);
+
+    // Selected week Monday - Sunday boundary
+    const mon = new Date(currentMon);
+    mon.setDate(currentMon.getDate() + weekOffset * 7);
     mon.setHours(0, 0, 0, 0);
 
     const sun = new Date(mon);
@@ -1326,82 +1389,213 @@ class Store {
     const monTime = mon.getTime();
     const sunTime = sun.getTime();
 
+    // Previous week relative to selected week
+    const prevMon = new Date(mon);
+    prevMon.setDate(mon.getDate() - 7);
+    const prevSun = new Date(mon);
+    prevSun.setDate(mon.getDate() - 1);
+    prevSun.setHours(23, 59, 59, 999);
+    const prevMonTime = prevMon.getTime();
+    const prevSunTime = prevSun.getTime();
+
     let weekSec = 0;
+    let prevWeekSec = 0;
+    let weekSessionsCount = 0;
     const activeDaysSet = new Set();
 
-    // 7-day focus trend
-    const dayLabels = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    // 7-day focus trend for selected week
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const todayStr = toLocalDateStr(now);
     const dailyTrend = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(mon);
       d.setDate(mon.getDate() + i);
       const dStr = toLocalDateStr(d);
-      const isToday = dStr === toLocalDateStr(now);
       dailyTrend.push({
         dayIndex: (i + 1) % 7,
         label: dayLabels[i],
         dateStr: dStr,
         durationSec: 0,
         durationMins: 0,
-        isToday
+        sessionCount: 0,
+        isToday: dStr === todayStr
       });
     }
 
-    // Aggregate sessions
-    const subjectSecMap = {};
+    // Group all sessions by week Monday + build subject stats
+    const weeklyBuckets = new Map(); // mondayStr -> { mondayDate, weekOffset, durationSec, sessionCount, activeDays: Set, subjectTotals: {} }
+
+    const ensureWeekBucket = (mondayDate) => {
+      const mStr = toLocalDateStr(mondayDate);
+      if (!weeklyBuckets.has(mStr)) {
+        const offset = Math.round((mondayDate.getTime() - currentMon.getTime()) / (7 * 86400000));
+        const sDate = new Date(mondayDate);
+        sDate.setDate(mondayDate.getDate() + 6);
+        const shortOpt = { month: 'short', day: 'numeric' };
+        weeklyBuckets.set(mStr, {
+          mondayStr: mStr,
+          sundayStr: toLocalDateStr(sDate),
+          label: `${mondayDate.toLocaleDateString(undefined, shortOpt)} – ${sDate.toLocaleDateString(undefined, shortOpt)}`,
+          shortLabel: mondayDate.toLocaleDateString(undefined, shortOpt),
+          weekOffset: offset,
+          durationSec: 0,
+          sessionCount: 0,
+          activeDays: new Set(),
+          subjectTotals: {}
+        });
+      }
+      return weeklyBuckets.get(mStr);
+    };
+
+    // Always include the last 8 weeks (including current week) + selected week
+    for (let w = -7; w <= 0; w++) {
+      const d = new Date(currentMon);
+      d.setDate(currentMon.getDate() + w * 7);
+      ensureWeekBucket(d);
+    }
+    ensureWeekBucket(mon);
+
+    const subjectStatsMap = {};
+    const ensureSubjectStat = (subName) => {
+      if (!subjectStatsMap[subName]) {
+        subjectStatsMap[subName] = {
+          durationSec: 0,
+          sessionCount: 0,
+          lastStudiedTs: 0,
+          dailySecs: [0, 0, 0, 0, 0, 0, 0]
+        };
+      }
+      return subjectStatsMap[subName];
+    };
+
     sessions.forEach((s) => {
       const d = s.startTime ? new Date(s.startTime) : new Date(s.createdAt);
       const t = d.getTime();
       const dur = s.durationSec || 0;
+      const dStr = toLocalDateStr(d);
+      const subName = s.subject || 'General / Other';
 
-      // Current week metrics
-      if (t >= monTime && t <= sunTime) {
+      // Record into weekly history bucket
+      const sMon = getMondayOfDate(d);
+      const bucket = ensureWeekBucket(sMon);
+      bucket.durationSec += dur;
+      bucket.sessionCount += 1;
+      bucket.activeDays.add(dStr);
+      bucket.subjectTotals[subName] = (bucket.subjectTotals[subName] || 0) + dur;
+
+      // Selected week metrics
+      const inSelectedWeek = t >= monTime && t <= sunTime;
+      if (inSelectedWeek) {
         weekSec += dur;
-        const dStr = toLocalDateStr(d);
+        weekSessionsCount += 1;
         activeDaysSet.add(dStr);
 
         const trendDay = dailyTrend.find((td) => td.dateStr === dStr);
         if (trendDay) {
           trendDay.durationSec += dur;
           trendDay.durationMins = Math.round(trendDay.durationSec / 60);
+          trendDay.sessionCount += 1;
         }
       }
 
-      // Subject breakdown
-      const subName = s.subject || 'General / Other';
-      subjectSecMap[subName] = (subjectSecMap[subName] || 0) + dur;
+      if (t >= prevMonTime && t <= prevSunTime) {
+        prevWeekSec += dur;
+      }
+
+      // Subject breakdown (filtered by subjectScope)
+      if (subjectScope === 'all' || inSelectedWeek) {
+        const stat = ensureSubjectStat(subName);
+        stat.durationSec += dur;
+        stat.sessionCount += 1;
+        if (t > stat.lastStudiedTs) stat.lastStudiedTs = t;
+        if (inSelectedWeek) {
+          const idx = (d.getDay() + 6) % 7; // Mon=0 .. Sun=6
+          stat.dailySecs[idx] += dur;
+        }
+      }
     });
 
+    const scopeTotalSec = Object.values(subjectStatsMap).reduce((acc, st) => acc + st.durationSec, 0);
+
     // Subject breakdown sorted by duration descending
-    const subjectBreakdown = Object.entries(subjectSecMap).map(([name, durSec]) => {
+    const subjectBreakdown = Object.entries(subjectStatsMap).map(([name, st]) => {
       const subObj = subjects.find((s) => s.name === name || s.code === name);
       const color = subObj ? subObj.color : '#64748b';
-      const percentage = totalSec > 0 ? Math.round((durSec / totalSec) * 100) : 0;
+      const weeklyGoalHours = subObj && subObj.targetWeeklyHours ? Number(subObj.targetWeeklyHours) : 0;
+      const percentage = scopeTotalSec > 0 ? Math.round((st.durationSec / scopeTotalSec) * 100) : 0;
+      const durationMins = Math.round(st.durationSec / 60);
+      const avgSessionMins = st.sessionCount > 0 ? Math.round(durationMins / st.sessionCount) : 0;
+      const goalPct = (subjectScope === 'week' && weeklyGoalHours > 0)
+        ? Math.min(100, Math.round(((st.durationSec / 3600) / weeklyGoalHours) * 100))
+        : null;
       return {
         name,
+        code: subObj ? (subObj.code || '') : '',
+        group: subObj ? (subObj.group || 'General') : 'General',
         color,
-        durationSec: durSec,
-        durationMins: Math.round(durSec / 60),
-        durationHours: (durSec / 3600).toFixed(1),
-        percentage
+        weeklyGoalHours,
+        durationSec: st.durationSec,
+        durationMins,
+        durationHours: (st.durationSec / 3600).toFixed(1),
+        formattedTime: formatDurationHM(st.durationSec),
+        sessionCount: st.sessionCount,
+        avgSessionMins,
+        percentage,
+        goalPct,
+        lastStudiedStr: st.lastStudiedTs ? toLocalDateStr(new Date(st.lastStudiedTs)) : null,
+        dailyMins: st.dailySecs.map((sec) => Math.round(sec / 60))
       };
     }).sort((a, b) => b.durationSec - a.durationSec);
+
+    // Weekly history sorted chronologically
+    const weeklyHistory = Array.from(weeklyBuckets.values())
+      .sort((a, b) => a.mondayStr.localeCompare(b.mondayStr))
+      .map((b) => ({
+        mondayStr: b.mondayStr,
+        sundayStr: b.sundayStr,
+        label: b.label,
+        shortLabel: b.shortLabel,
+        weekOffset: b.weekOffset,
+        durationSec: b.durationSec,
+        durationMins: Math.round(b.durationSec / 60),
+        durationHours: Number((b.durationSec / 3600).toFixed(1)),
+        formattedTime: formatDurationHM(b.durationSec),
+        sessionCount: b.sessionCount,
+        activeDaysCount: b.activeDays.size,
+        isCurrentWeek: b.weekOffset === 0,
+        isSelected: b.weekOffset === weekOffset,
+        subjectTotals: b.subjectTotals
+      }));
 
     // Tasks metrics
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter((t) => t.completed).length;
     const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
+    const shortOpt = { month: 'short', day: 'numeric' };
+    const selectedWeekLabel = weekOffset === 0
+      ? `This Week (${mon.toLocaleDateString(undefined, shortOpt)} – ${sun.toLocaleDateString(undefined, shortOpt)})`
+      : weekOffset === -1
+        ? `Last Week (${mon.toLocaleDateString(undefined, shortOpt)} – ${sun.toLocaleDateString(undefined, shortOpt)})`
+        : `${mon.toLocaleDateString(undefined, shortOpt)} – ${sun.toLocaleDateString(undefined, { ...shortOpt, year: 'numeric' })}`;
+
     return {
+      weekOffset,
+      subjectScope,
+      selectedWeekLabel,
+      selectedWeekRange: `${mon.toLocaleDateString(undefined, shortOpt)} – ${sun.toLocaleDateString(undefined, { ...shortOpt, year: 'numeric' })}`,
       totalSec,
       totalSessions: sessions.length,
       weekSec,
+      prevWeekSec,
+      weekSessionsCount,
       activeDaysCount: activeDaysSet.size,
       totalTasks,
       completedTasks,
       completionRate,
       dailyTrend,
-      subjectBreakdown
+      subjectBreakdown,
+      weeklyHistory
     };
   }
 

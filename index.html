@@ -544,22 +544,36 @@
 
     <!-- VIEW 4: STUDY ANALYTICS & ACTIVITY LOG -->
     <section id="view-history" class="view-section" style="display: none;">
+      <!-- Analytics Week Navigator & Header -->
+      <div class="analytics-toolbar panel-card">
+        <div class="analytics-toolbar-left">
+          <h2 class="analytics-toolbar-title">Study Analytics</h2>
+          <span id="analytics-week-range-label" class="analytics-week-range">This Week</span>
+        </div>
+        <div class="analytics-week-nav">
+          <button id="btn-analytics-prev-week" class="btn btn-secondary btn-sm" title="Previous Week">◀ Prev</button>
+          <select id="analytics-week-select" class="input-select analytics-week-select" title="Jump to recorded week"></select>
+          <button id="btn-analytics-next-week" class="btn btn-secondary btn-sm" title="Next Week">Next ▶</button>
+          <button id="btn-analytics-this-week" class="btn btn-secondary btn-sm" title="Jump to Current Week">This Week</button>
+        </div>
+      </div>
+
       <!-- Analytics KPI Row -->
       <div class="analytics-kpi-grid">
         <div class="kpi-card">
-          <div class="kpi-icon">◷</div>
+          <div class="kpi-icon">◈</div>
           <div class="kpi-content">
-            <span class="kpi-label">Total Time Focused</span>
-            <div id="analytics-total-time" class="kpi-value">0h 0m</div>
-            <span class="kpi-sub" id="analytics-total-sessions">0 study sessions</span>
+            <span class="kpi-label" id="analytics-week-kpi-label">Selected Week Focus</span>
+            <div id="analytics-week-time" class="kpi-value">0h 0m</div>
+            <span class="kpi-sub" id="analytics-week-target">0 sessions this week</span>
           </div>
         </div>
         <div class="kpi-card">
-          <div class="kpi-icon">◈</div>
+          <div class="kpi-icon">◷</div>
           <div class="kpi-content">
-            <span class="kpi-label">This Week's Focus</span>
-            <div id="analytics-week-time" class="kpi-value">0h 0m</div>
-            <span class="kpi-sub" id="analytics-week-target">Week 7 Syllabus Target</span>
+            <span class="kpi-label">All-Time Focus</span>
+            <div id="analytics-total-time" class="kpi-value">0h 0m</div>
+            <span class="kpi-sub" id="analytics-total-sessions">0 study sessions</span>
           </div>
         </div>
         <div class="kpi-card">
@@ -567,7 +581,7 @@
           <div class="kpi-content">
             <span class="kpi-label">Active Focus Days</span>
             <div id="analytics-active-days" class="kpi-value">0 / 7</div>
-            <span class="kpi-sub">Consistent study streak</span>
+            <span class="kpi-sub" id="analytics-active-days-sub">Selected week streak</span>
           </div>
         </div>
         <div class="kpi-card">
@@ -580,13 +594,13 @@
         </div>
       </div>
 
-      <!-- Charts & Distribution Grid -->
+      <!-- Charts Grid: Daily Breakdown + Previous Weeks History -->
       <div class="analytics-charts-grid">
         <!-- 7-Day Focus Trend Bar Chart -->
         <div class="panel-card analytics-chart-card">
           <div class="panel-header">
             <div class="panel-title">
-              <span>Weekly Focus Trend (Hours / Day)</span>
+              <span>Daily Focus (Selected Week)</span>
             </div>
             <span class="analytics-badge" id="analytics-trend-total">0h total</span>
           </div>
@@ -595,16 +609,33 @@
           </div>
         </div>
 
-        <!-- Course Distribution & Share -->
+        <!-- Previous Weeks History Chart -->
         <div class="panel-card analytics-chart-card">
           <div class="panel-header">
             <div class="panel-title">
-              <span>Focus Share by Course / Track</span>
+              <span>Weekly History (Previous Weeks)</span>
             </div>
+            <span class="analytics-badge" id="analytics-history-weeks-badge">Last 8 weeks</span>
           </div>
-          <div class="subject-share-list" id="analytics-subject-share">
+          <div class="weekly-bar-chart analytics-history-bars" id="analytics-history-weeks-bars">
             <!-- Rendered via JS -->
           </div>
+        </div>
+      </div>
+
+      <!-- Detailed Subject / Course Breakdown -->
+      <div class="panel-card analytics-subject-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Detailed Study Time by Subject</span>
+          </div>
+          <div class="analytics-scope-controls">
+            <button id="btn-analytics-scope-week" class="btn btn-secondary btn-sm active" type="button">Selected Week</button>
+            <button id="btn-analytics-scope-all" class="btn btn-secondary btn-sm" type="button">All Time</button>
+          </div>
+        </div>
+        <div class="subject-detail-list" id="analytics-subject-share">
+          <!-- Rendered via JS -->
         </div>
       </div>
 

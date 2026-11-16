@@ -18,6 +18,8 @@ export class ChronoUI {
     this.sidebarTaskSortBy = 'dueDate';
     this.collapsedSidebarGroups = new Set();
     this.historySubjectFilter = 'all';
+    this.analyticsWeekOffset = 0; // 0 = current week, -1 = last week, etc.
+    this.analyticsSubjectScope = 'week'; // 'week' | 'all'
     this.calendarSubjectFilter = 'all';
     this.subjectGroupFilter = 'all';
     
@@ -342,15 +344,26 @@ export class ChronoUI {
     this.timerCadranHandGroup = document.getElementById('timer-cadran-hand-group');
 
     // Analytics Dashboard elements
+    this.analyticsWeekRangeLabel = document.getElementById('analytics-week-range-label');
+    this.btnAnalyticsPrevWeek = document.getElementById('btn-analytics-prev-week');
+    this.analyticsWeekSelect = document.getElementById('analytics-week-select');
+    this.btnAnalyticsNextWeek = document.getElementById('btn-analytics-next-week');
+    this.btnAnalyticsThisWeek = document.getElementById('btn-analytics-this-week');
+    this.analyticsWeekKpiLabel = document.getElementById('analytics-week-kpi-label');
     this.analyticsTotalTime = document.getElementById('analytics-total-time');
     this.analyticsTotalSessions = document.getElementById('analytics-total-sessions');
     this.analyticsWeekTime = document.getElementById('analytics-week-time');
     this.analyticsWeekTarget = document.getElementById('analytics-week-target');
     this.analyticsActiveDays = document.getElementById('analytics-active-days');
+    this.analyticsActiveDaysSub = document.getElementById('analytics-active-days-sub');
     this.analyticsTasksDone = document.getElementById('analytics-tasks-done');
     this.analyticsTasksRate = document.getElementById('analytics-tasks-rate');
     this.analyticsTrendTotal = document.getElementById('analytics-trend-total');
     this.analyticsWeeklyBars = document.getElementById('analytics-weekly-bars');
+    this.analyticsHistoryWeeksBars = document.getElementById('analytics-history-weeks-bars');
+    this.analyticsHistoryWeeksBadge = document.getElementById('analytics-history-weeks-badge');
+    this.btnAnalyticsScopeWeek = document.getElementById('btn-analytics-scope-week');
+    this.btnAnalyticsScopeAll = document.getElementById('btn-analytics-scope-all');
     this.analyticsSubjectShare = document.getElementById('analytics-subject-share');
     this.btnExportCsv = document.getElementById('btn-export-csv');
 
@@ -1424,11 +1437,58 @@ export class ChronoUI {
       this.downloadFile(icsData, `chronostudy-schedule-${new Date().toISOString().slice(0, 10)}.ics`, 'text/calendar');
     });
 
-    // History Filters
+    // History Filters & Analytics Controls
     this.historySubjectFilterEl.addEventListener('change', () => {
       this.historySubjectFilter = this.historySubjectFilterEl.value;
       this.renderHistory();
     });
+
+    if (this.btnAnalyticsPrevWeek) {
+      this.btnAnalyticsPrevWeek.addEventListener('click', () => {
+        this.analyticsWeekOffset -= 1;
+        this.renderHistory();
+        playClickSound();
+      });
+    }
+    if (this.btnAnalyticsNextWeek) {
+      this.btnAnalyticsNextWeek.addEventListener('click', () => {
+        if (this.analyticsWeekOffset < 0) {
+          this.analyticsWeekOffset += 1;
+          this.renderHistory();
+          playClickSound();
+        }
+      });
+    }
+    if (this.btnAnalyticsThisWeek) {
+      this.btnAnalyticsThisWeek.addEventListener('click', () => {
+        this.analyticsWeekOffset = 0;
+        this.renderHistory();
+        playClickSound();
+      });
+    }
+    if (this.analyticsWeekSelect) {
+      this.analyticsWeekSelect.addEventListener('change', () => {
+        const val = parseInt(this.analyticsWeekSelect.value, 10);
+        if (!Number.isNaN(val)) {
+          this.analyticsWeekOffset = val;
+          this.renderHistory();
+        }
+      });
+    }
+    if (this.btnAnalyticsScopeWeek) {
+      this.btnAnalyticsScopeWeek.addEventListener('click', () => {
+        this.analyticsSubjectScope = 'week';
+        this.renderHistory();
+        playClickSound();
+      });
+    }
+    if (this.btnAnalyticsScopeAll) {
+      this.btnAnalyticsScopeAll.addEventListener('click', () => {
+        this.analyticsSubjectScope = 'all';
+        this.renderHistory();
+        playClickSound();
+      });
+    }
 
     // Finish Modal
     this.finishModalTaskCompleteGroup.addEventListener('click', (e) => {
@@ -4559,8 +4619,8 @@ create policy "Allow room sync access" on chronostudy_sync
       const dayNum = dateObj.getDate();
       const dayNumOfWeek = dateObj.getDay() || 7;
 
-      // Filter tasks for this day
-      let dayTasks = tasks.filter((t) => t.dueDate === dateStr);
+      // Filter tasks for this day (including routine/recurring tasks occurring on this date)
+      let dayTasks = tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
       if (this.calendarSubjectFilter !== 'all') {
         if (this.calendarSubjectFilter === '') {
           dayTasks = dayTasks.filter((t) => !t.subject);
@@ -4598,8 +4658,10 @@ create policy "Allow room sync access" on chronostudy_sync
               <div class="day-tasks-list">
                 ${dayTasks.map((t) => {
                   const color = store.getSubjectColor(t.subject);
+                  const isProjectedRoutine = t.recurrence && t.recurrence !== 'none' && t.dueDate !== dateStr;
+                  const isDoneForDay = isProjectedRoutine ? false : t.completed;
                   return `
-                    <div class="cal-task-item ${t.completed ? 'completed' : ''}" style="border-left: 3px solid ${color};">
+                    <div class="cal-task-item ${isDoneForDay ? 'completed' : ''} ${isProjectedRoutine ? 'cal-task-routine' : ''}" style="border-left: 3px solid ${color};">
                       <div class="cal-task-top">
                         <span class="cal-subject-badge ${!t.subject ? 'badge-no-course-text' : ''}" style="color: ${color};">${t.subject ? this.escapeHTML(t.subject) : 'General'}</span>
                         ${t.recurrence && t.recurrence !== 'none' ? `<span class="cal-recurrence-pill" title="Repeats: ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}">↻ ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
@@ -4607,10 +4669,10 @@ create policy "Allow room sync access" on chronostudy_sync
                       </div>
                       <div class="cal-task-title">${this.escapeHTML(t.title)}</div>
                       <div class="cal-task-actions">
-                        <button class="btn-cal-check" data-task-id="${t.id}" title="${t.completed ? 'Mark undone' : 'Mark done'}">
-                          ${t.completed ? '✓' : '○'}
+                        <button class="btn-cal-check" data-task-id="${t.id}" title="${isDoneForDay ? 'Mark undone' : 'Mark done'}">
+                          ${isDoneForDay ? '✓' : '○'}
                         </button>
-                        ${!t.completed ? `
+                        ${!isDoneForDay ? `
                           <button class="btn-cal-study" data-task-id="${t.id}" title="Study Now">
                             ▶ Study
                           </button>
@@ -4911,9 +4973,13 @@ create policy "Allow room sync access" on chronostudy_sync
       const dateStr = toLocalDateStr(curDate);
       const isToday = dateStr === todayStr;
 
-      let dayTasks = tasks.filter((t) => t.dueDate === dateStr);
+      let dayTasks = tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
       if (this.calendarSubjectFilter !== 'all') {
-        dayTasks = dayTasks.filter((t) => t.subject === this.calendarSubjectFilter);
+        if (this.calendarSubjectFilter === '') {
+          dayTasks = dayTasks.filter((t) => !t.subject);
+        } else {
+          dayTasks = dayTasks.filter((t) => t.subject === this.calendarSubjectFilter);
+        }
       }
 
       let daySessions = sessions.filter((s) => toLocalDateStr(s.endTime || s.createdAt) === dateStr);
@@ -5043,7 +5109,7 @@ create policy "Allow room sync access" on chronostudy_sync
   }
 
   async openDayInspector(dateStr) {
-    const tasks = store.getState().tasks.filter((t) => t.dueDate === dateStr);
+    const tasks = store.getState().tasks.filter((t) => store.doesTaskOccurOnDate(t, dateStr));
     const sessions = store.getState().sessions.filter((s) => toLocalDateStr(s.endTime || s.createdAt) === dateStr);
     const totalMins = Math.round(sessions.reduce((acc, s) => acc + (s.durationSec || 0), 0) / 60);
 
@@ -5071,16 +5137,36 @@ create policy "Allow room sync access" on chronostudy_sync
 
   // --- Study Analytics Dashboard & History Rendering ---
   renderHistory() {
-    const data = store.getAnalyticsData();
+    const data = store.getAnalyticsData({
+      weekOffset: this.analyticsWeekOffset,
+      subjectScope: this.analyticsSubjectScope
+    });
+
+    // 0. Week Navigator & Scope Controls
+    if (this.analyticsWeekRangeLabel) {
+      this.analyticsWeekRangeLabel.textContent = data.selectedWeekLabel;
+    }
+    if (this.btnAnalyticsNextWeek) {
+      this.btnAnalyticsNextWeek.disabled = this.analyticsWeekOffset >= 0;
+    }
+    if (this.btnAnalyticsThisWeek) {
+      this.btnAnalyticsThisWeek.disabled = this.analyticsWeekOffset === 0;
+    }
+    if (this.analyticsWeekSelect) {
+      const weeksDesc = [...data.weeklyHistory].reverse();
+      this.analyticsWeekSelect.innerHTML = weeksDesc.map((w) => {
+        const prefix = w.weekOffset === 0 ? 'This Week: ' : w.weekOffset === -1 ? 'Last Week: ' : '';
+        return `<option value="${w.weekOffset}" ${w.isSelected ? 'selected' : ''}>${prefix}${this.escapeHTML(w.label)} (${w.formattedTime})</option>`;
+      }).join('');
+    }
+    if (this.btnAnalyticsScopeWeek && this.btnAnalyticsScopeAll) {
+      this.btnAnalyticsScopeWeek.classList.toggle('active', this.analyticsSubjectScope === 'week');
+      this.btnAnalyticsScopeAll.classList.toggle('active', this.analyticsSubjectScope === 'all');
+    }
 
     // 1. KPI Cards
-    if (this.analyticsTotalTime) {
-      const totalHours = Math.floor(data.totalSec / 3600);
-      const totalMins = Math.round((data.totalSec % 3600) / 60);
-      this.analyticsTotalTime.textContent = `${totalHours}h ${totalMins}m`;
-    }
-    if (this.analyticsTotalSessions) {
-      this.analyticsTotalSessions.textContent = `${data.totalSessions} study session${data.totalSessions === 1 ? '' : 's'}`;
+    if (this.analyticsWeekKpiLabel) {
+      this.analyticsWeekKpiLabel.textContent = this.analyticsWeekOffset === 0 ? "This Week's Focus" : 'Selected Week Focus';
     }
     if (this.analyticsWeekTime) {
       const weekHours = Math.floor(data.weekSec / 3600);
@@ -5088,10 +5174,29 @@ create policy "Allow room sync access" on chronostudy_sync
       this.analyticsWeekTime.textContent = `${weekHours}h ${weekMins}m`;
     }
     if (this.analyticsWeekTarget) {
-      this.analyticsWeekTarget.textContent = 'Week 7 Syllabus Target';
+      const diffMins = Math.round((data.weekSec - data.prevWeekSec) / 60);
+      const diffStr = diffMins === 0
+        ? 'same as prev week'
+        : `${diffMins > 0 ? '+' : '-'}${Math.floor(Math.abs(diffMins) / 60) > 0 ? `${Math.floor(Math.abs(diffMins) / 60)}h ` : ''}${Math.abs(diffMins) % 60}m vs prev week`;
+      this.analyticsWeekTarget.textContent = `${data.weekSessionsCount} session${data.weekSessionsCount === 1 ? '' : 's'} • ${diffStr}`;
+    }
+    if (this.analyticsTotalTime) {
+      const totalHours = Math.floor(data.totalSec / 3600);
+      const totalMins = Math.round((data.totalSec % 3600) / 60);
+      this.analyticsTotalTime.textContent = `${totalHours}h ${totalMins}m`;
+    }
+    if (this.analyticsTotalSessions) {
+      const avgAllMins = data.totalSessions > 0 ? Math.round((data.totalSec / 60) / data.totalSessions) : 0;
+      this.analyticsTotalSessions.textContent = `${data.totalSessions} session${data.totalSessions === 1 ? '' : 's'} • ${avgAllMins}m avg`;
     }
     if (this.analyticsActiveDays) {
       this.analyticsActiveDays.textContent = `${data.activeDaysCount} / 7`;
+    }
+    if (this.analyticsActiveDaysSub) {
+      const bestDay = data.dailyTrend.reduce((best, d) => (d.durationMins > best.durationMins ? d : best), { durationMins: 0, label: '' });
+      this.analyticsActiveDaysSub.textContent = bestDay.durationMins > 0
+        ? `Peak: ${bestDay.label} (${bestDay.durationMins >= 60 ? `${(bestDay.durationMins / 60).toFixed(1)}h` : `${bestDay.durationMins}m`})`
+        : 'No sessions this week';
     }
     if (this.analyticsTasksDone) {
       this.analyticsTasksDone.textContent = `${data.completedTasks} / ${data.totalTasks}`;
@@ -5100,7 +5205,7 @@ create policy "Allow room sync access" on chronostudy_sync
       this.analyticsTasksRate.textContent = `${data.completionRate}% completion rate`;
     }
 
-    // 2. 7-Day Focus Trend Bar Chart
+    // 2. 7-Day Focus Trend Bar Chart (Selected Week)
     if (this.analyticsWeeklyBars) {
       const maxDailyMins = Math.max(60, ...data.dailyTrend.map((d) => d.durationMins));
       if (this.analyticsTrendTotal) {
@@ -5110,10 +5215,10 @@ create policy "Allow room sync access" on chronostudy_sync
         const heightPct = Math.round((d.durationMins / maxDailyMins) * 100);
         const displayVal = d.durationMins > 0 ? (d.durationMins >= 60 ? `${(d.durationMins / 60).toFixed(1)}h` : `${d.durationMins}m`) : '0m';
         return `
-          <div class="weekly-bar-col ${d.isToday ? 'today' : ''}">
+          <div class="weekly-bar-col ${d.isToday ? 'today' : ''}" title="${d.dateStr}: ${displayVal} (${d.sessionCount} session${d.sessionCount === 1 ? '' : 's'})">
             <span class="weekly-bar-val">${displayVal}</span>
             <div class="weekly-bar-track">
-              <div class="weekly-bar-fill" style="height: ${Math.max(4, heightPct)}%;"></div>
+              <div class="weekly-bar-fill" style="height: ${d.durationMins > 0 ? Math.max(6, heightPct) : 2}%;"></div>
             </div>
             <span class="weekly-bar-label">${d.label}</span>
           </div>
@@ -5121,29 +5226,107 @@ create policy "Allow room sync access" on chronostudy_sync
       }).join('');
     }
 
-    // 3. Subject Focus Share Breakdown
+    // 2b. Previous Weeks History Bar Chart (last 8 weeks)
+    if (this.analyticsHistoryWeeksBars) {
+      const recentWeeks = data.weeklyHistory.slice(-8);
+      const maxWeekMins = Math.max(60, ...recentWeeks.map((w) => w.durationMins));
+      const recordedWeeksCount = data.weeklyHistory.filter((w) => w.durationSec > 0).length;
+      if (this.analyticsHistoryWeeksBadge) {
+        this.analyticsHistoryWeeksBadge.textContent = `${recordedWeeksCount} week${recordedWeeksCount === 1 ? '' : 's'} recorded`;
+      }
+      this.analyticsHistoryWeeksBars.innerHTML = recentWeeks.map((w) => {
+        const heightPct = Math.round((w.durationMins / maxWeekMins) * 100);
+        const displayVal = w.durationMins > 0 ? (w.durationMins >= 60 ? `${w.durationHours}h` : `${w.durationMins}m`) : '0m';
+        return `
+          <button type="button" class="weekly-bar-col history-week-btn ${w.isSelected ? 'selected-week' : ''} ${w.isCurrentWeek ? 'today' : ''}" data-week-offset="${w.weekOffset}" title="${this.escapeHTML(w.label)}: ${w.formattedTime} (${w.sessionCount} sessions) — Click to inspect">
+            <span class="weekly-bar-val">${displayVal}</span>
+            <div class="weekly-bar-track">
+              <div class="weekly-bar-fill" style="height: ${w.durationMins > 0 ? Math.max(6, heightPct) : 2}%;"></div>
+            </div>
+            <span class="weekly-bar-label">${this.escapeHTML(w.shortLabel)}</span>
+          </button>
+        `;
+      }).join('');
+
+      this.analyticsHistoryWeeksBars.querySelectorAll('.history-week-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const offset = parseInt(btn.dataset.weekOffset, 10);
+          if (!Number.isNaN(offset)) {
+            this.analyticsWeekOffset = offset;
+            this.renderHistory();
+            playClickSound();
+          }
+        });
+      });
+    }
+
+    // 3. Detailed Subject Focus Share Breakdown
     if (this.analyticsSubjectShare) {
       if (data.subjectBreakdown.length === 0) {
         this.analyticsSubjectShare.innerHTML = `
-          <div class="empty-state" style="padding: 1.25rem; font-size: 0.8rem; color: var(--text-muted); text-align: center;">
-            No course study hours recorded yet.
+          <div class="empty-state" style="padding: 1.25rem; font-size: 0.82rem; color: var(--text-muted); text-align: center;">
+            ${this.analyticsSubjectScope === 'week' ? 'No study sessions recorded in this week yet.' : 'No course study hours recorded yet.'}
           </div>
         `;
       } else {
-        this.analyticsSubjectShare.innerHTML = data.subjectBreakdown.map((sb) => `
-          <div class="subject-share-row">
-            <div class="share-row-header">
-              <span class="share-name">
-                <span class="share-dot" style="background-color: ${sb.color};"></span>
-                ${this.escapeHTML(sb.name)}
-              </span>
-              <span class="share-stats">${sb.durationHours}h (${sb.percentage}%)</span>
+        const dayNamesShort = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+        this.analyticsSubjectShare.innerHTML = data.subjectBreakdown.map((sb) => {
+          const isActiveFilter = this.historySubjectFilter === sb.name;
+          const maxSubDay = Math.max(1, ...sb.dailyMins);
+          return `
+            <div class="subject-detail-card ${isActiveFilter ? 'active-filter' : ''}" data-subject="${this.escapeHTML(sb.name)}" title="Click to filter Session Activity Log by ${this.escapeHTML(sb.name)}">
+              <div class="subject-detail-top">
+                <div class="subject-detail-identity">
+                  <span class="share-dot" style="background-color: ${sb.color};"></span>
+                  <span class="subject-detail-name">${this.escapeHTML(sb.name)}</span>
+                  <span class="subject-detail-group">${this.escapeHTML(sb.group)}</span>
+                </div>
+                <div class="subject-detail-totals">
+                  <strong class="subject-detail-time">${sb.formattedTime}</strong>
+                  <span class="subject-detail-pct">${sb.percentage}% share</span>
+                </div>
+              </div>
+              <div class="share-bar-track">
+                <div class="share-bar-fill" style="width: ${sb.percentage}%; background-color: ${sb.color};"></div>
+              </div>
+              <div class="subject-detail-meta">
+                <span>${sb.sessionCount} session${sb.sessionCount === 1 ? '' : 's'}</span>
+                <span>•</span>
+                <span>Avg ${sb.avgSessionMins}m</span>
+                ${sb.goalPct !== null ? `<span>•</span><span>Weekly goal: ${sb.durationHours}h / ${sb.weeklyGoalHours}h (${sb.goalPct}%)</span>` : ''}
+                ${sb.lastStudiedStr ? `<span>•</span><span>Last: ${sb.lastStudiedStr}</span>` : ''}
+              </div>
+              ${this.analyticsSubjectScope === 'week' ? `
+                <div class="subject-mini-week">
+                  ${sb.dailyMins.map((dm, idx) => {
+                    const hPct = dm > 0 ? Math.max(20, Math.round((dm / maxSubDay) * 100)) : 0;
+                    return `
+                      <div class="subject-mini-day" title="${dayNamesShort[idx]}: ${dm}m">
+                        <div class="subject-mini-bar-wrap">
+                          <div class="subject-mini-bar" style="height: ${hPct}%; background-color: ${dm > 0 ? sb.color : 'transparent'};"></div>
+                        </div>
+                        <span class="subject-mini-label">${dayNamesShort[idx]}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              ` : ''}
             </div>
-            <div class="share-bar-track">
-              <div class="share-bar-fill" style="width: ${sb.percentage}%; background-color: ${sb.color};"></div>
-            </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
+
+        this.analyticsSubjectShare.querySelectorAll('.subject-detail-card').forEach((card) => {
+          card.addEventListener('click', () => {
+            const subj = card.dataset.subject;
+            const nextVal = this.historySubjectFilter === subj ? 'all' : subj;
+            this.historySubjectFilter = nextVal;
+            if (this.historySubjectFilterEl) {
+              this.historySubjectFilterEl.value = nextVal === 'General / Other' ? '' : nextVal;
+            }
+            this.renderHistory();
+            playClickSound();
+          });
+        });
       }
     }
 

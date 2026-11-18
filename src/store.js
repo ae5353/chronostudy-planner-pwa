@@ -188,7 +188,8 @@ const INITIAL_STATE = {
     soundEnabled: true,
     ambientSound: 'none',
     volume: 0.5,
-    calendarView: 'week'
+    calendarView: 'week',
+    updatedAt: null
   },
   sync: {
     enabled: false,
@@ -699,7 +700,7 @@ class Store {
 
   loadState() {
     try {
-      if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+      if (typeof localStorage === 'undefined') {
         return { ...INITIAL_STATE };
       }
       const serialized = localStorage.getItem(STORAGE_KEY);
@@ -1022,9 +1023,21 @@ class Store {
       });
     }
 
-    // 7. Merge Settings
-    if (remote.settings) {
-      this.state.settings = { ...this.state.settings, ...remote.settings };
+    // 7. Merge Settings (Last-Write-Wins via settings.updatedAt)
+    if (remote.settings && typeof remote.settings === 'object') {
+      const remoteSettingsUpdated = remote.settings.updatedAt ? new Date(remote.settings.updatedAt).getTime() : 0;
+      const localSettingsUpdated = (this.state.settings && this.state.settings.updatedAt)
+        ? new Date(this.state.settings.updatedAt).getTime()
+        : 0;
+      const hasLocalPending = Boolean(this.state.sync && this.state.sync.hasChanges);
+
+      if (remoteSettingsUpdated > localSettingsUpdated || (localSettingsUpdated === 0 && !hasLocalPending)) {
+        const mergedSettings = { ...this.state.settings, ...remote.settings };
+        if (JSON.stringify(mergedSettings) !== JSON.stringify(this.state.settings)) {
+          changesCount++;
+        }
+        this.state.settings = mergedSettings;
+      }
     }
 
     this.reconcileTasksAndSessions(this.state);
@@ -1749,7 +1762,8 @@ class Store {
   updateSettings(partial) {
     this.state.settings = {
       ...this.state.settings,
-      ...partial
+      ...partial,
+      updatedAt: new Date().toISOString()
     };
     this.saveState();
   }

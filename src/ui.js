@@ -57,6 +57,10 @@ export class ChronoUI {
 
     // Subscribe to store updates
     store.subscribe(() => {
+      const settings = store.getState().settings || {};
+      this.applyTheme(settings.theme || 'slate');
+      this.applyFont(settings.fontStyle || 'sans');
+      this.applyTimerStyle(settings.timerStyle || 'chronograph');
       this.renderStats();
       this.renderTasks();
       this.renderHistory();

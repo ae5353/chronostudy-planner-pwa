@@ -168,4 +168,34 @@ store.mergeRemoteState(resurrectionAttemptPayload);
 assert(!store.getState().tasks.some(t => t.id === delId), 'Deleted task must NEVER be resurrected by remote payload');
 console.log('✔ Task deletion tombstone engine verified (zero resurrection).');
 
+// 8. Theme / Settings Persistence Across Cloud Sync & Refresh
+store.updateSettings({ theme: 'bibliotheca' });
+assert.equal(store.getState().settings.theme, 'bibliotheca');
+assert(store.getState().settings.updatedAt, 'Settings update must stamp updatedAt');
+
+// Stale remote payload with older settings must NOT overwrite the newly chosen theme
+store.mergeRemoteState({
+  version: 12,
+  settings: {
+    theme: 'slate',
+    updatedAt: new Date(Date.now() - 60000).toISOString()
+  }
+});
+assert.equal(store.getState().settings.theme, 'bibliotheca', 'Stale remote theme must NOT overwrite newer local theme');
+
+// Verify persisted localStorage value survives reload
+const reloadedFromDisk = store.sanitizeState(store.loadState());
+assert.equal(reloadedFromDisk.settings.theme, 'bibliotheca', 'New theme must remain persisted in localStorage for page refresh');
+
+// Newer remote settings MUST update local theme
+store.mergeRemoteState({
+  version: 12,
+  settings: {
+    theme: 'oxford',
+    updatedAt: new Date(Date.now() + 60000).toISOString()
+  }
+});
+assert.equal(store.getState().settings.theme, 'oxford', 'Newer remote settings must update local theme');
+console.log('✔ Theme & settings Last-Write-Wins persistence across sync and refresh verified.');
+
 console.log('\nAll Cloud Synchronization & Conflict Resolution tests passed successfully! 🚀');

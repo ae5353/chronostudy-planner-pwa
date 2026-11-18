@@ -3095,7 +3095,7 @@ create policy "Allow room sync access" on chronostudy_sync
 
       let orderedKeys = Array.from(groupsMap.keys());
       if (groupBy === 'dueDate') {
-        const dueOrder = ['Today', 'Yesterday', 'Overdue', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
+        const dueOrder = ['Overdue', 'Today', 'Yesterday', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
         orderedKeys.sort((a, b) => {
           const idxA = dueOrder.indexOf(a);
           const idxB = dueOrder.indexOf(b);
@@ -4103,7 +4103,7 @@ create policy "Allow room sync access" on chronostudy_sync
     // Define priority order for groups when grouping by dueDate
     let orderedKeys = Array.from(groupsMap.keys());
     if (groupBy === 'dueDate') {
-      const dueOrder = ['Today', 'Yesterday', 'Overdue', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
+      const dueOrder = ['Overdue', 'Today', 'Yesterday', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
       orderedKeys.sort((a, b) => {
         const idxA = dueOrder.indexOf(a);
         const idxB = dueOrder.indexOf(b);

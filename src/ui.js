@@ -3034,6 +3034,11 @@ create policy "Allow room sync access" on chronostudy_sync
           </div>
         </div>
         <div class="task-actions">
+          ${!task.completed && (!task.dueDate || task.dueDate > todayStr) ? `
+            <button class="btn btn-secondary btn-sidebar-move-today" data-task-id="${task.id}" title="Move to Today" style="padding: 0.2rem 0.42rem; font-size: 0.65rem;">
+              → Today
+            </button>
+          ` : ''}
           ${!task.completed ? `
             <button class="btn btn-study-now btn-sidebar-study" data-task-id="${task.id}" title="Study now" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">
               ▶
@@ -3160,6 +3165,14 @@ create policy "Allow room sync access" on chronostudy_sync
     this.sidebarTaskList.querySelectorAll('.sidebar-task-cb').forEach((cb) => {
       cb.addEventListener('change', () => {
         store.toggleTask(cb.dataset.taskId);
+        playClickSound();
+      });
+    });
+
+    this.sidebarTaskList.querySelectorAll('.btn-sidebar-move-today').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        store.updateTask(btn.dataset.taskId, { dueDate: todayStr });
         playClickSound();
       });
     });
@@ -3877,6 +3890,11 @@ create policy "Allow room sync access" on chronostudy_sync
         </div>
       </div>
       <div class="task-actions">
+        ${!task.completed && (!task.dueDate || task.dueDate > todayStr) ? `
+          <button class="btn btn-secondary btn-move-today" data-task-id="${task.id}" title="Move this task to Today">
+            → Today
+          </button>
+        ` : ''}
         ${!task.completed ? `
           <button class="btn btn-study-now" data-task-id="${task.id}" title="Start timer with this study item">
             ▶ Study
@@ -3895,6 +3913,15 @@ create policy "Allow room sync access" on chronostudy_sync
       store.toggleTask(task.id);
       playClickSound();
     });
+
+    const btnMoveToday = card.querySelector('.btn-move-today');
+    if (btnMoveToday) {
+      btnMoveToday.addEventListener('click', (e) => {
+        e.stopPropagation();
+        store.updateTask(task.id, { dueDate: todayStr });
+        playClickSound();
+      });
+    }
 
     const btnStudy = card.querySelector('.btn-study-now');
     if (btnStudy) {
@@ -4826,6 +4853,9 @@ create policy "Allow room sync access" on chronostudy_sync
                               ▶ Study
                             </button>
                           ` : ''}
+                          ${!isDoneForDay && dateStr > todayStr && (!t.recurrence || t.recurrence === 'none') ? `
+                            <button class="btn-cal-move-today" data-task-id="${t.id}" title="Move to Today">→ Today</button>
+                          ` : ''}
                           <button class="btn-cal-edit" data-task-id="${t.id}" title="Edit task">✎</button>
                           <a 
                             href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${dateStr.replace(/-/g, '')}T090000Z/${dateStr.replace(/-/g, '')}T100000Z&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" 
@@ -4877,6 +4907,13 @@ create policy "Allow room sync access" on chronostudy_sync
     this.calendarViewContainer.querySelectorAll('.btn-cal-check').forEach((btn) => {
       btn.addEventListener('click', () => {
         store.toggleTaskForDate(btn.dataset.taskId, btn.dataset.date);
+        playClickSound();
+      });
+    });
+
+    this.calendarViewContainer.querySelectorAll('.btn-cal-move-today').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        store.updateTask(btn.dataset.taskId, { dueDate: toLocalDateStr(new Date()) });
         playClickSound();
       });
     });

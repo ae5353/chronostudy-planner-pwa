@@ -4480,6 +4480,28 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
   margin-top: 0.15rem;
 }
 
+.btn-move-today {
+  font-size: 0.7rem;
+  padding: 0.24rem 0.5rem;
+  white-space: nowrap;
+}
+
+.btn-cal-move-today {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  font-size: 0.66rem;
+  padding: 0.14rem 0.35rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-cal-move-today:hover {
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
 @media (max-width: 640px) {
   .analytics-week-select {
     min-width: 0;

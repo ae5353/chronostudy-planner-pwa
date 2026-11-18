@@ -112,8 +112,9 @@ setupBrowserMocks({
   }
 });
 
-const { store } = await import('../src/store.js');
+const { store, toLocalDateStr } = await import('../src/store.js');
 const { timer } = await import('../src/timer.js');
+const { ChronoUI } = await import('../src/ui.js');
 
 // --- Test 1: Split Subject Reconciliation & No Circuit Analysis Default Leak ---
 console.log('Test 1: Reconciling split-subject task & timer defaults...');
@@ -183,8 +184,8 @@ console.log('Test 4: Planner deduplication & completed recurring task projection
 const circuitSub = store.getState().subjects.find((s) => s.id === 'sub-eef211');
 assert.equal(circuitSub.schedule.length, 1, 'Duplicate lecture slot should be deduplicated');
 assert.equal(store.getState().weeklyEvents.length, 1, 'Duplicate weekly event should be deduplicated');
-const dailyTasks = store.getState().tasks.filter((t) => t.title === 'Daily Reading' && !t.completed);
-assert.equal(dailyTasks.length, 1, 'Duplicate uncompleted recurring tasks should be deduplicated');
+const dailyTasks = store.getState().tasks.filter((t) => t.title === 'Daily Reading' && t.dueDate === '2026-11-16' && !t.completed);
+assert.equal(dailyTasks.length, 1, 'Duplicate uncompleted recurring tasks on same day should be deduplicated');
 
 const completedRecTask = {
   id: 'task-done-rec',
@@ -214,23 +215,76 @@ const routineTask = store.addTask({
   recurrence: 'daily',
   dueDate: '2026-11-16'
 });
-// Today is 2026-11-17; check off yesterday (2026-11-16) independently
-store.toggleTaskForDate(routineTask.id, '2026-11-16');
-assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-16'), true, 'Yesterday (2026-11-16) should be marked done');
-assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-17'), false, 'Today (2026-11-17) must remain unchecked');
-assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-16'), true, 'Yesterday remains visible on planner');
-assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-17'), true, 'Today remains visible on planner');
 
-// Check off today (2026-11-17) as well
-store.toggleTaskForDate(routineTask.id, '2026-11-17');
-assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-17'), true, 'Today (2026-11-17) should now be marked done');
-assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-18'), false, 'Tomorrow (2026-11-18) remains unchecked');
-assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-16'), true, 'Past checked day stays visible');
-assert.equal(store.doesTaskOccurOnDate(routineTask, '2026-11-17'), true, 'Checked today stays visible');
+const getSeriesTaskForDate = (title, dateStr) => {
+  const matches = store.getState().tasks.filter((t) => t.title === title && store.doesTaskOccurOnDate(t, dateStr));
+  if (matches.length === 0) return null;
+  return matches.find((t) => t.dueDate === dateStr || (t.completed && t.completedAt && toLocalDateStr(t.completedAt) === dateStr)) || matches[0];
+};
 
-// Uncheck yesterday (2026-11-16) without affecting today (2026-11-17)
+// Check off 2026-11-16 independently
 store.toggleTaskForDate(routineTask.id, '2026-11-16');
-assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-16'), false, 'Yesterday should uncheck cleanly');
-assert.equal(store.isTaskCompletedOnDate(routineTask, '2026-11-17'), true, 'Today must remain checked');
+const quran16 = getSeriesTaskForDate('Morning Quran Reading', '2026-11-16');
+const quran17 = getSeriesTaskForDate('Morning Quran Reading', '2026-11-17');
+assert.ok(quran16 && store.isTaskCompletedOnDate(quran16, '2026-11-16'), '2026-11-16 should be marked done');
+assert.ok(quran17 && !store.isTaskCompletedOnDate(quran17, '2026-11-17'), '2026-11-17 must remain unchecked & visible on planner');
+
+// Check off 2026-11-17 as well
+store.toggleTaskForDate(quran17.id, '2026-11-17');
+const quran17After = getSeriesTaskForDate('Morning Quran Reading', '2026-11-17');
+const quran18 = getSeriesTaskForDate('Morning Quran Reading', '2026-11-18');
+assert.ok(quran17After && store.isTaskCompletedOnDate(quran17After, '2026-11-17'), '2026-11-17 should now be marked done');
+assert.ok(quran18 && !store.isTaskCompletedOnDate(quran18, '2026-11-18'), '2026-11-18 remains unchecked & visible');
+
+// Uncheck 2026-11-16 without affecting 2026-11-17
+store.toggleTaskForDate(quran16.id, '2026-11-16');
+const quran16Reopened = getSeriesTaskForDate('Morning Quran Reading', '2026-11-16');
+const quran17StillDone = getSeriesTaskForDate('Morning Quran Reading', '2026-11-17');
+assert.ok(quran16Reopened && !store.isTaskCompletedOnDate(quran16Reopened, '2026-11-16'), '2026-11-16 should uncheck cleanly');
+assert.ok(quran17StillDone && store.isTaskCompletedOnDate(quran17StillDone, '2026-11-17'), '2026-11-17 must remain checked');
+
+// --- Test 6: Daily Rollover (Yesterday & Today in Task Bar + Relative Due Date Formatting) ---
+console.log('Test 6: Daily rollover occurrences & Today/Yesterday labels...');
+const nowLocal = new Date();
+const todayLocalStr = toLocalDateStr(nowLocal);
+const yestLocal = new Date(nowLocal);
+yestLocal.setDate(yestLocal.getDate() - 1);
+const yesterdayLocalStr = toLocalDateStr(yestLocal);
+const tomLocal = new Date(nowLocal);
+tomLocal.setDate(tomLocal.getDate() + 1);
+const tomorrowLocalStr = toLocalDateStr(tomLocal);
+
+const rolloverSeed = store.addTask({
+  title: 'Rollover Habit Task',
+  subject: null,
+  recurrence: 'daily',
+  dueDate: yesterdayLocalStr
+});
+assert.equal(rolloverSeed.dueDate, yesterdayLocalStr);
+
+// Run rollover generation
+store.ensureRecurringTaskOccurrences(store.state);
+
+const seriesInstances = store.getState().tasks.filter((t) => t.title === 'Rollover Habit Task');
+const yestInst = seriesInstances.find((t) => t.dueDate === yesterdayLocalStr);
+const todayInst = seriesInstances.find((t) => t.dueDate === todayLocalStr);
+
+assert.ok(yestInst && !yestInst.completed, 'Yesterday uncompleted daily occurrence should remain at dueDate = yesterday');
+assert.ok(todayInst && !todayInst.completed, 'Today daily occurrence should be rolled/created at dueDate = today');
+
+// Checking off yesterday must mark yesterday completed WITHOUT duplicating today's task
+store.toggleTaskForDate(yestInst.id, yesterdayLocalStr);
+const yestAfter = store.getState().tasks.find((t) => t.id === yestInst.id);
+const todayCountAfter = store.getState().tasks.filter((t) => t.title === 'Rollover Habit Task' && t.dueDate === todayLocalStr).length;
+assert.equal(yestAfter.completed, true, 'Checking yesterday task marks yesterday done');
+assert.equal(todayCountAfter, 1, 'Checking yesterday task must NOT duplicate today occurrence');
+assert.equal(todayInst.completed, false, 'Today task must remain unchecked when yesterday is checked');
+
+// Relative due date label checks
+const fmt = ChronoUI.prototype.formatRelativeDueDate;
+assert.equal(fmt(todayLocalStr, todayLocalStr, { includePrefix: true }), 'Due: Today');
+assert.equal(fmt(yesterdayLocalStr, todayLocalStr, { includePrefix: true }), 'Due: Yesterday');
+assert.equal(fmt(tomorrowLocalStr, todayLocalStr, { includePrefix: true }), 'Due: Tomorrow');
+assert.equal(fmt(yesterdayLocalStr, todayLocalStr, { includePrefix: false }), 'Yesterday');
 
 console.log('ALL PLANNER, MIDNIGHT, TASK-SUBJECT SYNC & SESSION COUNT TESTS PASSED!');

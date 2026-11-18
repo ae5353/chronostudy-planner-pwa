@@ -331,7 +331,7 @@ class Store {
         if (!t.dueDate) {
           t.dueDate = toLocalDateStr(t.createdAt || new Date());
         }
-        const recKey = `${(t.title || '').trim().toLowerCase()}|${t.recurrence}|${t.subject || ''}`;
+        const recKey = `${(t.title || '').trim().toLowerCase()}|${t.recurrence}|${t.subject || ''}|${t.dueDate || ''}`;
         if (seenRecurring.has(recKey)) {
           if (t.id) state.deletedTaskIds[t.id] = state.deletedTaskIds[t.id] || new Date().toISOString();
           return;
@@ -428,6 +428,95 @@ class Store {
     });
 
     state.sessions = expandedSessions;
+    this.ensureRecurringTaskOccurrences(state);
+  }
+
+  ensureRecurringTaskOccurrences(state = this.state) {
+    if (!state || !Array.isArray(state.tasks)) return false;
+    const now = new Date();
+    const todayStr = toLocalDateStr(now);
+    const minBackfill = new Date(now);
+    minBackfill.setDate(minBackfill.getDate() - 7);
+    const minBackfillStr = toLocalDateStr(minBackfill);
+
+    const recurringTasks = state.tasks.filter((t) => t.recurrence && t.recurrence !== 'none');
+    if (recurringTasks.length === 0) return false;
+
+    const seriesMap = new Map();
+    recurringTasks.forEach((t) => {
+      const seriesKey = `${(t.title || '').trim().toLowerCase()}|${t.recurrence}|${t.subject || ''}`;
+      if (!seriesMap.has(seriesKey)) seriesMap.set(seriesKey, []);
+      seriesMap.get(seriesKey).push(t);
+    });
+
+    let addedAny = false;
+    const nowIso = now.toISOString();
+
+    seriesMap.forEach((seriesTasks) => {
+      // Sync completedDates flag on any past task in series already marked done via completedDates
+      seriesTasks.forEach((t) => {
+        if (!t.completed && t.dueDate && t.dueDate < todayStr && t.completedDates && t.completedDates[t.dueDate]) {
+          t.completed = true;
+          t.completedAt = t.completedDates[t.dueDate];
+          t.updatedAt = nowIso;
+          t.synced = false;
+          addedAny = true;
+        }
+      });
+
+      // Collect existing dates and check if an occurrence already exists for >= todayStr
+      const existingDates = new Set(seriesTasks.map((t) => t.dueDate).filter(Boolean));
+      const hasCurrentOrFuture = seriesTasks.some((t) => !t.dueDate || t.dueDate >= todayStr);
+      if (hasCurrentOrFuture) return;
+
+      // Pick latest task as template to advance forward to today
+      const sorted = [...seriesTasks].sort((a, b) => (b.dueDate || '').localeCompare(a.dueDate || ''));
+      const template = sorted[0];
+      if (!template || !template.dueDate) return;
+
+      const rootParentId = template.parentRecurringId || template.id;
+      let cursorDate = template.dueDate;
+      let safety = 0;
+
+      while (cursorDate < todayStr && safety < 366) {
+        safety++;
+        const nextDate = this.calculateNextRecurrenceDate(cursorDate, template.recurrence, template.recurrenceInterval);
+        if (!nextDate || nextDate <= cursorDate) break;
+        cursorDate = nextDate;
+
+        if (cursorDate > todayStr) break;
+        // Materialize recent occurrences (within last 7 days up to today) if missing and not tombstoned
+        if (cursorDate >= minBackfillStr && !existingDates.has(cursorDate)) {
+          const occId = `task-occ-${rootParentId}-${cursorDate}`;
+          if (!(state.deletedTaskIds && state.deletedTaskIds[occId])) {
+            const doneTs = template.completedDates && template.completedDates[cursorDate] ? template.completedDates[cursorDate] : null;
+            state.tasks.unshift({
+              id: occId,
+              title: template.title,
+              subject: template.subject,
+              targetMinutes: template.targetMinutes || null,
+              dueDate: cursorDate,
+              recurrence: template.recurrence,
+              recurrenceInterval: template.recurrenceInterval || null,
+              parentRecurringId: rootParentId,
+              notes: template.notes || '',
+              completed: Boolean(doneTs),
+              completedDates: {},
+              createdAt: nowIso,
+              updatedAt: nowIso,
+              deletedAt: null,
+              synced: false,
+              completedAt: doneTs,
+              timeSpentSec: 0
+            });
+            existingDates.add(cursorDate);
+            addedAny = true;
+          }
+        }
+      }
+    });
+
+    return addedAny;
   }
 
   getTaskSessionStats(taskOrId) {
@@ -1086,6 +1175,19 @@ class Store {
       return;
     }
 
+    // If a dedicated task instance exists in the same recurring series for this exact dateStr, toggle that instance directly
+    const parentId = task.parentRecurringId || task.id;
+    const normTitle = (task.title || '').trim().toLowerCase();
+    const exactInstance = this.state.tasks.find(
+      (t) => t.dueDate === dateStr &&
+        t.recurrence === rec &&
+        (t.id === taskId || t.parentRecurringId === parentId || t.id === parentId || (t.title || '').trim().toLowerCase() === normTitle)
+    );
+    if (exactInstance) {
+      this.toggleTask(exactInstance.id);
+      return;
+    }
+
     if (!task.completedDates || typeof task.completedDates !== 'object') {
       task.completedDates = {};
     }
@@ -1121,19 +1223,33 @@ class Store {
 
     const wasCompleted = task.completed;
     task.completed = !wasCompleted;
-    task.completedAt = task.completed ? new Date().toISOString() : null;
-    task.updatedAt = new Date().toISOString();
+    const nowIso = new Date().toISOString();
+    task.completedAt = task.completed ? nowIso : null;
+    task.updatedAt = nowIso;
     task.synced = false;
+
+    if (task.recurrence && task.recurrence !== 'none') {
+      if (!task.completedDates || typeof task.completedDates !== 'object') {
+        task.completedDates = {};
+      }
+      if (task.dueDate) {
+        if (task.completed) {
+          task.completedDates[task.dueDate] = nowIso;
+        } else {
+          delete task.completedDates[task.dueDate];
+        }
+      }
+    }
 
     // If the task was just marked COMPLETED and it is RECURRING, spawn the next occurrence
     if (task.completed && task.recurrence && task.recurrence !== 'none') {
       const nextDate = this.calculateNextRecurrenceDate(task.dueDate, task.recurrence, task.recurrenceInterval);
       
-      // Ensure we don't duplicate if a pending task with same parent & due date already exists
+      // Ensure we don't duplicate if an occurrence (completed or pending) with same parent/title & due date already exists
       const parentId = task.parentRecurringId || task.id;
+      const normTitle = (task.title || '').trim().toLowerCase();
       const alreadyExists = this.state.tasks.some(
-        (t) => !t.completed && 
-               (t.parentRecurringId === parentId || t.id === parentId || (t.title.toLowerCase() === task.title.toLowerCase() && t.recurrence === task.recurrence)) && 
+        (t) => (t.parentRecurringId === parentId || t.id === parentId || ((t.title || '').trim().toLowerCase() === normTitle && t.recurrence === task.recurrence && (t.subject || '') === (task.subject || ''))) &&
                t.dueDate === nextDate
       );
 
@@ -1150,6 +1266,7 @@ class Store {
           parentRecurringId: parentId,
           notes: task.notes || '',
           completed: false,
+          completedDates: {},
           createdAt: nextNowIso,
           updatedAt: nextNowIso,
           deletedAt: null,
@@ -1642,6 +1759,13 @@ class Store {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
     const todayStr = toLocalDateStr(startOfToday);
+
+    if (this._lastRolloverCheckDate !== todayStr) {
+      this._lastRolloverCheckDate = todayStr;
+      if (this.ensureRecurringTaskOccurrences(this.state)) {
+        this.saveState();
+      }
+    }
 
     const todaySessions = this.state.sessions.filter((s) => this.getSessionDateStr(s) === todayStr);
 

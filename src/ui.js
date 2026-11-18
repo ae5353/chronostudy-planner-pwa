@@ -29,6 +29,7 @@ export class ChronoUI {
     // Calendar state
     this.calendarViewMode = 'week'; // 'week' | 'month'
     this.calendarAnchorDate = new Date();
+    this.expandedPlannerTasks = new Set();
 
     this.editingSubjectId = null;
 
@@ -2886,6 +2887,24 @@ create policy "Allow room sync access" on chronostudy_sync
     }
   }
 
+  formatRelativeDueDate(dueDateStr, todayStr, { includePrefix = true } = {}) {
+    if (!dueDateStr) return '';
+    const dueDate = new Date(`${dueDateStr}T12:00:00`);
+    const todayDate = new Date(`${todayStr}T12:00:00`);
+    if (Number.isNaN(dueDate.getTime()) || Number.isNaN(todayDate.getTime())) {
+      return includePrefix ? `Due: ${dueDateStr}` : dueDateStr;
+    }
+    const diffDays = Math.round((dueDate.getTime() - todayDate.getTime()) / 86400000);
+    let label;
+    if (diffDays === 0) label = 'Today';
+    else if (diffDays === -1) label = 'Yesterday';
+    else if (diffDays === 1) label = 'Tomorrow';
+    else if (diffDays < -1) label = `${Math.abs(diffDays)} days ago (${dueDateStr})`;
+    else label = dueDateStr;
+
+    return includePrefix ? `Due: ${label}` : (diffDays < -1 ? `${Math.abs(diffDays)}d ago` : label);
+  }
+
   renderSidebarTasks() {
     if (!this.sidebarTaskList) return;
     const tasks = store.getState().tasks;
@@ -2894,6 +2913,10 @@ create policy "Allow room sync access" on chronostudy_sync
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = toLocalDateStr(today);
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(yesterday);
 
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -2987,6 +3010,8 @@ create policy "Allow room sync access" on chronostudy_sync
       const card = document.createElement('div');
       card.className = `task-card ${task.completed ? 'task-completed' : ''}`;
       card.style.padding = '0.6rem 0.75rem';
+      const isOverdueSidebar = Boolean(task.dueDate && task.dueDate < todayStr && !task.completed);
+      const sidebarDateLabel = task.dueDate ? this.formatRelativeDueDate(task.dueDate, todayStr, { includePrefix: false }) : '';
       card.innerHTML = `
         <div class="task-card-left">
           <label class="custom-checkbox">
@@ -2997,7 +3022,7 @@ create policy "Allow room sync access" on chronostudy_sync
             <div class="task-title clickable-title" style="font-size: 0.84rem;" title="Click to edit task">${this.escapeHTML(task.title)}</div>
             <div class="task-badges" style="margin-top: 0.2rem;">
               <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}; font-size: 0.65rem;">${task.subject ? this.escapeHTML(task.subject) : 'General'}</span>
-              ${task.dueDate ? `<span class="meta-badge date-badge" style="font-size: 0.65rem;">${task.dueDate}</span>` : ''}
+              ${sidebarDateLabel ? `<span class="meta-badge date-badge ${isOverdueSidebar ? 'overdue' : ''}" style="font-size: 0.65rem;" title="Due: ${task.dueDate}">${sidebarDateLabel}</span>` : ''}
               ${task.recurrence && task.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}</span>` : ''}
               ${isMidnightDone ? `<span class="meta-badge midnight-badge" style="font-size: 0.63rem;" title="Completed during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
               ${targetProgressBadge}
@@ -3037,10 +3062,12 @@ create policy "Allow room sync access" on chronostudy_sync
               : 'Completed Tasks';
           } else if (!task.dueDate) {
             groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
-          } else if (task.dueDate < todayStr) {
-            groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'Overdue';
           } else if (task.dueDate === todayStr) {
             groupKey = 'Today';
+          } else if (task.dueDate === yesterdayStr) {
+            groupKey = 'Yesterday';
+          } else if (task.dueDate < yesterdayStr) {
+            groupKey = 'Overdue';
           } else if (task.dueDate === tomorrowStr) {
             groupKey = 'Tomorrow';
           } else if (task.dueDate <= endOfWeekStr) {
@@ -3062,7 +3089,7 @@ create policy "Allow room sync access" on chronostudy_sync
 
       let orderedKeys = Array.from(groupsMap.keys());
       if (groupBy === 'dueDate') {
-        const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
+        const dueOrder = ['Today', 'Yesterday', 'Overdue', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
         orderedKeys.sort((a, b) => {
           const idxA = dueOrder.indexOf(a);
           const idxB = dueOrder.indexOf(b);
@@ -3830,8 +3857,8 @@ create policy "Allow room sync access" on chronostudy_sync
               </span>
             ` : ''}
             ${task.dueDate ? `
-              <span class="meta-badge date-badge ${isOverdue ? 'overdue' : ''}" title="${isOverdue ? 'Task is past due!' : 'Target due date'}">
-                Due: ${task.dueDate}${isOverdue ? ' (Overdue)' : ''}
+              <span class="meta-badge date-badge ${isOverdue ? 'overdue' : ''}" title="${isOverdue ? `Past due (${task.dueDate})` : `Due date: ${task.dueDate}`}">
+                ${this.formatRelativeDueDate(task.dueDate, todayStr, { includePrefix: true })}
               </span>
             ` : '<span class="meta-badge date-badge-none">No deadline</span>'}
             ${task.recurrence && task.recurrence !== 'none' ? `
@@ -3935,6 +3962,10 @@ create policy "Allow room sync access" on chronostudy_sync
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
     
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -4035,10 +4066,12 @@ create policy "Allow room sync access" on chronostudy_sync
             : 'Completed Tasks';
         } else if (!task.dueDate) {
           groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
-        } else if (task.dueDate < todayStr) {
-          groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'Overdue';
         } else if (task.dueDate === todayStr) {
           groupKey = 'Today';
+        } else if (task.dueDate === yesterdayStr) {
+          groupKey = 'Yesterday';
+        } else if (task.dueDate < yesterdayStr) {
+          groupKey = 'Overdue';
         } else if (task.dueDate === tomorrowStr) {
           groupKey = 'Tomorrow';
         } else if (task.dueDate <= endOfWeekStr) {
@@ -4061,7 +4094,7 @@ create policy "Allow room sync access" on chronostudy_sync
     // Define priority order for groups when grouping by dueDate
     let orderedKeys = Array.from(groupsMap.keys());
     if (groupBy === 'dueDate') {
-      const dueOrder = ['Overdue', 'Today', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
+      const dueOrder = ['Today', 'Yesterday', 'Overdue', 'Tomorrow', 'This Week', 'Later', 'No Due Date', 'Completed (Midnight 00:00–05:00)', 'Completed Tasks'];
       orderedKeys.sort((a, b) => {
         const idxA = dueOrder.indexOf(a);
         const idxB = dueOrder.indexOf(b);
@@ -4777,39 +4810,49 @@ create policy "Allow room sync access" on chronostudy_sync
                   const completedTsForDay = (t.completedDates && t.completedDates[dateStr]) || t.completedAt;
                   const isMidnightDone = Boolean(isDoneForDay && store.isMidnightTimestamp(completedTsForDay));
                   const sessStats = store.getTaskSessionStats(t);
+                  const expandKey = `${dateStr}|${t.id}`;
+                  const isExpanded = this.expandedPlannerTasks && this.expandedPlannerTasks.has(expandKey);
                   return `
-                    <div class="cal-task-item ${isDoneForDay ? 'completed' : ''} ${isProjectedRoutine ? 'cal-task-routine' : ''}" style="border-left: 3px solid ${color};">
-                      <div class="cal-task-top">
-                        <span class="cal-subject-badge ${!t.subject ? 'badge-no-course-text' : ''}" style="color: ${color};">${t.subject ? this.escapeHTML(t.subject) : 'General'}</span>
-                        ${t.recurrence && t.recurrence !== 'none' ? `<span class="cal-recurrence-pill" title="Repeats: ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}">↻ ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
-                        ${t.targetMinutes ? `<span class="cal-time-goal">${t.targetMinutes}m</span>` : ''}
-                      </div>
-                      <div class="cal-task-title">${this.escapeHTML(t.title)}</div>
-                      ${((!isProjectedRoutine || isDoneForDay) && (sessStats.sessionCount > 0 || isMidnightDone)) ? `
-                        <div class="cal-task-stats-row">
-                          ${sessStats.sessionCount > 0 ? `<span class="cal-sessions-pill" title="Studied across ${sessStats.sessionCount} session(s)">◷ ${sessStats.sessionCount} sess (${sessStats.totalMins}m)</span>` : ''}
-                          ${isMidnightDone ? `<span class="cal-midnight-pill" title="Completed during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
-                        </div>
-                      ` : ''}
-                      <div class="cal-task-actions">
+                    <div class="cal-task-item ${isDoneForDay ? 'completed' : ''} ${isProjectedRoutine ? 'cal-task-routine' : ''} ${isExpanded ? 'expanded' : ''}" data-expand-key="${expandKey}" style="border-left: 3px solid ${color};">
+                      <div class="cal-task-compact-row">
                         <button class="btn-cal-check" data-task-id="${t.id}" data-date="${dateStr}" title="${isDoneForDay ? 'Mark undone for this day' : 'Mark done for this day'}">
                           ${isDoneForDay ? '✓' : '○'}
                         </button>
-                        ${!isDoneForDay ? `
-                          <button class="btn-cal-study" data-task-id="${t.id}" title="Study Now">
-                            ▶ Study
-                          </button>
+                        <div class="cal-task-title" data-expand-toggle="${expandKey}" title="${this.escapeHTML(t.title)} — Click to toggle details">${this.escapeHTML(t.title)}</div>
+                        <button type="button" class="btn-cal-dropdown" data-expand-toggle="${expandKey}" aria-expanded="${isExpanded}" title="Toggle task details">
+                          <span class="cal-dropdown-chevron">${isExpanded ? '▾' : '▸'}</span>
+                        </button>
+                      </div>
+                      <div class="cal-task-details-dropdown" style="display: ${isExpanded ? 'flex' : 'none'};">
+                        <div class="cal-task-top">
+                          <span class="cal-subject-badge ${!t.subject ? 'badge-no-course-text' : ''}" style="color: ${color};">${t.subject ? this.escapeHTML(t.subject) : 'General'}</span>
+                          ${t.recurrence && t.recurrence !== 'none' ? `<span class="cal-recurrence-pill" title="Repeats: ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}">↻ ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
+                          ${t.targetMinutes ? `<span class="cal-time-goal">${t.targetMinutes}m</span>` : ''}
+                        </div>
+                        ${((!isProjectedRoutine || isDoneForDay) && (sessStats.sessionCount > 0 || isMidnightDone)) ? `
+                          <div class="cal-task-stats-row">
+                            ${sessStats.sessionCount > 0 ? `<span class="cal-sessions-pill" title="Studied across ${sessStats.sessionCount} session(s)">◷ ${sessStats.sessionCount} sess (${sessStats.totalMins}m)</span>` : ''}
+                            ${isMidnightDone ? `<span class="cal-midnight-pill" title="Completed during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
+                          </div>
                         ` : ''}
-                        <button class="btn-cal-edit" data-task-id="${t.id}" title="Edit task">✎</button>
-                        <a 
-                          href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${dateStr.replace(/-/g, '')}T090000Z/${dateStr.replace(/-/g, '')}T100000Z&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" 
-                          target="_blank" 
-                          class="btn-cal-gcal" 
-                          title="Add to Google Calendar"
-                        >
-                          GCal
-                        </a>
-                        <button class="btn-cal-delete" data-task-id="${t.id}" title="Delete task">✕</button>
+                        ${t.notes ? `<div class="cal-task-notes">${this.escapeHTML(t.notes)}</div>` : ''}
+                        <div class="cal-task-actions">
+                          ${!isDoneForDay ? `
+                            <button class="btn-cal-study" data-task-id="${t.id}" title="Study Now">
+                              ▶ Study
+                            </button>
+                          ` : ''}
+                          <button class="btn-cal-edit" data-task-id="${t.id}" title="Edit task">✎</button>
+                          <a 
+                            href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${dateStr.replace(/-/g, '')}T090000Z/${dateStr.replace(/-/g, '')}T100000Z&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" 
+                            target="_blank" 
+                            class="btn-cal-gcal" 
+                            title="Add to Google Calendar"
+                          >
+                            GCal
+                          </a>
+                          <button class="btn-cal-delete" data-task-id="${t.id}" title="Delete task">✕</button>
+                        </div>
                       </div>
                     </div>
                   `;
@@ -4854,15 +4897,30 @@ create policy "Allow room sync access" on chronostudy_sync
       });
     });
 
-    this.calendarViewContainer.querySelectorAll('.cal-task-title').forEach((titleEl) => {
-      titleEl.style.cursor = 'pointer';
-      titleEl.title = 'Click to edit task';
-      titleEl.addEventListener('click', (e) => {
-        const item = e.target.closest('.cal-task-item');
-        const checkBtn = item ? item.querySelector('.btn-cal-check') : null;
-        if (checkBtn && checkBtn.dataset.taskId) {
-          this.openTaskEditModal(checkBtn.dataset.taskId);
+    this.calendarViewContainer.querySelectorAll('[data-expand-toggle]').forEach((el) => {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = el.dataset.expandToggle;
+        if (!key) return;
+        const card = el.closest('.cal-task-item');
+        const details = card ? card.querySelector('.cal-task-details-dropdown') : null;
+        const chevron = card ? card.querySelector('.cal-dropdown-chevron') : null;
+        const btn = card ? card.querySelector('.btn-cal-dropdown') : null;
+        if (this.expandedPlannerTasks.has(key)) {
+          this.expandedPlannerTasks.delete(key);
+          if (card) card.classList.remove('expanded');
+          if (details) details.style.display = 'none';
+          if (chevron) chevron.textContent = '▸';
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        } else {
+          this.expandedPlannerTasks.add(key);
+          if (card) card.classList.add('expanded');
+          if (details) details.style.display = 'flex';
+          if (chevron) chevron.textContent = '▾';
+          if (btn) btn.setAttribute('aria-expanded', 'true');
         }
+        playClickSound();
       });
     });
 

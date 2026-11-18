@@ -4766,31 +4766,6 @@ create policy "Allow room sync access" on chronostudy_sync
 
       const totalMinsStudied = Math.round(daySessions.reduce((acc, s) => acc + (s.durationSec || 0), 0) / 60);
 
-      // Hide sessions already represented by a dayTask card so nothing appears twice, and group remaining standalone sessions
-      const displayedTaskIds = new Set(dayTasks.map((t) => t.id));
-      const displayedTaskNormTitles = new Set(dayTasks.map((t) => `${(t.title || '').trim().toLowerCase()}|${t.subject || ''}`));
-      const standaloneMap = new Map();
-      daySessions.forEach((s) => {
-        const normKey = `${(s.topic || '').trim().toLowerCase()}|${s.subject === 'General' ? '' : (s.subject || '')}`;
-        if ((s.taskId && displayedTaskIds.has(s.taskId)) || displayedTaskNormTitles.has(normKey)) {
-          return;
-        }
-        const grpKey = `${(s.topic || 'Focus Session').trim().toLowerCase()}|${s.subject || ''}`;
-        if (!standaloneMap.has(grpKey)) {
-          standaloneMap.set(grpKey, {
-            topic: s.topic || 'Focus Session',
-            subject: s.subject || 'General',
-            totalSec: 0,
-            count: 0,
-            notes: s.notes || ''
-          });
-        }
-        const entry = standaloneMap.get(grpKey);
-        entry.totalSec += (s.durationSec || 0);
-        entry.count += 1;
-      });
-      const groupedStandaloneSessions = Array.from(standaloneMap.values());
-
       html += `
         <div class="calendar-day-column ${isToday ? 'today-col' : ''}" data-date="${dateStr}">
           <div class="day-col-header">
@@ -4864,16 +4839,23 @@ create policy "Allow room sync access" on chronostudy_sync
               </div>
             </div>
 
-            <!-- Standalone completed study sessions on this day (excluding sessions already displayed on tasks above) -->
-            ${groupedStandaloneSessions.length > 0 ? `
+            <!-- All completed focus sessions on this day -->
+            ${daySessions.length > 0 ? `
               <div class="day-sessions-summary">
-                <span class="day-section-sub">Focus Sessions:</span>
-                ${groupedStandaloneSessions.map((gs) => `
-                  <div class="cal-session-snippet" title="${this.escapeHTML(gs.notes || gs.subject)}">
-                    <span class="cal-session-dur">${Math.max(1, Math.round(gs.totalSec / 60))}m${gs.count > 1 ? ` (${gs.count}x)` : ''}</span>
-                    <span class="cal-session-title">${this.escapeHTML(gs.topic)}</span>
-                  </div>
-                `).join('')}
+                <span class="day-section-sub">Completed Sessions (${daySessions.length}):</span>
+                ${daySessions.map((s) => {
+                  const sColor = store.getSubjectColor(s.subject);
+                  const sMins = Math.max(1, Math.round((s.durationSec || 0) / 60));
+                  const sStart = s.startTime ? new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                  const sEnd = s.endTime ? new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                  const tip = [s.subject || 'General', (sStart && sEnd) ? `${sStart}–${sEnd}` : '', s.notes || ''].filter(Boolean).join(' • ');
+                  return `
+                    <div class="cal-session-snippet" style="border-left: 2px solid ${sColor}; padding-left: 0.3rem;" title="${this.escapeHTML(tip)}">
+                      <span class="cal-session-dur">${sMins}m</span>
+                      <span class="cal-session-title">${this.escapeHTML(s.topic || 'Focus Session')}</span>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             ` : ''}
 

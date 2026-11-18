@@ -15,6 +15,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('chronostudy_v3_state');
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          var s = parsed && parsed.settings;
+          if (s && s.theme) {
+            var t = s.theme === 'dark' ? 'slate' : s.theme;
+            document.documentElement.setAttribute('data-theme', t);
+          }
+          if (s && s.fontStyle) {
+            document.documentElement.setAttribute('data-font', s.fontStyle);
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
   <link rel="stylesheet" href="./src/styles.css" />
   <!-- Google Identity Services for 1-Click Google Drive Sync -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>

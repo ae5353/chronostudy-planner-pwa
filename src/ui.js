@@ -2935,9 +2935,9 @@ create policy "Allow room sync access" on chronostudy_sync
 
     // 1. Filter by Smart Tab
     if (sFilter === 'pending') {
-      filtered = filtered.filter((t) => !t.completed);
+      filtered = filtered.filter((t) => !t.completed && !store.isExpiredFrequentTask(t, todayStr));
     } else if (sFilter === 'today') {
-      filtered = filtered.filter((t) => !t.completed && (t.dueDate === todayStr || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr))));
+      filtered = filtered.filter((t) => !t.completed && !store.isExpiredFrequentTask(t, todayStr) && (t.dueDate === todayStr || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr))));
     } else if (sFilter === 'planned') {
       filtered = filtered.filter((t) => !t.completed && t.dueDate && t.dueDate >= todayStr);
     } else if (sFilter === 'completed') {
@@ -3068,10 +3068,12 @@ create policy "Allow room sync access" on chronostudy_sync
             groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
           } else if (task.dueDate === todayStr) {
             groupKey = 'Today';
-          } else if (task.dueDate === yesterdayStr) {
-            groupKey = 'Yesterday';
-          } else if (task.dueDate < yesterdayStr) {
-            groupKey = 'Overdue';
+          } else if (task.dueDate < todayStr) {
+            if (store.isFrequentRecurringTask(task) && task.dueDate === yesterdayStr) {
+              groupKey = 'Yesterday';
+            } else {
+              groupKey = 'Overdue';
+            }
           } else if (task.dueDate === tomorrowStr) {
             groupKey = 'Tomorrow';
           } else if (task.dueDate <= endOfWeekStr) {
@@ -3945,7 +3947,8 @@ create policy "Allow room sync access" on chronostudy_sync
 
   renderTasks() {
     const tasks = store.getState().tasks;
-    const pendingCount = tasks.filter((t) => !t.completed).length;
+    const todayForCount = toLocalDateStr(new Date());
+    const pendingCount = tasks.filter((t) => !t.completed && !store.isExpiredFrequentTask(t, todayForCount)).length;
 
     if (this.statPendingTasks) {
       this.statPendingTasks.textContent = `${pendingCount} to do`;
@@ -3985,9 +3988,9 @@ create policy "Allow room sync access" on chronostudy_sync
     const view = this.taskViewFilter || 'todo';
 
     if (view === 'todo') {
-      filtered = filtered.filter((t) => !t.completed);
+      filtered = filtered.filter((t) => !t.completed && !store.isExpiredFrequentTask(t, todayStr));
     } else if (view === 'today') {
-      filtered = filtered.filter((t) => t.dueDate === todayStr || (t.createdAt && t.createdAt.startsWith(todayStr)) || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr)));
+      filtered = filtered.filter((t) => !store.isExpiredFrequentTask(t, todayStr) && (t.dueDate === todayStr || (t.createdAt && t.createdAt.startsWith(todayStr)) || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr))));
     } else if (view === 'planned') {
       filtered = filtered.filter((t) => Boolean(t.dueDate));
     } else if (view === 'general') {
@@ -4072,10 +4075,12 @@ create policy "Allow room sync access" on chronostudy_sync
           groupKey = (task.recurrence && task.recurrence !== 'none') ? 'Today' : 'No Due Date';
         } else if (task.dueDate === todayStr) {
           groupKey = 'Today';
-        } else if (task.dueDate === yesterdayStr) {
-          groupKey = 'Yesterday';
-        } else if (task.dueDate < yesterdayStr) {
-          groupKey = 'Overdue';
+        } else if (task.dueDate < todayStr) {
+          if (store.isFrequentRecurringTask(task) && task.dueDate === yesterdayStr) {
+            groupKey = 'Yesterday';
+          } else {
+            groupKey = 'Overdue';
+          }
         } else if (task.dueDate === tomorrowStr) {
           groupKey = 'Tomorrow';
         } else if (task.dueDate <= endOfWeekStr) {

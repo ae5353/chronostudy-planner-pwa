@@ -432,10 +432,32 @@ class Store {
     this.ensureRecurringTaskOccurrences(state);
   }
 
+  isFrequentRecurringTask(task) {
+    if (!task || !task.recurrence || task.recurrence === 'none') return false;
+    if (task.recurrence === 'daily' || task.recurrence === 'weekdays') return true;
+    if (task.recurrence === 'custom_days') {
+      const interval = Math.max(1, parseInt(task.recurrenceInterval || 1, 10) || 1);
+      return interval < 7;
+    }
+    return false;
+  }
+
+  isExpiredFrequentTask(task, todayStr = toLocalDateStr(new Date())) {
+    if (!task || task.completed || !this.isFrequentRecurringTask(task)) return false;
+    if (!task.dueDate) return false;
+    const d = new Date(`${todayStr}T12:00:00`);
+    d.setDate(d.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(d);
+    return task.dueDate < yesterdayStr;
+  }
+
   ensureRecurringTaskOccurrences(state = this.state) {
     if (!state || !Array.isArray(state.tasks)) return false;
     const now = new Date();
     const todayStr = toLocalDateStr(now);
+    const yestDate = new Date(now);
+    yestDate.setDate(yestDate.getDate() - 1);
+    const yesterdayStr = toLocalDateStr(yestDate);
     const minBackfill = new Date(now);
     minBackfill.setDate(minBackfill.getDate() - 7);
     const minBackfillStr = toLocalDateStr(minBackfill);
@@ -476,6 +498,7 @@ class Store {
       if (!template || !template.dueDate) return;
 
       const rootParentId = template.parentRecurringId || template.id;
+      const seriesMinBackfillStr = this.isFrequentRecurringTask(template) ? yesterdayStr : minBackfillStr;
       let cursorDate = template.dueDate;
       let safety = 0;
 
@@ -486,8 +509,8 @@ class Store {
         cursorDate = nextDate;
 
         if (cursorDate > todayStr) break;
-        // Materialize recent occurrences (within last 7 days up to today) if missing and not tombstoned
-        if (cursorDate >= minBackfillStr && !existingDates.has(cursorDate)) {
+        // Materialize recent occurrences (yesterday & today for frequent tasks; up to 7 days for weekly+) if missing and not tombstoned
+        if (cursorDate >= seriesMinBackfillStr && !existingDates.has(cursorDate)) {
           const occId = `task-occ-${rootParentId}-${cursorDate}`;
           if (!(state.deletedTaskIds && state.deletedTaskIds[occId])) {
             const doneTs = template.completedDates && template.completedDates[cursorDate] ? template.completedDates[cursorDate] : null;

@@ -287,4 +287,26 @@ assert.equal(fmt(yesterdayLocalStr, todayLocalStr, { includePrefix: true }), 'Du
 assert.equal(fmt(tomorrowLocalStr, todayLocalStr, { includePrefix: true }), 'Due: Tomorrow');
 assert.equal(fmt(yesterdayLocalStr, todayLocalStr, { includePrefix: false }), 'Yesterday');
 
+// --- Test 7: Frequent Recurring vs Weekly/One-Time Overdue Expiration ---
+console.log('Test 7: Frequent recurring expiration (>1 day old hidden from Task Bar Overdue) vs weekly/one-time...');
+const twoDaysAgo = new Date(nowLocal);
+twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+const twoDaysAgoStr = toLocalDateStr(twoDaysAgo);
+
+assert.equal(store.isFrequentRecurringTask({ recurrence: 'daily' }), true);
+assert.equal(store.isFrequentRecurringTask({ recurrence: 'weekdays' }), true);
+assert.equal(store.isFrequentRecurringTask({ recurrence: 'custom_days', recurrenceInterval: 3 }), true);
+assert.equal(store.isFrequentRecurringTask({ recurrence: 'weekly' }), false);
+assert.equal(store.isFrequentRecurringTask({ recurrence: 'none' }), false);
+
+const oldDaily = { id: 'old-d', recurrence: 'daily', dueDate: twoDaysAgoStr, completed: false };
+const yestDaily = { id: 'yest-d', recurrence: 'daily', dueDate: yesterdayLocalStr, completed: false };
+const oldWeekly = { id: 'old-w', recurrence: 'weekly', dueDate: twoDaysAgoStr, completed: false };
+const oldOneOff = { id: 'old-o', recurrence: 'none', dueDate: twoDaysAgoStr, completed: false };
+
+assert.equal(store.isExpiredFrequentTask(oldDaily, todayLocalStr), true, 'Daily task >= 2 days old must be excluded from Task Bar Overdue');
+assert.equal(store.isExpiredFrequentTask(yestDaily, todayLocalStr), false, 'Yesterday daily task remains visible in Yesterday');
+assert.equal(store.isExpiredFrequentTask(oldWeekly, todayLocalStr), false, 'Weekly task >= 2 days old must stay in Overdue');
+assert.equal(store.isExpiredFrequentTask(oldOneOff, todayLocalStr), false, 'One-time task >= 2 days old must stay in Overdue');
+
 console.log('ALL PLANNER, MIDNIGHT, TASK-SUBJECT SYNC & SESSION COUNT TESTS PASSED!');

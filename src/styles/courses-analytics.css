@@ -164,7 +164,7 @@
 .subj-group-tab.active {
   background-color: var(--primary);
   border-color: var(--primary);
-  color: #ffffff;
+  color: var(--primary-fg, #ffffff);
 }
 
 .subjects-group-block {
@@ -765,7 +765,7 @@
 
 .analytics-scope-controls .btn-sm.active {
   background-color: var(--primary);
-  color: #fff;
+  color: var(--primary-fg, #ffffff);
   border-color: var(--primary);
 }
 

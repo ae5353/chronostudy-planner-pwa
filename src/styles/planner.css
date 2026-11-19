@@ -110,7 +110,7 @@
 
 .today-pill {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--primary-fg, #ffffff);
   width: 28px;
   height: 28px;
   line-height: 28px;
@@ -599,7 +599,7 @@
 
 .today-num-pill {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--primary-fg, #ffffff);
   padding: 0.1rem 0.4rem;
   border-radius: var(--radius-sm);
 }

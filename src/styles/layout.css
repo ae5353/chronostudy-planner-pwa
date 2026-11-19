@@ -78,7 +78,7 @@
 
 .nav-tab-btn.active {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--primary-fg, #ffffff);
   font-weight: 600;
   box-shadow: 0 1px 3px var(--primary-glow);
 }
@@ -142,9 +142,20 @@
 /* PC Dashboard Grid */
 .pc-dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(460px, 1fr) minmax(400px, 460px);
+  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 440px);
   gap: 1.25rem;
   align-items: start;
+}
+
+.pc-dashboard-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 1120px) {
+  .pc-dashboard-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 360px);
+    gap: 1rem;
+  }
 }
 
 .pc-dashboard-grid > .panel-card {
@@ -198,6 +209,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
   margin-bottom: 1.25rem;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border-color);

@@ -653,8 +653,12 @@ body.layout-format-mobile .folder-path-text {
    ========================================================================== */
 body.layout-format-desktop .pc-dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(460px, 1fr) minmax(400px, 460px);
+  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 440px);
   gap: 1.25rem;
+}
+
+body.layout-format-desktop .pc-dashboard-grid > * {
+  min-width: 0;
 }
 
 body.layout-format-desktop .pc-dashboard-grid > .panel-card {
@@ -680,6 +684,31 @@ body.layout-format-desktop .timer-station.timer-cockpit {
 body.layout-format-desktop .timer-circle-container {
   width: 250px;
   height: 250px;
+}
+
+@media (max-width: 1120px) {
+  body.layout-format-desktop .pc-dashboard-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(280px, 360px);
+    gap: 1rem;
+  }
+
+  body.layout-format-desktop .timer-station.timer-cockpit {
+    gap: 0.85rem;
+    padding: 0.85rem;
+  }
+
+  body.layout-format-desktop .timer-circle-container {
+    width: 204px;
+    height: 204px;
+  }
+}
+
+@media (max-width: 860px) {
+  body.layout-format-desktop .timer-station.timer-cockpit {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
 }
 
 body.layout-format-desktop .header-nav {

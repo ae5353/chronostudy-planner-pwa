@@ -14,7 +14,7 @@
   <link rel="manifest" href="./manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600;700&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
     (function () {
       try {
@@ -52,16 +52,16 @@
 
       <!-- Navigation Tabs (PC First) -->
       <nav class="header-nav">
-        <button class="nav-tab-btn active" data-view="focus">
+        <button type="button" class="nav-tab-btn active" data-view="focus">
           Focus
         </button>
-        <button class="nav-tab-btn" data-view="calendar">
+        <button type="button" class="nav-tab-btn" data-view="calendar">
           Planner
         </button>
-        <button class="nav-tab-btn" data-view="subjects">
+        <button type="button" class="nav-tab-btn" data-view="subjects">
           Courses
         </button>
-        <button class="nav-tab-btn" data-view="history">
+        <button type="button" class="nav-tab-btn" data-view="history">
           Analytics
         </button>
       </nav>
@@ -86,20 +86,20 @@
 
       <!-- Quick Actions -->
       <div class="header-actions">
-        <button id="btn-cloud-sync" class="btn btn-secondary cloud-sync-btn" title="Multi-Device Cloud Sync Status">
+        <button type="button" id="btn-cloud-sync" class="btn btn-secondary cloud-sync-btn" title="Multi-Device Cloud Sync Status">
           <span id="cloud-sync-dot" class="sync-dot sync-dot-idle"></span>
           <span id="cloud-sync-label" class="cloud-sync-label">Sync</span>
         </button>
-        <button id="btn-toggle-task-sidebar" class="btn btn-secondary nav-sidebar-btn" title="Toggle Study Tasks Sidebar (Alt+T)">
+        <button type="button" id="btn-toggle-task-sidebar" class="btn btn-secondary nav-sidebar-btn" title="Toggle Study Tasks Sidebar (Alt+T)">
           <span style="font-size: 0.9rem; opacity: 0.85;">◨</span> Tasks
         </button>
-        <button id="btn-log-past" class="btn btn-secondary" title="Manually record offline study time">
+        <button type="button" id="btn-log-past" class="btn btn-secondary" title="Manually record offline study time">
           + Log Past
         </button>
-        <button id="btn-theme-palette" class="btn btn-icon theme-btn" title="Themes & Color Palette">
+        <button type="button" id="btn-theme-palette" class="btn btn-icon theme-btn" title="Themes & Color Palette" aria-label="Themes and color palette">
           ◈
         </button>
-        <button id="backup-btn" class="btn btn-icon" title="Data Backup & Export">
+        <button type="button" id="backup-btn" class="btn btn-icon" title="Data Backup & Export" aria-label="Data backup and export">
           ⚙
         </button>
       </div>
@@ -133,21 +133,21 @@
             <div style="display: flex; gap: 0.4rem; align-items: center;">
               <!-- Mode Toggle -->
               <div class="mode-toggle-group">
-                <button id="mode-stopwatch" class="mode-btn active" title="Count up from zero for open-ended study">
+                <button type="button" id="mode-stopwatch" class="mode-btn active" title="Count up from zero for open-ended study">
                   Stopwatch
                 </button>
-                <button id="mode-countdown" class="mode-btn" title="Focus block countdown">
+                <button type="button" id="mode-countdown" class="mode-btn" title="Focus block countdown">
                   Countdown
                 </button>
               </div>
 
               <!-- Floating Mini-Timer Widget (PiP) -->
-              <button id="btn-pip-timer" class="btn btn-secondary btn-pip" title="Floating On-Screen Mini-Timer (Stays on top of PDFs & IDEs)">
+              <button type="button" id="btn-pip-timer" class="btn btn-secondary btn-pip" title="Floating On-Screen Mini-Timer (Stays on top of PDFs & IDEs)">
                 Widget
               </button>
 
               <!-- Zen Mode Button -->
-              <button id="btn-zen-mode" class="btn btn-secondary btn-zen" title="Focus Theater Mode (Distraction-Free)">
+              <button type="button" id="btn-zen-mode" class="btn btn-secondary btn-zen" title="Focus Theater Mode (Distraction-Free)">
                 Fullscreen
               </button>
             </div>
@@ -155,11 +155,11 @@
 
           <!-- Countdown presets + Freeform Custom Minutes -->
           <div id="countdown-presets" class="preset-pills" style="display: none;">
-            <button class="preset-btn" data-mins="15">15m</button>
-            <button class="preset-btn active" data-mins="25">25m</button>
-            <button class="preset-btn" data-mins="45">45m</button>
-            <button class="preset-btn" data-mins="60">60m</button>
-            <button class="preset-btn" data-mins="90">90m</button>
+            <button type="button" class="preset-btn" data-mins="15">15m</button>
+            <button type="button" class="preset-btn active" data-mins="25">25m</button>
+            <button type="button" class="preset-btn" data-mins="45">45m</button>
+            <button type="button" class="preset-btn" data-mins="60">60m</button>
+            <button type="button" class="preset-btn" data-mins="90">90m</button>
             <div class="custom-mins-box">
               <input type="number" id="countdown-custom-mins" class="input-text countdown-custom-input" placeholder="Mins" min="1" max="720" title="Enter any custom minutes (e.g. 35, 50, 75, 120)" />
               <button type="button" id="btn-set-custom-mins" class="btn btn-secondary btn-custom-mins">Set</button>
@@ -182,7 +182,7 @@
           <!-- Linked Task Indicator -->
           <div id="linked-task-banner" class="linked-task-pill" style="display: none;">
             <span>Linked Task: <strong id="linked-task-title"></strong></span>
-            <button id="btn-unlink-task" class="btn-unlink" title="Unlink this task">✕</button>
+            <button type="button" id="btn-unlink-task" class="btn-unlink" title="Unlink this task" aria-label="Unlink current task">✕</button>
           </div>
 
           <!-- Timer Centerpiece: Twin-Cockpit Analog Mechanical Chronograph & Precision Digital Display -->
@@ -305,13 +305,13 @@
 
                 <!-- Timer Controls -->
                 <div class="timer-controls digital-controls">
-                  <button id="btn-timer-toggle" class="btn btn-primary btn-start">
+                  <button type="button" id="btn-timer-toggle" class="btn btn-primary btn-start">
                     <span class="icon">▶</span> Start Studying
                   </button>
-                  <button id="btn-timer-finish" class="btn btn-secondary btn-finish" disabled>
+                  <button type="button" id="btn-timer-finish" class="btn btn-secondary btn-finish" disabled>
                     ✓ Finish
                   </button>
-                  <button id="btn-timer-reset" class="btn btn-secondary btn-reset" disabled title="Reset timer">
+                  <button type="button" id="btn-timer-reset" class="btn btn-secondary btn-reset" disabled title="Reset timer" aria-label="Reset timer">
                     ↺
                   </button>
                 </div>
@@ -480,13 +480,13 @@
         <div class="calendar-controls-bar">
           <div class="cal-nav-group">
             <div class="cal-view-toggle">
-              <button id="cal-mode-week" class="mode-btn active">Weekly View</button>
-              <button id="cal-mode-month" class="mode-btn">Monthly View</button>
+              <button type="button" id="cal-mode-week" class="mode-btn active">Weekly View</button>
+              <button type="button" id="cal-mode-month" class="mode-btn">Monthly View</button>
             </div>
             <div class="cal-date-nav">
-              <button id="cal-prev-btn" class="btn btn-icon" title="Previous">◀</button>
-              <button id="cal-today-btn" class="btn btn-secondary">Today</button>
-              <button id="cal-next-btn" class="btn btn-icon" title="Next">▶</button>
+              <button type="button" id="cal-prev-btn" class="btn btn-icon" title="Previous" aria-label="Previous period">◀</button>
+              <button type="button" id="cal-today-btn" class="btn btn-secondary">Today</button>
+              <button type="button" id="cal-next-btn" class="btn btn-icon" title="Next" aria-label="Next period">▶</button>
               <h2 id="cal-title-header" class="cal-title-header">November 2026</h2>
             </div>
           </div>
@@ -495,13 +495,13 @@
             <select id="cal-subject-filter" class="input-select" style="max-width: 180px;">
               <option value="all">All Subjects</option>
             </select>
-            <button id="btn-manage-schedule" class="btn btn-secondary" title="Arrange and edit weekly lectures and seminars">
+            <button type="button" id="btn-manage-schedule" class="btn btn-secondary" title="Arrange and edit weekly lectures and seminars">
               Manage Schedule
             </button>
-            <button id="btn-open-weekly-event-modal" class="btn btn-secondary" title="Add recurring weekly class, academy or commitment">
+            <button type="button" id="btn-open-weekly-event-modal" class="btn btn-secondary" title="Add recurring weekly class, academy or commitment">
               + Weekly Event
             </button>
-            <button id="btn-gcal-sync" class="btn btn-primary btn-gcal" title="Sync with Google Calendar">
+            <button type="button" id="btn-gcal-sync" class="btn btn-primary btn-gcal" title="Sync with Google Calendar">
               Calendar Sync
             </button>
           </div>
@@ -536,13 +536,13 @@
             </p>
           </div>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button id="btn-manage-categories" class="btn btn-secondary" title="Rename or add categories">
+            <button type="button" id="btn-manage-categories" class="btn btn-secondary" title="Rename or add categories">
               Manage Categories
             </button>
-            <button id="btn-open-add-weekly-event-sub" class="btn btn-secondary">
+            <button type="button" id="btn-open-add-weekly-event-sub" class="btn btn-secondary">
               + Weekly Event
             </button>
-            <button id="btn-open-add-subject" class="btn btn-primary">
+            <button type="button" id="btn-open-add-subject" class="btn btn-primary">
               + Add New Subject
             </button>
           </div>
@@ -550,7 +550,7 @@
 
         <!-- Subject Group Filter Tabs -->
         <div id="subjects-group-filter-bar" class="subject-group-tabs">
-          <button class="subj-group-tab active" data-group="all">All Groups</button>
+          <button type="button" class="subj-group-tab active" data-group="all">All Groups</button>
           <!-- Populated via JS -->
         </div>
 
@@ -569,10 +569,10 @@
           <span id="analytics-week-range-label" class="analytics-week-range">This Week</span>
         </div>
         <div class="analytics-week-nav">
-          <button id="btn-analytics-prev-week" class="btn btn-secondary btn-sm" title="Previous Week">◀ Prev</button>
+          <button type="button" id="btn-analytics-prev-week" class="btn btn-secondary btn-sm" title="Previous Week">◀ Prev</button>
           <select id="analytics-week-select" class="input-select analytics-week-select" title="Jump to recorded week"></select>
-          <button id="btn-analytics-next-week" class="btn btn-secondary btn-sm" title="Next Week">Next ▶</button>
-          <button id="btn-analytics-this-week" class="btn btn-secondary btn-sm" title="Jump to Current Week">This Week</button>
+          <button type="button" id="btn-analytics-next-week" class="btn btn-secondary btn-sm" title="Next Week">Next ▶</button>
+          <button type="button" id="btn-analytics-this-week" class="btn btn-secondary btn-sm" title="Jump to Current Week">This Week</button>
         </div>
       </div>
 
@@ -667,7 +667,7 @@
             <select id="history-subject-filter" class="input-select" style="max-width: 170px; font-size: 0.8rem; padding: 0.35rem 0.6rem;">
               <option value="all">All Subjects</option>
             </select>
-            <button id="btn-export-csv" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;" title="Export study sessions as CSV">
+            <button type="button" id="btn-analytics-export-csv" class="btn btn-secondary" style="font-size: 0.78rem; padding: 0.35rem 0.75rem;" title="Export study sessions as CSV">
               Export CSV
             </button>
           </div>
@@ -703,9 +703,9 @@
             <option value="cafe">Library / Cafe</option>
           </select>
         </div>
-        <button id="btn-zen-toggle-notes" class="btn btn-secondary" title="Toggle Scratchpad (N)" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">Notes</button>
-        <button id="btn-fullscreen" class="btn btn-icon" title="Toggle Browser Fullscreen (F)">[ ]</button>
-        <button id="btn-exit-zen" class="btn btn-secondary" title="Exit Focus Mode (Esc)">✕ Exit Focus</button>
+        <button type="button" id="btn-zen-toggle-notes" class="btn btn-secondary" title="Toggle Scratchpad (N)" style="font-size: 0.82rem; padding: 0.4rem 0.75rem;">Notes</button>
+        <button type="button" id="btn-fullscreen" class="btn btn-icon" title="Toggle Browser Fullscreen (F)" aria-label="Toggle fullscreen mode">[ ]</button>
+        <button type="button" id="btn-exit-zen" class="btn btn-secondary" title="Exit Focus Mode (Esc)">✕ Exit Focus</button>
       </div>
     </div>
 
@@ -825,13 +825,13 @@
 
             <!-- In-Theater Controls -->
             <div class="zen-controls">
-              <button id="btn-zen-timer-toggle" class="btn btn-primary" style="flex: 1.4; padding: 0.65rem 1rem; font-size: 0.95rem;">
+              <button type="button" id="btn-zen-timer-toggle" class="btn btn-primary" style="flex: 1.4; padding: 0.65rem 1rem; font-size: 0.95rem;">
                 <span class="icon">▶</span> Start Studying
               </button>
-              <button id="btn-zen-finish-session" class="btn btn-secondary" style="flex: 1; padding: 0.65rem 0.85rem; font-size: 0.85rem;" disabled>
+              <button type="button" id="btn-zen-finish-session" class="btn btn-secondary" style="flex: 1; padding: 0.65rem 0.85rem; font-size: 0.85rem;" disabled>
                 ✓ Finish
               </button>
-              <button id="btn-zen-reset-timer" class="btn btn-icon" title="Reset (R)" style="padding: 0.65rem; font-size: 0.9rem;" disabled>
+              <button type="button" id="btn-zen-reset-timer" class="btn btn-icon" title="Reset (R)" style="padding: 0.65rem; font-size: 0.9rem;" disabled aria-label="Reset timer">
                 ↺
               </button>
             </div>
@@ -844,7 +844,7 @@
     <div id="zen-notes-container" class="zen-notes-container collapsed">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
         <label class="notes-label" style="font-size: 0.8rem; margin: 0;">Focus Scratchpad & Real-Time Notes</label>
-        <button id="btn-zen-close-notes" class="btn btn-icon" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;" title="Hide Notes">✕</button>
+        <button type="button" id="btn-zen-close-notes" class="btn btn-icon" style="padding: 0.1rem 0.4rem; font-size: 0.75rem;" title="Hide Notes" aria-label="Hide focus scratchpad">✕</button>
       </div>
       <textarea id="zen-notes-area" class="input-textarea zen-textarea" placeholder="Jot down formulas, notes, and questions as you study... (automatically saved to study log)"></textarea>
     </div>
@@ -852,32 +852,32 @@
 
   <!-- Mobile Bottom Navigation Bar -->
   <nav class="mobile-nav-bar">
-    <button class="mobile-nav-btn nav-tab-btn active" data-view="focus" data-focus-target="timer" title="Focus Timer">
+    <button type="button" class="mobile-nav-btn nav-tab-btn active" data-view="focus" data-focus-target="timer" title="Focus Timer">
       <span class="mobile-nav-icon">◷</span>
       <span>Timer</span>
     </button>
-    <button class="mobile-nav-btn nav-tab-btn" data-view="focus" data-focus-target="tasks" title="Study Tasks & Backlog">
+    <button type="button" class="mobile-nav-btn nav-tab-btn" data-view="focus" data-focus-target="tasks" title="Study Tasks & Backlog">
       <span class="mobile-nav-icon">◨</span>
       <span>Tasks</span>
     </button>
-    <button class="mobile-nav-btn nav-tab-btn" data-view="calendar" title="Academic Planner">
+    <button type="button" class="mobile-nav-btn nav-tab-btn" data-view="calendar" title="Academic Planner">
       <span class="mobile-nav-icon">▦</span>
       <span>Planner</span>
     </button>
-    <button class="mobile-nav-btn nav-tab-btn" data-view="subjects" title="Courses & Syllabus">
+    <button type="button" class="mobile-nav-btn nav-tab-btn" data-view="subjects" title="Courses & Syllabus">
       <span class="mobile-nav-icon">◈</span>
       <span>Courses</span>
     </button>
-    <button class="mobile-nav-btn nav-tab-btn" data-view="history" title="Analytics & History">
+    <button type="button" class="mobile-nav-btn nav-tab-btn" data-view="history" title="Analytics & History">
       <span class="mobile-nav-icon">▲</span>
       <span>Analytics</span>
     </button>
   </nav>
 
   <!-- MODAL: Finish Study Session -->
-  <div id="finish-session-modal" class="modal">
+  <div id="finish-session-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="finish-modal-title" aria-hidden="true">
     <div class="modal-content">
-      <h3 class="modal-title">Save Study Session</h3>
+      <h3 id="finish-modal-title" class="modal-title">Save Study Session</h3>
       <div class="modal-body">
         <div class="modal-stats-summary">
           <div class="modal-stat-line">Time Studied: <strong id="finish-modal-duration"></strong></div>
@@ -911,16 +911,16 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-cancel-finish-session" class="btn btn-secondary">Resume Timer</button>
-        <button id="btn-save-finished-session" class="btn btn-primary">Save to Study Log</button>
+        <button type="button" id="btn-cancel-finish-session" class="btn btn-secondary">Resume Timer</button>
+        <button type="button" id="btn-save-finished-session" class="btn btn-primary">Save to Study Log</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: Log Past Study -->
-  <div id="manual-log-modal" class="modal">
+  <div id="manual-log-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="manual-log-modal-title" aria-hidden="true">
     <div class="modal-content">
-      <h3 class="modal-title">Log Past Study Session</h3>
+      <h3 id="manual-log-modal-title" class="modal-title">Log Past Study Session</h3>
       <form id="manual-log-form" class="modal-body">
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
           <div class="form-group">
@@ -959,7 +959,7 @@
   </div>
 
   <!-- MODAL: Add / Edit Subject -->
-  <div id="subject-modal" class="modal">
+  <div id="subject-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="subject-modal-title" aria-hidden="true">
     <div class="modal-content">
       <h3 id="subject-modal-title" class="modal-title">Add Study Subject</h3>
       <form id="subject-form" class="modal-body">
@@ -1003,7 +1003,7 @@
   </div>
 
   <!-- MODAL: Add / Edit Weekly Recurring Event -->
-  <div id="weekly-event-modal" class="modal">
+  <div id="weekly-event-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="wevent-modal-title" aria-hidden="true">
     <div class="modal-content">
       <h3 id="wevent-modal-title" class="modal-title">Add Recurring Weekly Event / Class</h3>
       <form id="weekly-event-form" class="modal-body">
@@ -1073,7 +1073,7 @@
   </div>
 
   <!-- MODAL: Edit Course Lecture Slot -->
-  <div id="lecture-slot-modal" class="modal">
+  <div id="lecture-slot-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="lecture-slot-modal-title" aria-hidden="true">
     <div class="modal-content" style="max-width: 480px;">
       <h3 id="lecture-slot-modal-title" class="modal-title">Edit Course Lecture Slot</h3>
       <form id="lecture-slot-form" class="modal-body">
@@ -1125,16 +1125,16 @@
   </div>
 
   <!-- MODAL: Manage Full Weekly Schedule -->
-  <div id="schedule-manager-modal" class="modal">
+  <div id="schedule-manager-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="schedule-manager-modal-title" aria-hidden="true">
     <div class="modal-content" style="max-width: 640px;">
-      <h3 class="modal-title">Weekly Schedule Manager</h3>
+      <h3 id="schedule-manager-modal-title" class="modal-title">Weekly Schedule Manager</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
           Arrange your weekly commitments and classes. Click on any item below to edit its times or delete it.
         </p>
 
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-          <button id="btn-mgr-add-wevent" class="btn btn-primary" style="font-size: 0.8rem;">
+          <button type="button" id="btn-mgr-add-wevent" class="btn btn-primary" style="font-size: 0.8rem;">
             + Add Recurring Weekly Event
           </button>
         </div>
@@ -1144,15 +1144,15 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-close-schedule-manager" class="btn btn-primary">Done</button>
+        <button type="button" id="btn-close-schedule-manager" class="btn btn-primary">Done</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: Manage Categories -->
-  <div id="categories-modal" class="modal">
+  <div id="categories-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="categories-modal-title" aria-hidden="true">
     <div class="modal-content" style="max-width: 550px;">
-      <h3 class="modal-title">Manage Subject Categories</h3>
+      <h3 id="categories-modal-title" class="modal-title">Manage Subject Categories</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
           Rename, add, or delete categories to organize your courses and library. Renaming a category automatically updates all subjects inside it.
@@ -1182,15 +1182,15 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-close-categories-modal" class="btn btn-primary">Done</button>
+        <button type="button" id="btn-close-categories-modal" class="btn btn-primary">Done</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: Google Calendar Integration -->
-  <div id="gcal-modal" class="modal">
+  <div id="gcal-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gcal-modal-title" aria-hidden="true">
     <div class="modal-content" style="max-width: 550px;">
-      <h3 class="modal-title">Google Calendar Integration & Sync</h3>
+      <h3 id="gcal-modal-title" class="modal-title">Google Calendar Integration & Sync</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5;">
           Keep your study schedule and Google Calendar in sync. You can add individual study events with 1 click or download a full calendar file.
@@ -1200,7 +1200,7 @@
           <div class="gcal-card">
             <h4>1. Export .ICS Study Calendar</h4>
             <p>Download your complete weekly study schedule and sessions as an iCal (.ics) file to import into Google Calendar.</p>
-            <button id="btn-download-ics" class="btn btn-secondary" style="margin-top: 0.4rem;">
+            <button type="button" id="btn-download-ics" class="btn btn-secondary" style="margin-top: 0.4rem;">
               Download ChronoStudy Schedule (.ics)
             </button>
           </div>
@@ -1212,34 +1212,34 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-close-gcal-modal" class="btn btn-primary">Close</button>
+        <button type="button" id="btn-close-gcal-modal" class="btn btn-primary">Close</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: Backup & Export -->
-  <div id="backup-modal" class="modal">
+  <div id="backup-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="backup-modal-title" aria-hidden="true">
     <div class="modal-content">
-      <h3 class="modal-title">Backup & Data Management</h3>
+      <h3 id="backup-modal-title" class="modal-title">Backup & Data Management</h3>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-muted);">
           Your data is stored privately on your device. You can download backups anytime or export your logs to CSV for Excel / Google Sheets.
         </p>
         <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.5rem;">
-          <button id="btn-export-json" class="btn btn-secondary" style="justify-content: flex-start;">
+          <button type="button" id="btn-export-json" class="btn btn-secondary" style="justify-content: flex-start;">
             Download Backup (.json)
           </button>
-          <button id="btn-export-csv" class="btn btn-secondary" style="justify-content: flex-start;">
+          <button type="button" id="btn-export-csv" class="btn btn-secondary" style="justify-content: flex-start;">
             Export Logs to CSV (Excel / Sheets)
           </button>
-          <button id="btn-import-json" class="btn btn-secondary" style="justify-content: flex-start;">
+          <button type="button" id="btn-import-json" class="btn btn-secondary" style="justify-content: flex-start;">
             Restore from Backup (.json)
           </button>
           <input type="file" id="json-file-input" accept=".json" style="display: none;" />
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-close-backup" class="btn btn-primary">Done</button>
+        <button type="button" id="btn-close-backup" class="btn btn-primary">Done</button>
       </div>
     </div>
   </div>
@@ -1252,7 +1252,7 @@
         <span>Study Tasks</span>
         <span id="sidebar-task-count" class="badge-counter">0</span>
       </div>
-      <button id="btn-close-task-sidebar" class="btn btn-icon" title="Close Sidebar (Esc)">✕</button>
+      <button type="button" id="btn-close-task-sidebar" class="btn btn-icon" title="Close Sidebar (Esc)" aria-label="Close study tasks sidebar">✕</button>
     </div>
 
     <div class="sidebar-body">
@@ -1309,11 +1309,11 @@
       <!-- Filter tabs in sidebar (Microsoft To Do Smart Lists) -->
       <div class="sidebar-filter-row">
         <div class="filter-tabs">
-          <button class="task-filter-tab active" data-sfilter="pending">To Do</button>
-          <button class="task-filter-tab" data-sfilter="today">Today</button>
-          <button class="task-filter-tab" data-sfilter="planned">Planned</button>
-          <button class="task-filter-tab" data-sfilter="completed">Done</button>
-          <button class="task-filter-tab" data-sfilter="all">All</button>
+          <button type="button" class="task-filter-tab active" data-sfilter="pending">To Do</button>
+          <button type="button" class="task-filter-tab" data-sfilter="today">Today</button>
+          <button type="button" class="task-filter-tab" data-sfilter="planned">Planned</button>
+          <button type="button" class="task-filter-tab" data-sfilter="completed">Done</button>
+          <button type="button" class="task-filter-tab" data-sfilter="all">All</button>
         </div>
       </div>
 
@@ -1353,11 +1353,11 @@
   </aside>
 
   <!-- MODAL: Theme & Appearance Palette -->
-  <div id="theme-modal" class="modal">
+  <div id="theme-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="theme-modal-title" aria-hidden="true">
     <div class="modal-content modal-customization-dialog">
       <div class="modal-header">
-        <h3 class="modal-title">Palette & Appearance</h3>
-        <button id="btn-close-theme-modal" class="btn btn-icon" title="Close">✕</button>
+        <h3 id="theme-modal-title" class="modal-title">Palette & Appearance</h3>
+        <button type="button" id="btn-close-theme-modal" class="btn btn-icon" title="Close" aria-label="Close appearance modal">✕</button>
       </div>
       <div class="modal-body modal-scroll-body">
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.85rem;">
@@ -1404,13 +1404,13 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button id="btn-done-theme-modal" class="btn btn-primary" style="padding: 0.45rem 1.4rem;">Done</button>
+        <button type="button" id="btn-done-theme-modal" class="btn btn-primary" style="padding: 0.45rem 1.4rem;">Done</button>
       </div>
     </div>
   </div>
 
   <!-- MODAL: In-App Action Dialog (Replaces native browser prompt & confirm) -->
-  <div id="inapp-dialog-modal" class="modal">
+  <div id="inapp-dialog-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="inapp-dialog-title" aria-hidden="true">
     <div class="modal-content" style="max-width: 440px;">
       <h3 id="inapp-dialog-title" class="modal-title">Action</h3>
       <div class="modal-body" style="gap: 0.85rem;">
@@ -1429,11 +1429,11 @@
   </div>
 
   <!-- MODAL: Edit Existing Study Task -->
-  <div id="task-edit-modal" class="modal">
+  <div id="task-edit-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="task-edit-modal-title" aria-hidden="true">
     <div class="modal-content" style="max-width: 480px;">
       <div class="modal-header">
-        <h3 class="modal-title" style="margin: 0;">Edit Study Task</h3>
-        <button type="button" id="btn-close-edit-task-modal" class="btn btn-icon" title="Close">✕</button>
+        <h3 id="task-edit-modal-title" class="modal-title" style="margin: 0;">Edit Study Task</h3>
+        <button type="button" id="btn-close-edit-task-modal" class="btn btn-icon" title="Close" aria-label="Close edit task modal">✕</button>
       </div>
       <form id="task-edit-form" class="modal-body" style="gap: 0.85rem;">
         <input type="hidden" id="edit-task-id" />
@@ -1513,14 +1513,14 @@
   </div>
 
   <!-- MODAL: Multi-Device Cloud Sync & Device Hub -->
-  <div id="cloud-sync-modal" class="modal">
+  <div id="cloud-sync-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="cloud-sync-modal-title" aria-hidden="true">
     <div class="modal-content modal-sync-dialog">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
           <span style="font-size: 1.25rem;">☁</span>
-          <h3 class="modal-title" style="margin: 0;">Multi-Device Cloud Sync</h3>
+          <h3 id="cloud-sync-modal-title" class="modal-title" style="margin: 0;">Multi-Device Cloud Sync</h3>
         </div>
-        <button id="btn-close-sync-modal" class="btn btn-icon" title="Close">✕</button>
+        <button type="button" id="btn-close-sync-modal" class="btn btn-icon" title="Close" aria-label="Close cloud sync modal">✕</button>
       </div>
 
       <!-- Sync Status Banner Card -->
@@ -1533,7 +1533,7 @@
               <div id="modal-sync-subtitle" class="sync-status-subtitle">All data safely stored in this browser</div>
             </div>
           </div>
-          <button id="btn-modal-sync-now" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+          <button type="button" id="btn-modal-sync-now" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 0.35rem;">
             <span>⟳</span> Sync Now
           </button>
         </div>

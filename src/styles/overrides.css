@@ -1,0 +1,712 @@
+/* ==========================================================================
+   FORCED LAYOUT FORMAT: MOBILE PHONE FORMAT (.layout-format-mobile)
+   Applies full mobile scaling even on wider viewports or emulators
+   ========================================================================== */
+body.layout-format-mobile {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body.layout-format-mobile .app-header {
+  padding: 0.35rem 0.6rem;
+  min-height: 48px;
+  height: auto;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+body.layout-format-mobile .header-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+}
+
+body.layout-format-mobile .logo-area {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+body.layout-format-mobile .logo-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+body.layout-format-mobile .app-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.layout-format-mobile .app-subtitle,
+body.layout-format-mobile .header-nav,
+body.layout-format-mobile .header-stats,
+body.layout-format-mobile .nav-sidebar-btn,
+body.layout-format-mobile #btn-toggle-task-sidebar,
+body.layout-format-mobile .btn-pip,
+body.layout-format-mobile .btn-expand-panel {
+  display: none;
+}
+
+body.layout-format-mobile .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+body.layout-format-mobile .cloud-sync-btn {
+  padding: 0.25rem 0.45rem;
+  font-size: 0.72rem;
+  height: 30px;
+  gap: 0.3rem;
+}
+
+body.layout-format-mobile #btn-log-past {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+  height: 30px;
+  white-space: nowrap;
+}
+
+body.layout-format-mobile #btn-theme-palette,
+body.layout-format-mobile #backup-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+body.layout-format-mobile .focus-mobile-segmented-bar {
+  display: flex;
+}
+
+body.layout-format-mobile .app-main {
+  padding: 0.65rem 0.55rem calc(4.6rem + env(safe-area-inset-bottom, 0px)) 0.55rem;
+  max-width: 480px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+body.layout-format-mobile .mobile-nav-bar {
+  display: flex;
+  padding: 0.4rem 0.35rem calc(0.45rem + env(safe-area-inset-bottom, 0px)) 0.35rem;
+  box-sizing: border-box;
+}
+
+body.layout-format-mobile .pc-dashboard-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+  width: 100%;
+  min-width: 0;
+}
+
+body.layout-format-mobile .week-calendar-grid {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  min-height: unset;
+}
+
+body.layout-format-mobile .panel-card {
+  padding: 0.7rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+body.layout-format-mobile .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.55rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+body.layout-format-mobile .panel-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  white-space: normal;
+}
+
+body.layout-format-mobile .timer-main-panel > .panel-header > .panel-title {
+  display: none;
+}
+
+body.layout-format-mobile .timer-main-panel > .panel-header > div {
+  width: 100%;
+  justify-content: space-between;
+}
+
+body.layout-format-mobile .mode-toggle-group .mode-btn {
+  padding: 0.28rem 0.65rem;
+  font-size: 0.74rem;
+}
+
+body.layout-format-mobile .btn-zen {
+  padding: 0.28rem 0.6rem;
+  font-size: 0.74rem;
+}
+
+body.layout-format-mobile .study-context-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+body.layout-format-mobile #timer-subject-select,
+body.layout-format-mobile #timer-topic-input {
+  font-size: 0.82rem;
+  padding: 0.4rem 0.6rem;
+  height: 36px;
+  border-radius: var(--radius-sm);
+}
+
+body.layout-format-mobile .linked-task-pill {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.45rem;
+}
+
+body.layout-format-mobile .timer-station.timer-cockpit {
+  flex-direction: column;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0.15rem 0;
+  margin: 0;
+  gap: 0.65rem;
+  text-align: center;
+  width: 100%;
+}
+
+body.layout-format-mobile .timer-circle-container {
+  width: clamp(160px, 45vw, 185px);
+  height: clamp(160px, 45vw, 185px);
+  max-width: 185px;
+  max-height: 185px;
+  margin: 0 auto;
+}
+
+body.layout-format-mobile .timer-digital-col {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+body.layout-format-mobile .digital-instrument-card {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.65rem 0.75rem;
+  gap: 0.4rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+body.layout-format-mobile .digital-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+body.layout-format-mobile .digital-digits-display {
+  justify-content: center;
+}
+
+body.layout-format-mobile .digital-digits-display .timer-digits {
+  font-size: 2.55rem;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+body.layout-format-mobile .digital-telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+  margin-top: 0.1rem;
+}
+
+body.layout-format-mobile .digital-progress-track {
+  height: 5px;
+  margin: 0.1rem 0 0.25rem 0;
+}
+
+body.layout-format-mobile .digital-controls {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  margin-top: 0.15rem;
+  width: 100%;
+}
+
+body.layout-format-mobile .digital-controls .btn-start {
+  flex: 1.4;
+  min-width: 0;
+  min-height: 40px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.45rem 0.6rem;
+}
+
+body.layout-format-mobile .digital-controls .btn-finish {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.5rem;
+}
+
+body.layout-format-mobile .digital-controls .btn-reset {
+  flex: 0 0 38px;
+  width: 38px;
+  min-height: 40px;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+body.layout-format-mobile .session-notes-box {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+body.layout-format-mobile .notes-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+body.layout-format-mobile .notes-tip {
+  display: none;
+}
+
+body.layout-format-mobile .session-notes-textarea {
+  min-height: 68px;
+  max-height: 160px;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.6rem;
+  margin: 0.3rem 0;
+}
+
+body.layout-format-mobile .ambient-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  margin-top: 0.25rem;
+}
+
+body.layout-format-mobile .ambient-select {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.3rem;
+}
+
+body.layout-format-mobile .task-planner-panel {
+  padding: 0.7rem 0.75rem;
+  border-radius: var(--radius-md);
+}
+
+body.layout-format-mobile .new-task-box {
+  padding: 0.6rem 0.65rem;
+  margin-bottom: 0.6rem;
+}
+
+body.layout-format-mobile .task-input-row {
+  margin-bottom: 0.4rem;
+}
+
+body.layout-format-mobile #task-title-input {
+  font-size: 0.84rem;
+  padding: 0.45rem 0.6rem;
+  height: 36px;
+}
+
+body.layout-format-mobile .quick-dates-bar {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 0.4rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+body.layout-format-mobile .quick-dates-bar::-webkit-scrollbar {
+  display: none;
+}
+
+body.layout-format-mobile .quick-date-chip {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+body.layout-format-mobile .task-sub-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.35rem;
+  width: 100%;
+}
+
+body.layout-format-mobile #task-subject-select {
+  grid-column: 1 / 2;
+  font-size: 0.76rem;
+  height: 34px;
+  padding: 0.25rem 0.45rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+body.layout-format-mobile .task-target-input {
+  grid-column: 2 / 3;
+  font-size: 0.76rem;
+  height: 34px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.25rem 0.45rem;
+}
+
+body.layout-format-mobile .task-date-input {
+  display: none;
+}
+
+body.layout-format-mobile .task-recurrence-select {
+  grid-column: 1 / 2;
+  font-size: 0.76rem;
+  height: 34px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.25rem 0.45rem;
+}
+
+body.layout-format-mobile .task-sub-row button[type="submit"] {
+  grid-column: 2 / 3;
+  padding: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  height: 34px;
+  width: 100%;
+  min-width: 0;
+}
+
+body.layout-format-mobile .todo-smart-tabs {
+  display: flex;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 0.3rem;
+  padding: 0.1rem 0 0.25rem 0;
+  margin-bottom: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+body.layout-format-mobile .todo-smart-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+body.layout-format-mobile .todo-tab-btn {
+  flex-shrink: 0;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.73rem;
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+body.layout-format-mobile .todo-tools-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+body.layout-format-mobile .todo-tool-item {
+  min-width: 0;
+  width: 100%;
+}
+
+body.layout-format-mobile .todo-tool-item .todo-select {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+body.layout-format-mobile .todo-tool-course {
+  grid-column: 1 / -1;
+  margin-left: 0;
+  width: 100%;
+}
+
+body.layout-format-mobile .todo-select {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.45rem;
+  height: 32px;
+}
+
+body.layout-format-mobile .task-card {
+  padding: 0.6rem 0.65rem;
+  margin-bottom: 0.4rem;
+  border-radius: var(--radius-md);
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+body.layout-format-mobile .task-title {
+  font-size: 0.84rem;
+  line-height: 1.3;
+}
+
+body.layout-format-mobile .task-badges {
+  gap: 0.25rem;
+  margin-top: 0.15rem;
+}
+
+body.layout-format-mobile .subject-badge {
+  font-size: 0.65rem;
+  padding: 0.1rem 0.4rem;
+}
+
+body.layout-format-mobile .meta-badge {
+  font-size: 0.65rem;
+  padding: 0.08rem 0.35rem;
+}
+
+body.layout-format-mobile .btn-study-now,
+body.layout-format-mobile .btn-study {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+body.layout-format-mobile .analytics-kpi-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+body.layout-format-mobile .calendar-controls-bar {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+body.layout-format-mobile .cal-nav-group {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+body.layout-format-mobile .cal-view-toggle {
+  display: flex;
+  width: 100%;
+}
+
+body.layout-format-mobile .cal-view-toggle .mode-btn {
+  flex: 1;
+  text-align: center;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.76rem;
+}
+
+body.layout-format-mobile .cal-date-nav {
+  width: 100%;
+  justify-content: space-between;
+}
+
+body.layout-format-mobile .cal-title-header {
+  font-size: 0.95rem;
+  margin-left: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body.layout-format-mobile .cal-actions-group {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.35rem;
+}
+
+body.layout-format-mobile #cal-subject-filter {
+  grid-column: 1 / -1;
+  max-width: 100%;
+  width: 100%;
+  font-size: 0.78rem;
+  height: 34px;
+}
+
+body.layout-format-mobile .cal-actions-group .btn {
+  font-size: 0.74rem;
+  padding: 0.4rem 0.45rem;
+  width: 100%;
+  min-width: 0;
+}
+
+body.layout-format-mobile #btn-gcal-sync {
+  grid-column: 1 / -1;
+}
+
+body.layout-format-mobile .day-col-header {
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 0.45rem 0.7rem;
+}
+
+body.layout-format-mobile #view-subjects .panel-header {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+body.layout-format-mobile #view-subjects .panel-header > div:last-child {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.35rem;
+  width: 100%;
+}
+
+body.layout-format-mobile #view-subjects #btn-open-add-subject {
+  grid-column: 1 / -1;
+}
+
+body.layout-format-mobile #view-subjects .panel-header .btn {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  width: 100%;
+}
+
+body.layout-format-mobile .subjects-management-grid,
+body.layout-format-mobile .group-cards-grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+body.layout-format-mobile .subject-management-card {
+  padding: 0.85rem;
+  gap: 0.7rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+body.layout-format-mobile .subject-folder-row {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+body.layout-format-mobile .folder-path-text {
+  min-width: 0;
+}
+
+/* ==========================================================================
+   FORCED LAYOUT FORMAT: TABLET & PC DASHBOARD (.layout-format-desktop)
+   Guarantees the user's tablet and PC stay in full widescreen dual-cockpit mode
+   ========================================================================== */
+body.layout-format-desktop .pc-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(460px, 1fr) minmax(400px, 460px);
+  gap: 1.25rem;
+}
+
+body.layout-format-desktop .pc-dashboard-grid > .panel-card {
+  display: block !important;
+}
+
+body.layout-format-desktop .focus-mobile-segmented-bar {
+  display: none;
+}
+
+body.layout-format-desktop .timer-station.timer-cockpit {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.15rem;
+  margin: 0.5rem 0 1rem 0;
+}
+
+body.layout-format-desktop .timer-circle-container {
+  width: 250px;
+  height: 250px;
+}
+
+body.layout-format-desktop .header-nav {
+  display: flex;
+}
+
+body.layout-format-desktop .header-stats {
+  display: flex;
+}
+
+body.layout-format-desktop .app-subtitle {
+  display: inline-block;
+}
+
+body.layout-format-desktop .mobile-nav-bar {
+  display: none;
+}
+
+body.layout-format-desktop .nav-sidebar-btn,
+body.layout-format-desktop #btn-toggle-task-sidebar {
+  display: inline-flex;
+}
+
+body.layout-format-desktop .btn-pip {
+  display: inline-flex;
+}
+
+body.layout-format-desktop .btn-expand-panel {
+  display: inline-block;
+}

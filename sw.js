@@ -1,18 +1,45 @@
 // sw.js — Service Worker for Offline PWA Capabilities (Network-First with Cache Fallback)
-const CACHE_NAME = 'chronostudy-clean-v35';
+const CACHE_NAME = 'chronostudy-clean-v36';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon.svg',
   './src/styles.css',
+  './src/styles/tokens.css',
+  './src/styles/base.css',
+  './src/styles/layout.css',
+  './src/styles/timer.css',
+  './src/styles/tasks.css',
+  './src/styles/planner.css',
+  './src/styles/courses-analytics.css',
+  './src/styles/modals-sync.css',
+  './src/styles/responsive.css',
+  './src/styles/overrides.css',
   './src/app.js',
+  './src/audio.js',
   './src/store.js',
   './src/timer.js',
-  './src/ui.js',
-  './src/audio.js',
   './src/sync.js',
-  './src/wakelock.js'
+  './src/wakelock.js',
+  './src/ui.js',
+  './src/domain/date-utils.js',
+  './src/domain/presets.js',
+  './src/domain/recurrence.js',
+  './src/domain/reconcile.js',
+  './src/domain/analytics.js',
+  './src/domain/sync-merge.js',
+  './src/domain/exporters.js',
+  './src/state/store.js',
+  './src/ui/dom-utils.js',
+  './src/ui/modals.js',
+  './src/ui/timer-view.js',
+  './src/ui/tasks-view.js',
+  './src/ui/planner-view.js',
+  './src/ui/courses-view.js',
+  './src/ui/analytics-view.js',
+  './src/ui/sync-view.js',
+  './src/ui/theme-view.js'
 ];
 
 self.addEventListener('install', (event) => {

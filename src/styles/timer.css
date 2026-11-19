@@ -1,0 +1,924 @@
+/* Mode Switchers */
+.mode-toggle-group {
+  display: inline-flex;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+
+.mode-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mode-btn.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-zen {
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.btn-zen:hover {
+  background-color: var(--primary-glow);
+}
+
+/* Preset minutes */
+.preset-pills {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.preset-btn {
+  background: var(--bg-subtle);
+  border: 1px solid transparent;
+  color: var(--text-main);
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-btn:hover {
+  border-color: var(--primary);
+}
+
+.preset-btn.active {
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Study Context Form */
+.study-context-row {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.input-select, .input-text, .input-textarea {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+}
+
+.input-select:focus, .input-text:focus, .input-textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+/* Linked Task Banner */
+.linked-task-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--accent-green-soft);
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-md);
+  padding: 0.4rem 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.825rem;
+  color: var(--accent-green);
+}
+
+.btn-unlink {
+  background: none;
+  border: none;
+  color: var(--accent-green);
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-left: 0.5rem;
+}
+
+/* Timer Centerpiece — Precision Chronometer */
+.timer-station {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  position: relative;
+}
+
+.timer-circle-container {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timer-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+
+.timer-circle-bg {
+  stroke: var(--border-color);
+  stroke-width: 6;
+}
+
+.timer-circle-progress {
+  stroke: var(--primary);
+  stroke-width: 6;
+  stroke-dasharray: 816.8;
+  stroke-dashoffset: 816.8;
+  transition: stroke-dashoffset 0.4s ease, stroke 0.25s ease;
+}
+
+.timer-digits-wrap {
+  position: relative;
+  text-align: center;
+  z-index: 10;
+}
+
+.timer-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.4rem;
+  text-transform: uppercase;
+  border: 1px solid var(--border-color);
+}
+
+.badge-ready { background: var(--bg-subtle); color: var(--text-muted); }
+.badge-studying { background: var(--accent-green-soft); color: var(--accent-green); border-color: rgba(35, 134, 54, 0.4); }
+.badge-paused { background: rgba(210, 153, 34, 0.15); color: var(--accent-amber); border-color: rgba(210, 153, 34, 0.4); }
+.badge-completed { background: var(--primary-glow); color: var(--primary); border-color: var(--primary); }
+
+.timer-digits {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 3.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  line-height: 1;
+  transition: font-size 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Timer Control Buttons */
+.timer-controls {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-fg, #ffffff);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  box-shadow: 0 0 12px var(--primary-glow);
+}
+
+.btn-start {
+  background-color: var(--accent-green);
+  color: #ffffff;
+  padding: 0.75rem 1.75rem;
+  font-size: 1rem;
+}
+.btn-start:hover:not(:disabled) {
+  background-color: #059669;
+}
+
+.btn-pause {
+  background-color: var(--accent-amber);
+  color: #ffffff;
+  padding: 0.75rem 1.75rem;
+  font-size: 1rem;
+}
+
+.btn-finish {
+  background-color: var(--primary);
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: var(--bg-subtle);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-card-hover);
+}
+
+.btn-study-now {
+  background-color: var(--accent-green-soft);
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green);
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.btn-study-now:hover {
+  background-color: var(--accent-green);
+  color: #ffffff;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  font-size: 1rem;
+}
+
+.btn-icon:hover {
+  background-color: var(--bg-subtle);
+  color: var(--text-main);
+}
+
+/* Live Session Notes Area */
+.session-notes-box {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.session-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.notes-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+.notes-tip {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.session-notes-textarea {
+  min-height: 90px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+/* Ambient Audio */
+.ambient-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  background-color: var(--bg-input);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  font-size: 0.8rem;
+}
+
+.ambient-label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.ambient-select {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.ambient-slider {
+  width: 80px;
+  accent-color: var(--primary);
+}
+
+
+/* ==========================================================================
+   REQUIREMENT 4: ZEN FOCUS THEATER OVERLAY
+   ========================================================================== */
+.zen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-app, #0d1117) !important;
+  background: radial-gradient(circle at center, var(--bg-card, #161b22) 0%, var(--bg-app, #0d1117) 100%) !important;
+  color: var(--text-main);
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1.5rem 2.25rem;
+  box-sizing: border-box;
+  animation: fadeIn 0.25s ease-out;
+  overflow-y: auto;
+}
+
+.zen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.zen-title-area {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.zen-topic {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.wakelock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.18rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--accent-green);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.wakelock-badge::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--accent-green);
+  box-shadow: 0 0 6px var(--accent-green);
+}
+
+.zen-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+/* Zen Cockpit Centerpiece: Analog Cadran & Digital Precision Console */
+.zen-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 1.25rem 0;
+}
+
+.zen-cockpit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.75rem;
+  max-width: 860px;
+  width: 100%;
+}
+
+.zen-analog-col {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zen-cockpit .timer-circle-container {
+  width: 320px;
+  height: 320px;
+}
+
+.zen-digital-col {
+  flex: 1;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.zen-digital-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.35rem 1.6rem;
+  box-shadow: var(--shadow-lg);
+}
+
+.zen-timer-digits {
+  font-size: 4.8rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+  line-height: 1;
+  text-shadow: none;
+}
+
+.zen-controls {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.zen-notes-container {
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  flex-shrink: 0;
+  transition: all 0.25s ease;
+}
+
+.zen-notes-container.collapsed {
+  display: none;
+}
+
+.zen-textarea {
+  min-height: 90px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 0.92rem;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  resize: vertical;
+}
+
+
+/* Floating Mini-Timer Widget (PiP) Button */
+.btn-pip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+  transition: all 0.2s ease;
+}
+
+.btn-pip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Custom Countdown Minute Input */
+.countdown-custom-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.25rem;
+}
+
+.input-custom-mins {
+  width: 52px;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
+  outline: none;
+}
+
+.input-custom-mins:focus {
+  border-color: var(--primary);
+}
+
+.btn-set-custom-mins {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn-set-custom-mins:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--primary);
+}
+
+/* Twin-Cockpit Timer Layout (Side-by-Side Analog Mechanical Cadran & Digital Instrumentation) */
+.timer-station.timer-cockpit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1rem 1.15rem;
+  margin: 0.5rem 0 1rem 0;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.timer-analog-col {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-circle-container {
+  position: relative;
+  width: 250px;
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.timer-circle-container .timer-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  /* Clock face is strictly upright: 12 o'clock is at the top */
+  transform: none !important;
+}
+
+/* Digital Precision Instrument Panel (Alongside the dial, never covering it!) */
+.timer-digital-col {
+  flex: 1;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+}
+
+.digital-instrument-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.15rem;
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.digital-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.timer-mode-tag {
+  font-size: 0.68rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  background-color: var(--bg-subtle);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.digital-digits-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.digital-digits-display .timer-digits {
+  font-size: 2.85rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-main);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+.digital-telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.digital-target-label {
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.digital-progress-pct {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.digital-progress-track {
+  width: 100%;
+  height: 6px;
+  background-color: var(--bg-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.digital-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--primary-hover));
+  border-radius: var(--radius-sm);
+  transition: none !important;
+}
+
+.digital-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+
+.digital-controls .btn-start {
+  flex: 1.4;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.digital-controls .btn-finish {
+  flex: 1;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.digital-controls .btn-reset {
+  padding: 0.45rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 680px) {
+  .timer-station.timer-cockpit {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+}
+
+/* Horology Chronograph Bezel & Main Dial */
+.timer-circle-container .cadran-outer-bezel {
+  fill: var(--bg-card);
+  stroke: var(--primary);
+  stroke-width: 1.6;
+  stroke-opacity: 0.4;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+}
+
+.timer-circle-container .cadran-inner-bezel {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 1;
+  stroke-opacity: 0.6;
+}
+
+.timer-circle-container .cadran-dial-ticks line {
+  stroke: var(--text-muted);
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+.timer-circle-container .cadran-numerals text {
+  fill: var(--text-muted);
+  font-family: "Cinzel", "Times New Roman", Georgia, serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.timer-circle-container .cadran-brand-label {
+  fill: var(--text-dim);
+  font-family: "Cinzel", "Times New Roman", Georgia, serif;
+  font-size: 6.8px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  opacity: 0.65;
+}
+
+/* Bi-Compax Chronograph Subdials (30-Min & 60-Sec) */
+.chrono-subdial-bg {
+  fill: var(--bg-input);
+  opacity: 0.75;
+}
+
+.chrono-subdial-ring {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 1.5;
+}
+
+.subdial-num {
+  fill: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 6.5px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.subdial-label {
+  fill: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-anchor: middle;
+  dominant-baseline: central;
+  opacity: 0.8;
+}
+
+.chrono-subdial-hand {
+  transition: none !important;
+  transform-box: view-box;
+}
+
+.chrono-subdial-needle {
+  stroke: var(--primary);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.chrono-subdial-pin {
+  fill: var(--primary);
+}
+
+/* Central Sweep Needle & Jewels */
+.timer-circle-container .cadran-hand-group {
+  transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1);
+  transform-box: view-box;
+}
+
+.timer-circle-container .cadran-hand-needle {
+  stroke: var(--primary);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+.timer-circle-container .cadran-hand-tip {
+  fill: var(--primary);
+}
+
+.timer-circle-container .cadran-hand-tail {
+  stroke: var(--primary);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.timer-circle-container .cadran-hand-pear {
+  fill: var(--primary);
+}
+
+.timer-circle-container .cadran-center-pinion {
+  fill: var(--primary);
+  stroke: var(--bg-card);
+  stroke-width: 1.5;
+}
+
+.cadran-center-jewel {
+  fill: #e11d48; /* Authentic Synthetic Ruby Pinion Jewel */
+}
+
+/* Timer Style Modifier: Analog Mechanical Chronograph */
+.timer-circle-container.timer-style-chronograph .chrono-subdial-group,
+.timer-circle-container.timer-style-chronograph .cadran-numerals,
+.timer-circle-container.timer-style-chronograph .cadran-brand-label,
+.timer-circle-container.timer-style-chronograph .cadran-hand-group {
+  display: block;
+}
+
+/* Timer Style Modifier: Classical Watch Cadran */
+.timer-circle-container.timer-style-cadran .chrono-subdial-group {
+  display: none !important;
+}
+.timer-circle-container.timer-style-cadran .cadran-numerals,
+.timer-circle-container.timer-style-cadran .cadran-brand-label,
+.timer-circle-container.timer-style-cadran .cadran-hand-group {
+  display: block;
+}
+
+/* Timer Style Modifier: Minimalist Orbit */
+.timer-circle-container.timer-style-minimal .chrono-subdial-group,
+.timer-circle-container.timer-style-minimal .cadran-outer-bezel,
+.timer-circle-container.timer-style-minimal .cadran-inner-bezel,
+.timer-circle-container.timer-style-minimal .cadran-dial-ticks,
+.timer-circle-container.timer-style-minimal .cadran-numerals,
+.timer-circle-container.timer-style-minimal .cadran-brand-label,
+.timer-circle-container.timer-style-minimal .cadran-hand-group {
+  display: none !important;
+}

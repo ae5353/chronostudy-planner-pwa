@@ -22,7 +22,7 @@ import { SyncViewController } from './ui/sync-view.js';
 import { ThemeViewController } from './ui/theme-view.js';
 
 export class ChronoUI {
-  constructor() {
+  constructor({ deferSyncInit = false } = {}) {
     this.activeView = 'focus';
     this.activeFocusMobileTab = 'timer';
     this.dirtyViews = new Set(['calendar', 'subjects', 'history']);
@@ -74,6 +74,7 @@ export class ChronoUI {
       this.applyTheme(settings.theme || 'slate');
       this.applyFont(settings.fontStyle || 'sans');
       this.applyTimerStyle(settings.timerStyle || 'chronograph');
+      this.applyLayoutFormat(settings.layoutFormat || 'auto');
       this.coursesView.renderSubjects();
       this.analyticsView.renderStats();
       this.tasksView.updateTaskBadgeCounts();
@@ -94,7 +95,9 @@ export class ChronoUI {
       }
     });
 
-    syncManager.init();
+    if (!deferSyncInit) {
+      syncManager.init();
+    }
     syncManager.subscribe((syncStatus) => {
       this.syncView.renderSyncStatus(syncStatus);
     });

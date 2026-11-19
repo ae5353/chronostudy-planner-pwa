@@ -97,6 +97,7 @@ function createFakeIndexedDB() {
 }
 
 const { StorageAdapter, STORAGE_KEY } = await import('../src/state/storage.js');
+const { Store } = await import('../src/state/store.js');
 const { compactTombstones } = await import('../src/domain/sync-merge.js');
 const { LEGACY_SEED_TASK_IDS } = await import('../src/domain/presets.js');
 const { store } = await import('../src/store.js');
@@ -294,8 +295,155 @@ try {
   assert.match(String(capturedSecretHeader), /^[0-9a-f]{64}$/, 'x-room-secret header must carry SHA-256 hex digest (not raw passphrase)');
   assert(store.getState().tasks.some((t) => t.id === 't-supa-race'), 'Concurrent Supabase task must be merged into local store');
   console.log('✔ Supabase conditional PATCH retry & x-room-secret SHA-256 header verified.');
+  // 4b. Legacy Supabase table lacking room_secret_hash (PATCH omits missing column; POST retries on PGRST204)
+  let legacyPatchBody = null;
+  let legacyPatchSecretHeader = null;
+  let postAttempts = 0;
+  let lastPostBody = null;
+
+  globalThis.fetch = async (url, opts = {}) => {
+    const u = String(url);
+    const method = (opts.method || 'GET').toUpperCase();
+    if (method === 'GET' && u.includes('legacy-room')) {
+      return {
+        ok: true,
+        json: async () => [{
+          room_id: 'legacy-room',
+          updated_at: '2026-11-19T10:00:00Z',
+          payload: JSON.stringify({ version: 12, tasks: [], sessions: [] })
+        }]
+      };
+    }
+    if (method === 'PATCH') {
+      legacyPatchSecretHeader = opts.headers?.['x-room-secret'] || null;
+      legacyPatchBody = JSON.parse(opts.body);
+      return { ok: true, json: async () => [{ room_id: 'legacy-room', updated_at: '2026-11-20T00:10:00Z' }] };
+    }
+    if (method === 'GET' && u.includes('new-legacy-table-room')) {
+      return { ok: true, json: async () => [] };
+    }
+    if (method === 'POST') {
+      postAttempts++;
+      lastPostBody = JSON.parse(opts.body);
+      if (postAttempts === 1) {
+        return {
+          ok: false,
+          status: 400,
+          text: async () => '{"code":"PGRST204","message":"Could not find the \'room_secret_hash\' column of \'chronostudy_sync\'"}'
+        };
+      }
+      return { ok: true, json: async () => [{ room_id: 'new-legacy-table-room', updated_at: '2026-11-20T00:11:00Z' }] };
+    }
+    throw new Error(`Unexpected legacy Supabase fetch: ${method} ${u}`);
+  };
+
+  await syncManager.syncSupabase({
+    provider: 'supabase',
+    supabaseUrl: 'https://demo.supabase.co',
+    supabaseKey: 'anon-test-key',
+    supabaseRoomId: 'legacy-room',
+    passphrase: 'secret-room-passphrase'
+  });
+  assert.equal(legacyPatchBody.room_secret_hash, undefined, 'Legacy PATCH must omit room_secret_hash when row lacks column');
+  assert.match(String(legacyPatchSecretHeader), /^[0-9a-f]{64}$/, 'x-room-secret header must still be sent when configured');
+
+  await syncManager.syncSupabase({
+    provider: 'supabase',
+    supabaseUrl: 'https://demo.supabase.co',
+    supabaseKey: 'anon-test-key',
+    supabaseRoomId: 'new-legacy-table-room',
+    passphrase: 'secret-room-passphrase'
+  });
+  assert.equal(postAttempts, 2, 'POST must retry without room_secret_hash after 400 PGRST204');
+  assert.equal(lastPostBody.room_secret_hash, undefined, 'Retried POST must omit room_secret_hash');
+  console.log('✔ Legacy Supabase room_secret_hash compatibility verified.');
 } finally {
   globalThis.fetch = savedFetch;
+}
+
+// 5. Store IndexedDB pointer-boot preservation & main-era localStorage upgrade migration
+{
+  // 5a: idbBacked pointer in LS + full data in IndexedDB must NOT be overwritten by Store constructor
+  const pointerLSMap = new Map();
+  pointerLSMap.set(STORAGE_KEY, JSON.stringify({
+    idbBacked: true,
+    version: 12,
+    savedAt: '2026-11-20T00:15:00.000Z',
+    settings: { theme: 'oled', layoutFormat: 'desktop' },
+    activeTimer: { isRunning: false, mode: 'stopwatch', targetSec: 1500, elapsedSec: 0 },
+    sync: { provider: 'gdrive' }
+  }));
+  const ptrLS = {
+    getItem(k) { return pointerLSMap.has(k) ? pointerLSMap.get(k) : null; },
+    setItem(k, v) { pointerLSMap.set(k, String(v)); },
+    removeItem(k) { pointerLSMap.delete(k); }
+  };
+
+  const ptrIDB = createFakeIndexedDB();
+  const idbWorkspaceMap = new Map();
+  idbWorkspaceMap.set('current', {
+    id: 'current',
+    savedAt: '2026-11-20T00:15:00.000Z',
+    state: {
+      version: 12,
+      tasks: [{ id: 't-idb-survive', title: 'Survive Pointer Boot', completed: false, recurrence: 'none' }],
+      sessions: [{ id: 's-idb-survive', subject: 'MAT 287', durationSec: 1800, startTime: '2026-11-19T12:00:00.000Z' }],
+      settings: { theme: 'oled', layoutFormat: 'desktop' }
+    }
+  });
+  ptrIDB._stores.set('workspace', idbWorkspaceMap);
+
+  const bootStore = new Store({ localStorageRef: ptrLS, indexedDBRef: ptrIDB });
+  assert.equal(bootStore.getState().tasks.length, 0, 'Sync boot starts from pointer metadata before IDB hydration');
+  assert.equal(
+    ptrIDB._stores.get('workspace').get('current').state.tasks[0].id,
+    't-idb-survive',
+    'Store constructor must NEVER overwrite existing IndexedDB record before hydration'
+  );
+
+  // Simulate an active timer tick occurring before hydrateFromIndexedDB resolves
+  bootStore.updateActiveTimer({ elapsedSec: 12 }, { forceSave: true });
+  await bootStore.storage.flush();
+  assert.equal(
+    JSON.parse(ptrLS.getItem(STORAGE_KEY)).idbBacked,
+    true,
+    'Pre-hydration saves on pointer boot must keep idbBacked pointer intact in localStorage'
+  );
+  assert.equal(
+    ptrIDB._stores.get('workspace').get('current').state.tasks[0].id,
+    't-idb-survive',
+    'Pre-hydration timer saves on pointer boot must NOT wipe IndexedDB'
+  );
+
+  const hydratedOk = await bootStore.hydrateFromIndexedDB();
+  assert.equal(hydratedOk, true, 'hydrateFromIndexedDB must hydrate full workspace from pointer boot');
+  assert.equal(bootStore.getState().tasks[0].id, 't-idb-survive', 'Hydrated Store must contain IndexedDB tasks');
+  assert.equal(bootStore.getState().sessions[0].id, 's-idb-survive', 'Hydrated Store must contain IndexedDB sessions');
+
+  // 5b: Upgrading from main-era localStorage (no savedAt, empty IndexedDB) preserves 100% of data & mirrors to IDB
+  const mainLSMap = new Map();
+  mainLSMap.set(STORAGE_KEY, JSON.stringify({
+    version: 12,
+    tasks: [{ id: 't-legacy-main', title: 'Existing Main Task', completed: false, recurrence: 'none' }],
+    sessions: [{ id: 's-legacy-main', subject: 'EEF 211E', durationSec: 2700, startTime: '2026-11-18T14:00:00.000Z' }]
+  }));
+  const mainLS = {
+    getItem(k) { return mainLSMap.has(k) ? mainLSMap.get(k) : null; },
+    setItem(k, v) { mainLSMap.set(k, String(v)); },
+    removeItem(k) { mainLSMap.delete(k); }
+  };
+  const emptyIDB = createFakeIndexedDB();
+  const upgradedStore = new Store({ localStorageRef: mainLS, indexedDBRef: emptyIDB });
+  assert(upgradedStore.getState().tasks.some((t) => t.id === 't-legacy-main'), 'Main LS tasks preserved on boot');
+  assert(upgradedStore.getState().sessions.some((s) => s.id === 's-legacy-main'), 'Main LS sessions preserved on boot');
+
+  const upgradedHydrated = await upgradedStore.hydrateFromIndexedDB();
+  assert.equal(upgradedHydrated, false, 'Empty IndexedDB should not overwrite newer/existing main localStorage state');
+  await upgradedStore.storage.flush();
+  const mirrored = emptyIDB._stores.get('workspace')?.get('current')?.state;
+  assert(mirrored && mirrored.tasks.some((t) => t.id === 't-legacy-main'), 'Upgraded main tasks must mirror into IndexedDB');
+  assert(mirrored && mirrored.sessions.some((s) => s.id === 's-legacy-main'), 'Upgraded main sessions must mirror into IndexedDB');
+  console.log('✔ IndexedDB pointer boot preservation & main-era localStorage upgrade verified.');
 }
 
 // 5. Type config, CI workflow & SW v37 checks

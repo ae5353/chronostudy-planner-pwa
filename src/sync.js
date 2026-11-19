@@ -138,6 +138,7 @@ export class SyncManager {
     this.pwaInstallPrompt = null;
     this.gdriveAccessToken = null;
     this.gdriveTokenExpiry = null;
+    this._initialized = false;
     this._tokenRefreshInFlight = null;
     this._lastTokenRefreshAttempt = 0;
     this.restoreSavedGoogleAuth();
@@ -259,7 +260,8 @@ export class SyncManager {
    * Initializes event listeners, background timers, MediaSession and PWA installation
    */
   init() {
-    if (typeof window === 'undefined') return;
+    if (this._initialized || typeof window === 'undefined') return;
+    this._initialized = true;
 
     // Network connectivity detection
     window.addEventListener('online', () => {
@@ -526,8 +528,8 @@ export class SyncManager {
       }
     }
 
-    // 2. Query for existing chronostudy_sync.json on Google Drive
-    const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='chronostudy_sync.json' and trashed=false&fields=files(id,name,modifiedTime)`;
+    // 2. Query for existing chronostudy_sync.json on Google Drive (newest active file first)
+    const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='chronostudy_sync.json' and trashed=false&orderBy=modifiedTime desc&fields=files(id,name,modifiedTime)`;
     const searchRes = await fetch(searchUrl, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -713,6 +715,7 @@ export class SyncManager {
     const endpoint = `${baseUrl}/rest/v1/chronostudy_sync`;
     const roomId = supabaseRoomId.trim().toLowerCase();
     const roomSecret = await deriveRoomSecretHash(roomId, passphrase);
+    let useRoomSecretHeader = Boolean(roomSecret);
 
     const buildHeaders = (extra = {}) => {
       const headers = {
@@ -721,10 +724,42 @@ export class SyncManager {
         'Content-Type': 'application/json',
         ...extra
       };
-      if (roomSecret) {
+      if (useRoomSecretHeader && roomSecret) {
         headers['x-room-secret'] = roomSecret;
       }
       return headers;
+    };
+
+    const fetchSupabase = async (url, options = {}, extraHeaders = {}) => {
+      try {
+        return await fetch(url, { ...options, headers: buildHeaders(extraHeaders) });
+      } catch (err) {
+        if (useRoomSecretHeader && err instanceof TypeError) {
+          useRoomSecretHeader = false;
+          return fetch(url, { ...options, headers: buildHeaders(extraHeaders) });
+        }
+        throw err;
+      }
+    };
+
+    const sendSupabaseMutation = async (url, method, baseBody, extraHeaders, includeSecretColumn) => {
+      const runAttempt = async (withSecretCol) => {
+        const body = (withSecretCol && roomSecret && useRoomSecretHeader)
+          ? { ...baseBody, room_secret_hash: roomSecret }
+          : { ...baseBody };
+        const res = await fetchSupabase(url, { method, body: JSON.stringify(body) }, extraHeaders);
+        if (res.ok) return { res, errText: '' };
+        const errText = await res.text();
+        return { res, errText };
+      };
+
+      let attemptRes = await runAttempt(includeSecretColumn);
+      if (!attemptRes.res.ok && attemptRes.res.status === 400 && includeSecretColumn && roomSecret && useRoomSecretHeader) {
+        if (attemptRes.errText.includes('room_secret_hash') || attemptRes.errText.includes('PGRST204')) {
+          attemptRes = await runAttempt(false);
+        }
+      }
+      return attemptRes;
     };
 
     let syncedAt = new Date().toISOString();
@@ -732,10 +767,7 @@ export class SyncManager {
     for (let attempt = 0; attempt < 3; attempt++) {
       // 1. Fetch remote room data from Supabase
       const fetchUrl = `${endpoint}?room_id=eq.${encodeURIComponent(roomId)}&select=*`;
-      const response = await fetch(fetchUrl, {
-        method: 'GET',
-        headers: buildHeaders()
-      });
+      const response = await fetchSupabase(fetchUrl, { method: 'GET' });
 
       if (!response.ok) {
         const errText = await response.text();
@@ -771,21 +803,21 @@ export class SyncManager {
       if (existingRow && remoteUpdatedAt) {
         // Conditional optimistic concurrency PATCH using expected remote updated_at
         const patchUrl = `${endpoint}?room_id=eq.${encodeURIComponent(roomId)}&updated_at=eq.${encodeURIComponent(remoteUpdatedAt)}`;
-        const patchBody = {
+        const patchBaseBody = {
           payload: serializedForCloud,
           updated_at: nowIso,
           device_id: this.deviceId
         };
-        if (roomSecret) patchBody.room_secret_hash = roomSecret;
-
-        const patchResponse = await fetch(patchUrl, {
-          method: 'PATCH',
-          headers: buildHeaders({ 'Prefer': 'return=representation' }),
-          body: JSON.stringify(patchBody)
-        });
+        const hasSecretColumn = Object.prototype.hasOwnProperty.call(existingRow, 'room_secret_hash');
+        const { res: patchResponse, errText: patchErrText } = await sendSupabaseMutation(
+          patchUrl,
+          'PATCH',
+          patchBaseBody,
+          { 'Prefer': 'return=representation' },
+          hasSecretColumn
+        );
 
         if (!patchResponse.ok) {
-          const patchErrText = await patchResponse.text();
           throw new Error(`Failed to save data to Supabase (${patchResponse.status}): ${patchErrText}`);
         }
 
@@ -799,22 +831,21 @@ export class SyncManager {
         syncedAt = nowIso;
         break;
       } else {
-        const upsertBody = {
+        const upsertBaseBody = {
           room_id: roomId,
           payload: serializedForCloud,
           updated_at: nowIso,
           device_id: this.deviceId
         };
-        if (roomSecret) upsertBody.room_secret_hash = roomSecret;
-
-        const pushResponse = await fetch(endpoint, {
-          method: 'POST',
-          headers: buildHeaders({ 'Prefer': 'resolution=merge-duplicates,return=representation' }),
-          body: JSON.stringify(upsertBody)
-        });
+        const { res: pushResponse, errText: pushErrText } = await sendSupabaseMutation(
+          endpoint,
+          'POST',
+          upsertBaseBody,
+          { 'Prefer': 'resolution=merge-duplicates,return=representation' },
+          Boolean(roomSecret)
+        );
 
         if (!pushResponse.ok) {
-          const pushErrText = await pushResponse.text();
           throw new Error(`Failed to save data to Supabase (${pushResponse.status}): ${pushErrText}`);
         }
         syncedAt = nowIso;

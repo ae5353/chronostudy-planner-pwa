@@ -51,16 +51,35 @@ export {
 };
 
 export class Store {
-  constructor() {
+  /**
+   * @param {{ localStorageRef?: any, indexedDBRef?: any }} [deps]
+   */
+  constructor(deps = {}) {
     this.listeners = new Set();
-    this.storage = new StorageAdapter();
+    this.storage = new StorageAdapter(deps);
     this._stateRevision = 0;
     this._sessionTaskIndex = null;
     this._cachedRevision = -1;
     this._cachedSessionsRef = null;
     this._cachedSessionsLen = -1;
-    this.state = this.sanitizeState(this.loadState());
-    this.saveState({ emitSyncEvent: false, notifyUI: false });
+
+    const rawLocal = this.storage.readSync();
+    this._idbHydrated = !this.storage.hasIndexedDB();
+    this._bootWasIdbPointer = Boolean(rawLocal && rawLocal.idbBacked === true);
+    this._bootHadPointerOrEmpty = !rawLocal || this._bootWasIdbPointer;
+    this._bootLocalSavedAt = (rawLocal && typeof rawLocal.savedAt === 'string') ? rawLocal.savedAt : null;
+    this._mutatedBeforeHydration = false;
+
+    this.state = this.loadState(rawLocal);
+
+    if (!this.storage.hasIndexedDB()) {
+      this.saveState({ emitSyncEvent: false, notifyUI: false });
+    } else if (!this._bootHadPointerOrEmpty) {
+      this.storage.write(this.state, {
+        skipIndexedDB: true,
+        preserveSavedAt: this._bootLocalSavedAt ?? ''
+      });
+    }
   }
 
   _invalidateCache() {
@@ -250,26 +269,29 @@ export class Store {
     return state;
   }
 
-  loadState() {
-    try {
-      const parsed = this.storage.readSync();
-      if (!parsed) {
-        return createInitialState();
-      }
-      const defaults = createInitialState();
+  _buildCandidateFromRaw(parsed) {
+    if (!parsed || typeof parsed !== 'object') {
+      return createInitialState();
+    }
+    const defaults = createInitialState();
 
-      const candidate = {
-        ...defaults,
-        ...parsed,
-        groups: parsed.groups && parsed.groups.length > 0 ? parsed.groups : [...DEFAULT_GROUPS],
-        subjects: parsed.subjects && parsed.subjects.length > 0 ? parsed.subjects : defaults.subjects,
-        weeklyEvents: parsed.weeklyEvents || defaults.weeklyEvents,
-        tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
-        sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-        settings: { ...defaults.settings, ...(parsed.settings || {}) },
-        activeTimer: { ...defaults.activeTimer, ...(parsed.activeTimer || {}) }
-      };
-      return this.sanitizeState(candidate);
+    return {
+      ...defaults,
+      ...parsed,
+      groups: parsed.groups && parsed.groups.length > 0 ? parsed.groups : [...DEFAULT_GROUPS],
+      subjects: parsed.subjects && parsed.subjects.length > 0 ? parsed.subjects : defaults.subjects,
+      weeklyEvents: parsed.weeklyEvents || defaults.weeklyEvents,
+      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      settings: { ...defaults.settings, ...(parsed.settings || {}) },
+      activeTimer: { ...defaults.activeTimer, ...(parsed.activeTimer || {}) }
+    };
+  }
+
+  loadState(rawParsed = undefined) {
+    try {
+      const parsed = rawParsed !== undefined ? rawParsed : this.storage.readSync();
+      return this.sanitizeState(this._buildCandidateFromRaw(parsed));
     } catch (err) {
       console.warn('Failed to load workspace state, resetting to initial state', err);
       return createInitialState();
@@ -278,12 +300,34 @@ export class Store {
 
   async hydrateFromIndexedDB() {
     try {
-      const idbState = await this.storage.hydrateFromIndexedDB();
-      if (!idbState) return false;
-      this.state = this.sanitizeState(idbState);
-      this.saveState({ emitSyncEvent: false, notifyUI: true });
-      return true;
+      if (!this.storage.hasIndexedDB()) {
+        this._idbHydrated = true;
+        return false;
+      }
+
+      const idbRecord = await this.storage.readIndexedDBCurrent();
+      const idbMs = idbRecord?.savedAt ? new Date(idbRecord.savedAt).getTime() : 0;
+      const bootLocalMs = this._bootLocalSavedAt ? new Date(this._bootLocalSavedAt).getTime() : 0;
+      const shouldHydrate = Boolean(idbRecord && idbRecord.state) &&
+        (this._bootHadPointerOrEmpty || (!this._mutatedBeforeHydration && idbMs > bootLocalMs));
+
+      this._idbHydrated = true;
+      this._bootWasIdbPointer = false;
+      this._bootHadPointerOrEmpty = false;
+
+      if (shouldHydrate) {
+        this.state = this.sanitizeState(idbRecord.state);
+        this.saveState({ emitSyncEvent: false, notifyUI: true });
+        return true;
+      }
+
+      // Safely mirror existing localStorage/initial state into IndexedDB for future boots
+      this.storage.write(this.state);
+      return false;
     } catch (err) {
+      this._idbHydrated = true;
+      this._bootWasIdbPointer = false;
+      this._bootHadPointerOrEmpty = false;
       console.warn('IndexedDB hydration error:', err);
       return false;
     }
@@ -292,10 +336,18 @@ export class Store {
   saveState({ emitSyncEvent = true, notifyUI = true } = {}) {
     this._invalidateCache();
     try {
+      if (!this._idbHydrated && !this._bootHadPointerOrEmpty) {
+        this._mutatedBeforeHydration = true;
+      }
       if (emitSyncEvent && this.state && this.state.sync) {
         this.state.sync.hasChanges = true;
       }
-      this.storage.write(this.state);
+      const awaitingPointerHydration = !this._idbHydrated && this._bootWasIdbPointer;
+      this.storage.write(this.state, {
+        skipIndexedDB: !this._idbHydrated && this._bootHadPointerOrEmpty,
+        forcePointer: awaitingPointerHydration,
+        preserveSavedAt: awaitingPointerHydration ? (this._bootLocalSavedAt ?? '') : undefined
+      });
       if (emitSyncEvent && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
         window.dispatchEvent(new CustomEvent('chronostudy:state-changed', { detail: { timestamp: Date.now() } }));
       }

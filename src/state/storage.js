@@ -31,6 +31,10 @@ export class StorageAdapter {
     return typeof globalThis !== 'undefined' ? globalThis.indexedDB : undefined;
   }
 
+  hasIndexedDB() {
+    return Boolean(this._indexedDB);
+  }
+
   /**
    * Synchronous fast-boot read from localStorage.
    * May return null or a compact `{ idbBacked: true, ... }` boot pointer if quota exceeded.
@@ -112,43 +116,66 @@ export class StorageAdapter {
 
   /**
    * Mirrors state to localStorage synchronously (falling back to compact boot pointer on QuotaExceededError)
-   * and queues an ordered asynchronous write to IndexedDB.
+   * and optionally queues an ordered asynchronous write to IndexedDB.
    * @param {any} state
-   * @returns {string} ISO timestamp when persisted
+   * @param {{ skipIndexedDB?: boolean, preserveSavedAt?: string | null, forcePointer?: boolean }} [options]
+   * @returns {string} ISO timestamp when persisted (or empty string if preserved empty)
    */
-  write(state) {
-    const savedAt = new Date().toISOString();
+  write(state, { skipIndexedDB = false, preserveSavedAt = undefined, forcePointer = false } = {}) {
+    const savedAt = preserveSavedAt !== undefined
+      ? (preserveSavedAt || '')
+      : new Date().toISOString();
     const snapshot = structuredClone(state);
-    snapshot.savedAt = savedAt;
+    if (savedAt) {
+      snapshot.savedAt = savedAt;
+    } else {
+      delete snapshot.savedAt;
+    }
 
     if (this._localStorage) {
-      try {
-        this._localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-      } catch (err) {
-        // Fallback: store compact boot pointer so theme/timer/sync metadata still boot synchronously
-        const compactPointer = {
-          idbBacked: true,
-          version: snapshot.version || 12,
-          savedAt,
-          settings: snapshot.settings,
-          activeTimer: snapshot.activeTimer,
-          sync: snapshot.sync
-        };
+      const compactPointer = {
+        idbBacked: true,
+        version: snapshot.version || 12,
+        savedAt: savedAt || undefined,
+        settings: snapshot.settings,
+        activeTimer: snapshot.activeTimer,
+        sync: snapshot.sync
+      };
+      if (forcePointer) {
         try {
           this._localStorage.setItem(STORAGE_KEY, JSON.stringify(compactPointer));
         } catch (_) {}
+      } else {
+        try {
+          this._localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+        } catch (err) {
+          // Fallback: store compact boot pointer so theme/timer/sync metadata still boot synchronously
+          try {
+            this._localStorage.setItem(STORAGE_KEY, JSON.stringify(compactPointer));
+          } catch (_) {}
+        }
       }
     }
 
-    if (this._indexedDB) {
+    if (!skipIndexedDB && this._indexedDB) {
+      const idbSavedAt = savedAt || new Date().toISOString();
       this._writeChain = this._writeChain.then(() =>
         this._withStore(WORKSPACE_STORE, 'readwrite', (objStore) =>
-          objStore.put({ id: 'current', savedAt, state: snapshot })
+          objStore.put({ id: 'current', savedAt: idbSavedAt, state: snapshot })
         )
       ).catch(() => {});
     }
 
     return savedAt;
+  }
+
+  /**
+   * Reads the raw current workspace record from IndexedDB without writing.
+   * @returns {Promise<{ id: string, savedAt?: string, state?: any } | null>}
+   */
+  async readIndexedDBCurrent() {
+    await this.flush();
+    return this._withStore(WORKSPACE_STORE, 'readonly', (objStore) => objStore.get('current'));
   }
 
   /**
@@ -164,8 +191,7 @@ export class StorageAdapter {
    * @returns {Promise<any | null>}
    */
   async hydrateFromIndexedDB() {
-    await this.flush();
-    const idbRecord = await this._withStore(WORKSPACE_STORE, 'readonly', (objStore) => objStore.get('current'));
+    const idbRecord = await this.readIndexedDBCurrent();
     if (!idbRecord || !idbRecord.state) return null;
 
     const localRecord = this.readSync();

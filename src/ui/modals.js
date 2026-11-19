@@ -83,6 +83,7 @@ export function closeModal(modalEl) {
 
 export function closeTopNonDialogModals() {
   if (typeof document === 'undefined') return;
+  if (document.querySelector('#inapp-dialog-modal.modal.active')) return;
   document.querySelectorAll('.modal.active:not(#inapp-dialog-modal)').forEach((m) => closeModal(m));
 }
 
@@ -138,10 +139,12 @@ export function showInAppConfirm({ title = 'Confirm Action', message = '', confi
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         cleanup(false);
       } else if (e.key === 'Enter') {
         if (document.activeElement === btnCancel) return;
         e.preventDefault();
+        e.stopPropagation();
         cleanup(true);
       }
     };
@@ -196,10 +199,12 @@ export function showInAppPrompt({ title = 'Enter Value', message = '', defaultVa
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        e.stopPropagation();
         cleanup(null);
       } else if (e.key === 'Enter') {
         if (document.activeElement === btnCancel) return;
         e.preventDefault();
+        e.stopPropagation();
         onConfirm();
       }
     };
@@ -256,6 +261,7 @@ export function showInAppAlert({ title = 'Notice', message = '', buttonText = 'O
     const onKeyDown = (e) => {
       if (e.key === 'Escape' || e.key === 'Enter') {
         e.preventDefault();
+        e.stopPropagation();
         cleanup();
       }
     };

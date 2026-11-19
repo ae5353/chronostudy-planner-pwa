@@ -1,3 +1,4 @@
+// @ts-check
 // src/domain/reconcile.js — Midnight session splitting & cross-entity reconciliation
 import { toLocalDateStr } from './date-utils.js';
 import { LEGACY_DEFAULT_SUBJECT } from './presets.js';

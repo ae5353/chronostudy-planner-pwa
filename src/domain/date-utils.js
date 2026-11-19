@@ -1,3 +1,4 @@
+// @ts-check
 // src/domain/date-utils.js — Local date/time & week boundary helpers
 
 export function toLocalDateStr(d = new Date()) {

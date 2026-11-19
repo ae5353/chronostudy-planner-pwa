@@ -1,3 +1,4 @@
+// @ts-check
 // src/domain/exporters.js — iCal (.ics), JSON snapshot & CSV formula-safe exporters
 import { toLocalDateStr } from './date-utils.js';
 

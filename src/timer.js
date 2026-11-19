@@ -1,3 +1,4 @@
+// @ts-check
 // src/timer.js — High-Precision Study Timer Engine with Background Resilience & Zen Mode
 import { store } from './store.js';
 import { playCompletionChime } from './audio.js';

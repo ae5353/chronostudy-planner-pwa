@@ -1,3 +1,4 @@
+// @ts-check
 // src/domain/analytics.js — Indexed session stats, subject metrics & multi-week analytics engine
 import { toLocalDateStr, getMondayOfDate, formatDurationHM } from './date-utils.js';
 

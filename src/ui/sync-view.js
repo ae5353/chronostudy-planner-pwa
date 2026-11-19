@@ -661,7 +661,7 @@ create policy "Hardened room sync update" on chronostudy_sync
     });
     if (!confirmed) return;
 
-    const res = store.restoreSafetyBackup();
+    const res = await store.restoreSafetyBackupAsync();
     if (res.success) {
       await showInAppAlert({
         title: 'Rollback Complete',

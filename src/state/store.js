@@ -1,4 +1,6 @@
+// @ts-check
 // src/state/store.js — Reactive Local-First State Store composing pure domain engines
+import { StorageAdapter } from './storage.js';
 import {
   DEFAULT_GROUPS,
   INITIAL_SUBJECTS,
@@ -39,9 +41,6 @@ import {
   exportCSV as serializeSessionsCSV
 } from '../domain/exporters.js';
 
-const STORAGE_KEY = 'chronostudy_v3_state';
-const BACKUP_STORAGE_KEY = 'chronostudy_pre_sync_backup';
-
 export {
   DEFAULT_GROUPS,
   INITIAL_SUBJECTS,
@@ -54,6 +53,7 @@ export {
 export class Store {
   constructor() {
     this.listeners = new Set();
+    this.storage = new StorageAdapter();
     this._stateRevision = 0;
     this._sessionTaskIndex = null;
     this._cachedRevision = -1;
@@ -252,14 +252,10 @@ export class Store {
 
   loadState() {
     try {
-      if (typeof localStorage === 'undefined') {
+      const parsed = this.storage.readSync();
+      if (!parsed) {
         return createInitialState();
       }
-      const serialized = localStorage.getItem(STORAGE_KEY);
-      if (!serialized) {
-        return createInitialState();
-      }
-      const parsed = JSON.parse(serialized);
       const defaults = createInitialState();
 
       const candidate = {
@@ -275,8 +271,21 @@ export class Store {
       };
       return this.sanitizeState(candidate);
     } catch (err) {
-      console.warn('Failed to parse localStorage, resetting to initial state', err);
+      console.warn('Failed to load workspace state, resetting to initial state', err);
       return createInitialState();
+    }
+  }
+
+  async hydrateFromIndexedDB() {
+    try {
+      const idbState = await this.storage.hydrateFromIndexedDB();
+      if (!idbState) return false;
+      this.state = this.sanitizeState(idbState);
+      this.saveState({ emitSyncEvent: false, notifyUI: true });
+      return true;
+    } catch (err) {
+      console.warn('IndexedDB hydration error:', err);
+      return false;
     }
   }
 
@@ -286,14 +295,12 @@ export class Store {
       if (emitSyncEvent && this.state && this.state.sync) {
         this.state.sync.hasChanges = true;
       }
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
-      }
+      this.storage.write(this.state);
       if (emitSyncEvent && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
         window.dispatchEvent(new CustomEvent('chronostudy:state-changed', { detail: { timestamp: Date.now() } }));
       }
     } catch (err) {
-      console.error('Failed to save to localStorage', err);
+      console.error('Failed to persist state:', err);
     }
     if (notifyUI) {
       this.notify();
@@ -302,14 +309,12 @@ export class Store {
 
   createSafetyBackup() {
     try {
-      if (typeof localStorage !== 'undefined') {
-        const payload = {
-          backupAt: new Date().toISOString(),
-          version: this.state.version,
-          state: this.state
-        };
-        localStorage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(payload));
-      }
+      const payload = {
+        backupAt: new Date().toISOString(),
+        version: this.state.version,
+        state: this.state
+      };
+      this.storage.saveBackup(payload);
     } catch (err) {
       console.warn('Safety backup snapshot failed:', err);
     }
@@ -317,16 +322,25 @@ export class Store {
 
   restoreSafetyBackup() {
     try {
-      if (typeof localStorage !== 'undefined') {
-        const serialized = localStorage.getItem(BACKUP_STORAGE_KEY);
-        if (serialized) {
-          const parsed = JSON.parse(serialized);
-          if (parsed && parsed.state) {
-            this.state = this.sanitizeState(parsed.state);
-            this.saveState();
-            return { success: true, backupAt: parsed.backupAt };
-          }
-        }
+      const parsed = this.storage.readBackupSync();
+      if (parsed && parsed.state) {
+        this.state = this.sanitizeState(parsed.state);
+        this.saveState();
+        return { success: true, backupAt: parsed.backupAt };
+      }
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+    return { success: false, error: 'No safety backup found' };
+  }
+
+  async restoreSafetyBackupAsync() {
+    try {
+      const parsed = await this.storage.readBackupAsync();
+      if (parsed && parsed.state) {
+        this.state = this.sanitizeState(parsed.state);
+        this.saveState();
+        return { success: true, backupAt: parsed.backupAt };
       }
     } catch (err) {
       return { success: false, error: err.message };
@@ -370,6 +384,15 @@ export class Store {
     this.state.sync.lastSyncedAt = syncTimestamp;
     this.state.sync.status = 'synced';
     this.state.sync.lastError = null;
+
+    // Throttle tombstone compaction to at most once per 24 hours
+    const lastCompactedMs = this.state.sync.lastCompactedAt ? new Date(this.state.sync.lastCompactedAt).getTime() : 0;
+    const nowMs = Date.now();
+    if (!lastCompactedMs || (nowMs - lastCompactedMs >= 86400000)) {
+      compactTombstones(this.state, { maxAgeDays: 90, now: nowMs });
+      this.state.sync.lastCompactedAt = syncTimestamp;
+    }
+
     this.saveState({ emitSyncEvent: false, notifyUI: false });
   }
 

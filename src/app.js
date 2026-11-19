@@ -1,9 +1,15 @@
 // src/app.js — Main Application Bootstrap for ChronoStudy
+import { store } from './store.js';
 import { ChronoUI } from './ui.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Initialize UI
+  // Initialize UI synchronously from fast boot cache
   window.chronoUI = new ChronoUI();
+
+  // Asynchronously hydrate full workspace from IndexedDB if fuller/newer than boot cache
+  store.hydrateFromIndexedDB().catch((err) => {
+    console.warn('IndexedDB hydration skipped:', err);
+  });
 
   // Register PWA service worker with auto-update
   if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {

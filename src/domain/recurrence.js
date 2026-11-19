@@ -1,3 +1,4 @@
+// @ts-check
 // src/domain/recurrence.js — Recurring task & event cadence calculations and rollover occurrence synthesis
 import { toLocalDateStr, getMondayOfDate } from './date-utils.js';
 

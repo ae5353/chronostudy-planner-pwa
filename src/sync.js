@@ -1,6 +1,18 @@
+// @ts-check
 // src/sync.js — Multi-Device Cloud Synchronization, Offline Outbox & Background Controller
 import { store } from './store.js';
 import { timer } from './timer.js';
+
+async function deriveRoomSecretHash(roomId, passphrase) {
+  if (!passphrase || !passphrase.trim() || typeof crypto === 'undefined' || !crypto.subtle) {
+    return '';
+  }
+  const bytes = new TextEncoder().encode(`${roomId}:${passphrase.trim()}`);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
 
 /**
  * Lightweight End-to-End Encryption helper using Web Cryptography API (AES-GCM + PBKDF2)
@@ -548,15 +560,13 @@ export class SyncManager {
 
     const searchData = await searchRes.json();
     const existingFile = searchData.files && searchData.files.length > 0 ? searchData.files[0] : null;
+    let observedModifiedTime = existingFile ? (existingFile.modifiedTime || null) : null;
 
-    // 3. Download and merge if file exists
-    if (existingFile) {
-      store.updateSyncSettings({ googleDriveFileId: existingFile.id }, { emitSyncEvent: false });
-      const downloadUrl = `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`;
+    const downloadAndMergeDriveFile = async (fileId) => {
+      const downloadUrl = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
       const dlRes = await fetch(downloadUrl, {
         headers: { Authorization: `Bearer ${token}` }
       });
-
       if (dlRes.ok) {
         const rawContent = await dlRes.text();
         if (rawContent && rawContent.trim()) {
@@ -570,34 +580,61 @@ export class SyncManager {
           }
         }
       }
+    };
+
+    // 3. Download and merge if file exists
+    if (existingFile) {
+      store.updateSyncSettings({ googleDriveFileId: existingFile.id }, { emitSyncEvent: false });
+      await downloadAndMergeDriveFile(existingFile.id);
     }
 
-    // 4. Prepare updated local payload and upload to Drive
-    const localPayload = store.getSyncPayload();
-    const serializedForCloud = await encryptPayload(localPayload, syncState.passphrase);
-
+    // 4. Prepare updated local payload and upload to Drive (with optimistic concurrency check)
     if (existingFile) {
-      // Update existing file (PATCH)
-      const patchUrl = `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=media`;
-      const patchRes = await fetch(patchUrl, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: serializedForCloud
-      });
-
-      if (!patchRes.ok) {
-        const patchErr = await patchRes.text();
-        if (patchRes.status === 401) {
-          this.gdriveAccessToken = null;
-          this.clearSavedGoogleAuth();
-          throw new Error('Google authorization expired. Please click "Sign in with Google Drive" again.');
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (observedModifiedTime) {
+          const metaRes = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${existingFile.id}?fields=id,modifiedTime`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (metaRes && metaRes.ok) {
+            const meta = await metaRes.json();
+            if (meta && meta.modifiedTime && meta.modifiedTime !== observedModifiedTime) {
+              if (attempt === 2) {
+                throw new Error('Google Drive sync conflict: remote file kept changing concurrently. Please retry.');
+              }
+              await downloadAndMergeDriveFile(existingFile.id);
+              observedModifiedTime = meta.modifiedTime;
+              continue;
+            }
+          }
         }
-        throw new Error(`Failed to update file in Google Drive: ${patchErr}`);
+
+        const localPayload = store.getSyncPayload();
+        const serializedForCloud = await encryptPayload(localPayload, syncState.passphrase);
+        const patchUrl = `https://www.googleapis.com/upload/drive/v3/files/${existingFile.id}?uploadType=media&fields=id,modifiedTime`;
+        const patchRes = await fetch(patchUrl, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: serializedForCloud
+        });
+
+        if (!patchRes.ok) {
+          const patchErr = await patchRes.text();
+          if (patchRes.status === 401) {
+            this.gdriveAccessToken = null;
+            this.clearSavedGoogleAuth();
+            throw new Error('Google authorization expired. Please click "Sign in with Google Drive" again.');
+          }
+          throw new Error(`Failed to update file in Google Drive: ${patchErr}`);
+        }
+        break;
       }
     } else {
+      const localPayload = store.getSyncPayload();
+      const serializedForCloud = await encryptPayload(localPayload, syncState.passphrase);
       // Create new file via multipart upload
       const boundary = '-------ChronoStudyBoundary' + Math.random().toString(36).slice(2);
       const delimiter = `\r\n--${boundary}\r\n`;
@@ -675,81 +712,118 @@ export class SyncManager {
     const baseUrl = supabaseUrl.replace(/\/+$/, '');
     const endpoint = `${baseUrl}/rest/v1/chronostudy_sync`;
     const roomId = supabaseRoomId.trim().toLowerCase();
+    const roomSecret = await deriveRoomSecretHash(roomId, passphrase);
 
-    // 1. Fetch remote room data from Supabase
-    const fetchUrl = `${endpoint}?room_id=eq.${encodeURIComponent(roomId)}&select=*`;
-    const response = await fetch(fetchUrl, {
-      method: 'GET',
-      headers: {
+    const buildHeaders = (extra = {}) => {
+      const headers = {
         'apikey': supabaseKey,
         'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...extra
+      };
+      if (roomSecret) {
+        headers['x-room-secret'] = roomSecret;
       }
-    });
+      return headers;
+    };
 
-    if (!response.ok) {
-      const errText = await response.text();
-      if (response.status === 404 || errText.includes('relation "chronostudy_sync" does not exist')) {
-        throw new Error('The "chronostudy_sync" table was not found in your Supabase database. Click "Copy Supabase SQL Setup" in Cloud Sync settings to create it in 5 seconds.');
+    let syncedAt = new Date().toISOString();
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      // 1. Fetch remote room data from Supabase
+      const fetchUrl = `${endpoint}?room_id=eq.${encodeURIComponent(roomId)}&select=*`;
+      const response = await fetch(fetchUrl, {
+        method: 'GET',
+        headers: buildHeaders()
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        if (response.status === 404 || errText.includes('relation "chronostudy_sync" does not exist')) {
+          throw new Error('The "chronostudy_sync" table was not found in your Supabase database. Click "Copy Supabase SQL Setup" in Cloud Sync settings to create it in 5 seconds.');
+        }
+        throw new Error(`Supabase request failed (${response.status}): ${errText}`);
       }
-      throw new Error(`Supabase request failed (${response.status}): ${errText}`);
-    }
 
-    const rows = await response.json();
-    let remotePayload = null;
-    let remoteDeviceId = null;
-    let remoteUpdatedAt = null;
+      const rows = await response.json();
+      const existingRow = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+      let remotePayload = null;
+      const remoteUpdatedAt = existingRow ? (existingRow.updated_at || null) : null;
 
-    if (Array.isArray(rows) && rows.length > 0) {
-      const row = rows[0];
-      remoteDeviceId = row.device_id || null;
-      remoteUpdatedAt = row.updated_at || null;
-
-      if (row.payload) {
+      if (existingRow && existingRow.payload) {
         try {
-          remotePayload = await decryptPayload(row.payload, passphrase);
+          remotePayload = await decryptPayload(existingRow.payload, passphrase);
         } catch (decryptErr) {
           throw new Error(`Failed to decrypt remote data: ${decryptErr.message}`);
         }
       }
-    }
 
-    // 2. If remote data exists, merge remote changes additively and safely into local store
-    if (remotePayload) {
-      store.mergeRemoteState(remotePayload);
-    }
+      // 2. If remote data exists, merge remote changes additively and safely into local store
+      if (remotePayload) {
+        store.mergeRemoteState(remotePayload);
+      }
 
-    // 3. Prepare our updated local payload to upload to Supabase
-    const nowIso = new Date().toISOString();
-    const localPayload = store.getSyncPayload();
-    const serializedForCloud = await encryptPayload(localPayload, passphrase);
+      // 3. Prepare our updated local payload to upload to Supabase
+      const nowIso = new Date().toISOString();
+      const localPayload = store.getSyncPayload();
+      const serializedForCloud = await encryptPayload(localPayload, passphrase);
 
-    const upsertBody = {
-      room_id: roomId,
-      payload: serializedForCloud,
-      updated_at: nowIso,
-      device_id: this.deviceId
-    };
+      if (existingRow && remoteUpdatedAt) {
+        // Conditional optimistic concurrency PATCH using expected remote updated_at
+        const patchUrl = `${endpoint}?room_id=eq.${encodeURIComponent(roomId)}&updated_at=eq.${encodeURIComponent(remoteUpdatedAt)}`;
+        const patchBody = {
+          payload: serializedForCloud,
+          updated_at: nowIso,
+          device_id: this.deviceId
+        };
+        if (roomSecret) patchBody.room_secret_hash = roomSecret;
 
-    // Use Postgres Upsert (Prefer: resolution=merge-duplicates)
-    const pushResponse = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${supabaseKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates,return=representation'
-      },
-      body: JSON.stringify(upsertBody)
-    });
+        const patchResponse = await fetch(patchUrl, {
+          method: 'PATCH',
+          headers: buildHeaders({ 'Prefer': 'return=representation' }),
+          body: JSON.stringify(patchBody)
+        });
 
-    if (!pushResponse.ok) {
-      const pushErrText = await pushResponse.text();
-      throw new Error(`Failed to save data to Supabase (${pushResponse.status}): ${pushErrText}`);
+        if (!patchResponse.ok) {
+          const patchErrText = await patchResponse.text();
+          throw new Error(`Failed to save data to Supabase (${patchResponse.status}): ${patchErrText}`);
+        }
+
+        const updatedRows = await patchResponse.json();
+        if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+          if (attempt === 2) {
+            throw new Error('Supabase sync conflict: another device updated this room simultaneously. Please try syncing again.');
+          }
+          continue;
+        }
+        syncedAt = nowIso;
+        break;
+      } else {
+        const upsertBody = {
+          room_id: roomId,
+          payload: serializedForCloud,
+          updated_at: nowIso,
+          device_id: this.deviceId
+        };
+        if (roomSecret) upsertBody.room_secret_hash = roomSecret;
+
+        const pushResponse = await fetch(endpoint, {
+          method: 'POST',
+          headers: buildHeaders({ 'Prefer': 'resolution=merge-duplicates,return=representation' }),
+          body: JSON.stringify(upsertBody)
+        });
+
+        if (!pushResponse.ok) {
+          const pushErrText = await pushResponse.text();
+          throw new Error(`Failed to save data to Supabase (${pushResponse.status}): ${pushErrText}`);
+        }
+        syncedAt = nowIso;
+        break;
+      }
     }
 
     // 4. Mark all local records as safely synced
-    store.markRecordsSynced(nowIso);
+    store.markRecordsSynced(syncedAt);
   }
 
   /**

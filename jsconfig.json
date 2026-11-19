@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/types.js",
+    "src/domain/**/*.js",
+    "src/state/**/*.js",
+    "src/timer.js",
+    "src/sync.js"
+  ]
+}

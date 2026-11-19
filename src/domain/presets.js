@@ -1,3 +1,4 @@
+// @ts-check
 // src/domain/presets.js — Initial curriculum presets, groups, seed tombstones & initial state factory
 
 export const DEFAULT_GROUPS = [

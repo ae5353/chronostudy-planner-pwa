@@ -1,3 +1,4 @@
+// @ts-check
 // src/domain/sync-merge.js — 3-way cloud merge engine & tombstone compaction
 import { LEGACY_SEED_TASK_IDS } from './presets.js';
 import { reconcileTasksAndSessions } from './reconcile.js';

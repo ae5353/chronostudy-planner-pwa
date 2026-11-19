@@ -249,6 +249,8 @@
 }
 .btn-start:hover:not(:disabled) {
   background-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
 }
 
 .btn-pause {
@@ -256,6 +258,11 @@
   color: #ffffff;
   padding: 0.75rem 1.75rem;
   font-size: 1rem;
+}
+.btn-pause:hover:not(:disabled) {
+  background-color: #d97706;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
 }
 
 .btn-finish {
@@ -744,7 +751,8 @@
   margin-top: 0.35rem;
 }
 
-.digital-controls .btn-start {
+.digital-controls .btn-start,
+.digital-controls .btn-pause {
   flex: 1.4;
   padding: 0.45rem 0.65rem;
   font-size: 0.8rem;

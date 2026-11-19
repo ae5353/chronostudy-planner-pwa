@@ -453,7 +453,8 @@
     width: 100%;
   }
 
-  body:not(.layout-format-desktop) .digital-controls .btn-start {
+  body:not(.layout-format-desktop) .digital-controls .btn-start,
+  body:not(.layout-format-desktop) .digital-controls .btn-pause {
     flex: 1.4;
     min-width: 0;
     min-height: 40px;

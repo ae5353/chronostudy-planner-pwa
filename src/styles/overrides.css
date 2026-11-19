@@ -269,7 +269,8 @@ body.layout-format-mobile .digital-controls {
   width: 100%;
 }
 
-body.layout-format-mobile .digital-controls .btn-start {
+body.layout-format-mobile .digital-controls .btn-start,
+body.layout-format-mobile .digital-controls .btn-pause {
   flex: 1.4;
   min-width: 0;
   min-height: 40px;

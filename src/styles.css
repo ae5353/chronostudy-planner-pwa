@@ -20,6 +20,7 @@
   
   --primary: #3b82f6;
   --primary-hover: #2563eb;
+  --primary-fg: #ffffff;
   --primary-glow: rgba(59, 130, 246, 0.15);
   
   --accent-green: #238636;
@@ -56,6 +57,7 @@
   
   --primary: #ffffff;
   --primary-hover: #e5e5e5;
+  --primary-fg: #000000;
   --primary-glow: rgba(255, 255, 255, 0.1);
   
   --accent-green: #22c55e;
@@ -910,7 +912,7 @@ h1, h2, h3, h4, .app-title, .panel-title, .modal-title {
 
 .btn-primary {
   background-color: var(--primary);
-  color: #ffffff;
+  color: var(--primary-fg, #ffffff);
 }
 
 .btn-primary:hover:not(:disabled) {

@@ -1,7 +1,7 @@
 {
   "appId": "app.chronostudy.planner",
   "appName": "ChronoStudy",
-  "webDir": "dist",
+  "webDir": ".",
   "bundledWebRuntime": false,
   "server": {
     "androidScheme": "https",
@@ -11,11 +11,11 @@
   "plugins": {
     "LocalNotifications": {
       "smallIcon": "ic_stat_chronostudy",
-      "iconColor": "#C85A32"
+      "iconColor": "#3b82f6"
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#FBF9F5"
+      "backgroundColor": "#0d1117"
     }
   }
 }

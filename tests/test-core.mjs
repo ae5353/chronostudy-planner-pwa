@@ -192,12 +192,17 @@ assert(ics.includes('Circuit Analysis Problem Set 5'), 'ICS must include task ti
 assert(ics.includes('END:VCALENDAR'), 'ICS must include footer');
 console.log('✔ Google Calendar iCal export verified.');
 
-// 5. Study Session Logging
+// 5. Study Session Logging (explicit same-day timestamps so tests never flake near midnight)
+const todayStart = new Date();
+todayStart.setHours(10, 0, 0, 0);
+const todayEnd = new Date(todayStart.getTime() + 3600 * 1000);
 const sess = store.addSession({
   subject: 'Circuit Analysis',
   topic: 'Nodal and Mesh Analysis',
   taskId: task.id,
   durationSec: 3600,
+  startTime: todayStart.toISOString(),
+  endTime: todayEnd.toISOString(),
   notes: 'Understood supermesh and source transformation.'
 });
 assert(sess && sess.durationSec === 3600);

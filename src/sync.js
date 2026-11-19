@@ -29,36 +29,54 @@ async function deriveKey(passphrase, salt) {
   );
 }
 
+function bytesToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(b64) {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export async function encryptPayload(dataObj, passphrase) {
   if (!passphrase || !passphrase.trim()) {
     return JSON.stringify(dataObj);
   }
   if (typeof crypto === 'undefined' || !crypto.subtle) {
-    return JSON.stringify(dataObj);
+    throw new Error('End-to-end encryption requires a secure context (HTTPS or localhost) with Web Crypto API.');
   }
-  try {
-    const enc = new TextEncoder();
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const key = await deriveKey(passphrase, salt);
-    const plaintext = enc.encode(JSON.stringify(dataObj));
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      key,
-      plaintext
-    );
+  const enc = new TextEncoder();
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(passphrase, salt);
+  if (!key) {
+    throw new Error('Failed to derive encryption key.');
+  }
+  const plaintext = enc.encode(JSON.stringify(dataObj));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    plaintext
+  );
 
-    const packed = {
-      isEncrypted: true,
-      salt: Array.from(salt),
-      iv: Array.from(iv),
-      data: Array.from(new Uint8Array(ciphertext))
-    };
-    return JSON.stringify(packed);
-  } catch (err) {
-    console.warn('Encryption failed, falling back to unencrypted transport:', err);
-    return JSON.stringify(dataObj);
-  }
+  const packed = {
+    isEncrypted: true,
+    v: 2,
+    encoding: 'base64',
+    salt: bytesToBase64(salt),
+    iv: bytesToBase64(iv),
+    data: bytesToBase64(new Uint8Array(ciphertext))
+  };
+  return JSON.stringify(packed);
 }
 
 export async function decryptPayload(serializedText, passphrase) {
@@ -74,9 +92,9 @@ export async function decryptPayload(serializedText, passphrase) {
       throw new Error('Web Cryptography API is unavailable in this environment.');
     }
 
-    const salt = new Uint8Array(parsed.salt);
-    const iv = new Uint8Array(parsed.iv);
-    const ciphertext = new Uint8Array(parsed.data);
+    const salt = typeof parsed.salt === 'string' ? base64ToBytes(parsed.salt) : new Uint8Array(parsed.salt);
+    const iv = typeof parsed.iv === 'string' ? base64ToBytes(parsed.iv) : new Uint8Array(parsed.iv);
+    const ciphertext = typeof parsed.data === 'string' ? base64ToBytes(parsed.data) : new Uint8Array(parsed.data);
     const key = await deriveKey(passphrase, salt);
 
     const decrypted = await crypto.subtle.decrypt(
@@ -108,6 +126,8 @@ export class SyncManager {
     this.pwaInstallPrompt = null;
     this.gdriveAccessToken = null;
     this.gdriveTokenExpiry = null;
+    this._tokenRefreshInFlight = null;
+    this._lastTokenRefreshAttempt = 0;
     this.restoreSavedGoogleAuth();
 
     // Generate or restore a unique client device ID
@@ -267,12 +287,21 @@ export class SyncManager {
       }
     });
 
-    // Proactive background Google Drive token refresh on user interactions
+    // Proactive background Google Drive token refresh on user interactions (throttled + single in-flight)
     const renewOnUserGesture = () => {
       const syncState = store.getState().sync || {};
       if (syncState.provider === 'gdrive' && syncState.googleClientId && (this.gdriveAccessToken || syncState.googleUserEmail)) {
         if (!this.gdriveAccessToken || (this.gdriveTokenExpiry && Date.now() >= this.gdriveTokenExpiry - 300000)) {
-          this.requestGoogleAccessToken({ clientId: syncState.googleClientId, interactive: true }).catch(() => {});
+          const now = Date.now();
+          if (this._tokenRefreshInFlight || (now - this._lastTokenRefreshAttempt < 60000)) {
+            return;
+          }
+          this._lastTokenRefreshAttempt = now;
+          this._tokenRefreshInFlight = this.requestGoogleAccessToken({ clientId: syncState.googleClientId, interactive: true })
+            .catch(() => {})
+            .finally(() => {
+              this._tokenRefreshInFlight = null;
+            });
         }
       }
     };
@@ -364,7 +393,7 @@ export class SyncManager {
       console.error('ChronoStudy Cloud Sync Failed:', err);
       this.lastError = err.message || 'Sync failed';
       this.isSyncing = false;
-      store.updateSyncSettings({ status: 'error' });
+      store.updateSyncSettings({ status: 'error' }, { emitSyncEvent: false });
       this.notify();
       return { success: false, error: this.lastError };
     }
@@ -473,7 +502,7 @@ export class SyncManager {
         if (userinfoRes.ok) {
           const userinfo = await userinfoRes.json();
           if (userinfo.email) {
-            store.updateSyncSettings({ googleUserEmail: userinfo.email });
+            store.updateSyncSettings({ googleUserEmail: userinfo.email }, { emitSyncEvent: false });
             if (this.gdriveAccessToken && this.gdriveTokenExpiry) {
               const remainingSec = Math.max(60, Math.floor((this.gdriveTokenExpiry - Date.now()) / 1000));
               this.saveGoogleAuth(this.gdriveAccessToken, remainingSec, userinfo.email);
@@ -522,7 +551,7 @@ export class SyncManager {
 
     // 3. Download and merge if file exists
     if (existingFile) {
-      store.updateSyncSettings({ googleDriveFileId: existingFile.id });
+      store.updateSyncSettings({ googleDriveFileId: existingFile.id }, { emitSyncEvent: false });
       const downloadUrl = `https://www.googleapis.com/drive/v3/files/${existingFile.id}?alt=media`;
       const dlRes = await fetch(downloadUrl, {
         headers: { Authorization: `Bearer ${token}` }
@@ -609,7 +638,7 @@ export class SyncManager {
 
       const createData = await createRes.json();
       if (createData.id) {
-        store.updateSyncSettings({ googleDriveFileId: createData.id });
+        store.updateSyncSettings({ googleDriveFileId: createData.id }, { emitSyncEvent: false });
       }
     }
 
@@ -726,9 +755,14 @@ export class SyncManager {
   /**
    * Offline Direct Device-to-Device Snapshot Transfer
    */
-  exportSnapshotJSON(passphrase = null) {
+  exportSnapshotJSON() {
     const payload = store.getSyncPayload();
     return JSON.stringify(payload, null, 2);
+  }
+
+  async exportEncryptedSnapshotJSON(passphrase) {
+    const payload = store.getSyncPayload();
+    return encryptPayload(payload, passphrase);
   }
 
   async importSnapshotJSON(jsonString, passphrase = null) {
@@ -765,7 +799,13 @@ export class SyncManager {
         timer.pause();
       });
       navigator.mediaSession.setActionHandler('stop', () => {
-        timer.finishSession();
+        const st = timer.getState();
+        if (st.elapsedSec >= 5) {
+          const sessionData = timer.finishSession();
+          store.addSession(sessionData);
+        } else {
+          timer.pause();
+        }
       });
     } catch (e) {
       console.warn('MediaSession action handler setup issue:', e);

@@ -2,6 +2,7 @@
 
 let audioCtx = null;
 let ambientSource = null;
+let ambientFilter = null;
 let ambientGain = null;
 
 function getAudioContext() {
@@ -97,37 +98,59 @@ export function setAmbientSound(type = 'none', volume = 0.5) {
       } catch (e) {}
       ambientSource = null;
     }
+    if (ambientFilter) {
+      try {
+        ambientFilter.disconnect();
+      } catch (e) {}
+      ambientFilter = null;
+    }
+    if (ambientGain) {
+      try {
+        ambientGain.disconnect();
+      } catch (e) {}
+      ambientGain = null;
+    }
 
     if (type === 'none') {
       return;
     }
 
     const bufferSize = 2 * ctx.sampleRate;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = buffer.getChannelData(0);
+    const fadeSamples = Math.min(2400, Math.floor(bufferSize / 4));
+    const totalGen = bufferSize + fadeSamples;
+    const raw = new Float32Array(totalGen);
 
-    if (type === 'white') {
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
+    if (type === 'white' || type === 'whitenoise') {
+      for (let i = 0; i < totalGen; i++) {
+        raw[i] = Math.random() * 2 - 1;
       }
     } else if (type === 'rain') {
       // Pink / brown filtered noise simulating rain drops
       let b0 = 0, b1 = 0, b2 = 0;
-      for (let i = 0; i < bufferSize; i++) {
+      for (let i = 0; i < totalGen; i++) {
         const white = Math.random() * 2 - 1;
         b0 = 0.99886 * b0 + white * 0.0555179;
         b1 = 0.99332 * b1 + white * 0.0750759;
         b2 = 0.96900 * b2 + white * 0.1538520;
-        output[i] = (b0 + b1 + b2) * 0.2;
+        raw[i] = (b0 + b1 + b2) * 0.2;
       }
-    } else if (type === 'stream') {
+    } else if (type === 'stream' || type === 'waves' || type === 'brownnoise' || type === 'cafe') {
       // Gentle stream / river texture
       let lastOut = 0.0;
-      for (let i = 0; i < bufferSize; i++) {
+      for (let i = 0; i < totalGen; i++) {
         const white = Math.random() * 2 - 1;
         lastOut = (lastOut + 0.02 * white) / 1.02;
-        output[i] = lastOut * 2.5;
+        raw[i] = lastOut * 2.5;
       }
+    }
+
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const output = buffer.getChannelData(0);
+    output.set(raw.subarray(0, bufferSize));
+    // Seamless loop crossfade so end wraps cleanly into start without a 2s click
+    for (let i = 0; i < fadeSamples; i++) {
+      const t = i / fadeSamples;
+      output[i] = output[i] * t + raw[bufferSize + i] * (1 - t);
     }
 
     ambientSource = ctx.createBufferSource();
@@ -135,15 +158,16 @@ export function setAmbientSound(type = 'none', volume = 0.5) {
     ambientSource.loop = true;
 
     // Filter to soften the sound
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(type === 'rain' ? 1200 : 800, ctx.currentTime);
+    ambientFilter = ctx.createBiquadFilter();
+    ambientFilter.type = 'lowpass';
+    ambientFilter.frequency.setValueAtTime(type === 'rain' ? 1200 : 800, ctx.currentTime);
 
+    const parsedVol = Number.isFinite(Number(volume)) ? Number(volume) : 0.5;
     ambientGain = ctx.createGain();
-    ambientGain.gain.setValueAtTime(Math.max(0.01, Math.min(volume, 1.0)) * 0.15, ctx.currentTime);
+    ambientGain.gain.setValueAtTime(Math.max(0, Math.min(parsedVol, 1.0)) * 0.15, ctx.currentTime);
 
-    ambientSource.connect(filter);
-    filter.connect(ambientGain);
+    ambientSource.connect(ambientFilter);
+    ambientFilter.connect(ambientGain);
     ambientGain.connect(ctx.destination);
 
     ambientSource.start();
@@ -155,7 +179,8 @@ export function setAmbientSound(type = 'none', volume = 0.5) {
 export function updateAmbientVolume(volume) {
   if (ambientGain && audioCtx) {
     try {
-      ambientGain.gain.setValueAtTime(Math.max(0.01, Math.min(volume, 1.0)) * 0.15, audioCtx.currentTime);
+      const parsedVol = Number.isFinite(Number(volume)) ? Number(volume) : 0.5;
+      ambientGain.gain.setValueAtTime(Math.max(0, Math.min(parsedVol, 1.0)) * 0.15, audioCtx.currentTime);
     } catch (e) {}
   }
 }

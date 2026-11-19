@@ -1,71 +1,59 @@
 # ChronoStudy — Personal Study Tracker & Planner
 
-A focused, distraction-free study companion designed **PC-first**, responsive for mobile, and built specifically for personal use.
+A focused, distraction-free study companion designed **PC-first**, responsive for mobile, and built with zero runtime dependencies.
 
 ---
 
-## 🌟 Why ChronoStudy?
+## Why ChronoStudy?
 
-Plain stopwatches and separate to-do apps make it difficult to remember **what** you studied, **when**, **for how long**, and **what you learned**. 
+Plain stopwatches and separate to-do apps make it difficult to remember **what** you studied, **when**, **for how long**, and **what you learned**.
 
-**ChronoStudy unifies everything in one clean dashboard:**
-1. **Focus Timer & Live Scratchpad**: Start a stopwatch or focus countdown block. Type notes, formulas, questions, or chapter progress right alongside the timer as you study.
-2. **"What I Must Study" (Study To-Do List)**: Keep track of upcoming topics and assignments. Each task has a **`▶ Study Now`** button that immediately primes your timer and links your notes.
-3. **Session History & Activity Log**: Automatic timeline of past study sessions with exact times, durations, subjects, and your saved study notes.
-4. **Manual Offline Logging**: Studied away from the computer with a physical book? Quickly log past study sessions with "+ Log Past Study".
-5. **No Clutter & 100% Private**: Zero logins, zero third-party tracking, zero bloated dependencies. All data is saved on your device with instant 1-click JSON backup and CSV export for Excel / Google Sheets.
+**ChronoStudy unifies everything in one dashboard:**
+1. **Horology Focus Timer & Live Scratchpad**: Start a stopwatch or focus countdown block (with Zen Fullscreen Theater & Picture-in-Picture mini-timer). Type notes, formulas, or questions alongside the timer.
+2. **Study Tasks & Backlog**: Track upcoming topics, due dates, and recurring routines (`daily`, `weekdays`, `weekly`, `biweekly`, `triweekly`, `monthly`). Each task links directly into the timer.
+3. **Weekly & Monthly Academic Planner**: View course lecture slots, recurring commitments, day-by-day tasks, and logged focus sessions together.
+4. **Analytics & Manual Logging**: Inspect weekly history trends, subject hour targets, and session logs, or add offline study sessions via `+ Log Past`.
+5. **100% Local-First + Optional E2EE Cloud Sync**: Zero third-party tracking. Sync optionally via Google Drive, Supabase, or offline JSON snapshots with AES-GCM encryption, plus `.json`, `.csv`, and `.ics` exports.
 
 ---
 
-## 🚀 Getting Started on PC
+## Getting Started
 
-You can run ChronoStudy instantly using Node.js:
+Run ChronoStudy locally using Node.js (required for ES modules & Service Worker; opening `index.html` over `file://` is blocked by browser ES module CORS rules):
 
 ```bash
-# Start the local server
+# Start the local server (binds to 127.0.0.1:3000 by default)
 npm start
+
+# Run the automated test suite
+npm test
 ```
-Then open your browser to:
-👉 **[http://localhost:3000](http://localhost:3000)**
 
-*(Alternatively, you can open `index.html` directly in Google Chrome, Microsoft Edge, or Firefox!)*
-
----
-
-## ⌨️ Desktop Keyboard Shortcuts
-
-- `Space`: Start / Pause the active study timer (when not typing in an input field).
-- `Ctrl + F`: Finish current study session and open review modal.
-- `Esc`: Close any open modal.
+Open **[http://localhost:3000](http://localhost:3000)** in Chrome, Edge, Firefox, or Safari.
+To expose on your LAN for mobile testing, pass `HOST=0.0.0.0 npm start`.
 
 ---
 
-## 📱 Using on Mobile
+## Desktop Keyboard Shortcuts
 
-ChronoStudy is a Progressive Web App (PWA) with responsive breakpoints:
-1. On PC / Desktop, it provides a spacious multi-column dashboard.
-2. On mobile screens (under 768px), it automatically switches to an intuitive bottom navigation bar (`⏱ Timer`, `📋 To-Do`, `📜 History`).
-3. To install it as a standalone app on your phone or PC:
-   - **Chrome / Edge (PC)**: Click the install icon in the address bar (or Menu → "Install ChronoStudy").
-   - **Safari (iOS)**: Tap Share → "Add to Home Screen".
-   - **Chrome (Android)**: Tap Menu (three dots) → "Install App".
+- `Space`: Start / Pause the active study timer (when not typing or inside a modal).
+- `Alt + Shift + F`: Finish current study session (once >= 5s elapsed) and open review modal.
+- `Z`: Toggle Zen Focus Theater Mode.
+- `Alt + T`: Toggle the Study Tasks drawer.
+- `Esc`: Exit Zen mode or close open modals/drawer.
 
 ---
 
-## 🎧 Calming Ambient Sound Generator
+## Calming Ambient Sound Generator
 
-Need background focus sound? ChronoStudy includes a procedural Web Audio noise generator:
-- **Soft Rain**
-- **White Noise**
-- **Gentle Stream**
-
-Zero audio files to download—runs 100% offline using your browser's audio synthesizer.
+Built-in Web Audio API synthesizer runs 100% offline with seamless looped noise textures (**Soft Rain**, **White Noise**, **Gentle Stream**).
 
 ---
 
-## 💾 Data Backups & Spreadsheets
+## Data Backups & Exports
 
-Click the **💾** icon in the header to:
-- **Download Full Backup (.json)**: Safe offline archive of your tasks, sessions, and notes.
-- **Export Study Log to CSV**: Opens directly in Microsoft Excel, Google Sheets, or Apple Numbers with exact dates, start/end times, durations, subjects, and notes.
-- **Restore / Import**: Effortlessly restore your data on any device.
+Click **⚙** in the header to:
+- **Download Backup (.json)**: Full archive of tasks, courses, events, and sessions.
+- **Export Logs to CSV**: UTF-8 BOM & formula-safe CSV for Excel and Google Sheets.
+- **Restore from Backup (.json)**: Safely sanitize and restore an exported archive.
+- **Calendar Sync (.ics)**: Export tasks, lectures, and recurring events in iCalendar format.

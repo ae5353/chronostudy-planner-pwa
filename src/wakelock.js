@@ -8,6 +8,7 @@ export class WakeLockManager {
     this.subscribers = new Set();
     this.fallbackVideo = null;
     this.checkCondition = null;
+    this._acquirePromise = null;
 
     if (typeof document !== 'undefined') {
       // Re-acquire lock if tab was backgrounded and brought back to foreground
@@ -51,27 +52,37 @@ export class WakeLockManager {
   }
 
   async acquire() {
-    if (this.wakeLock) return true;
+    if (this.wakeLock || this.fallbackVideo) return true;
+    if (this._acquirePromise) return this._acquirePromise;
 
-    if (this.isSupported) {
+    this._acquirePromise = (async () => {
       try {
-        this.wakeLock = await navigator.wakeLock.request('screen');
-        this.wakeLock.addEventListener('release', () => {
-          this.wakeLock = null;
-          this.notify(false);
-        });
-        this.notify(true);
-        return true;
-      } catch (err) {
-        console.warn('Screen WakeLock request failed:', err);
-      }
-    }
+        if (this.isSupported) {
+          try {
+            this.wakeLock = await navigator.wakeLock.request('screen');
+            this.wakeLock.addEventListener('release', () => {
+              this.wakeLock = null;
+              this.notify(false);
+            });
+            this.notify(true);
+            return true;
+          } catch (err) {
+            console.warn('Screen WakeLock request failed:', err);
+          }
+        }
 
-    // Fallback for browsers without native navigator.wakeLock:
-    // Create an invisible, silent looping media element to prevent display sleep
-    this.startFallback();
-    this.notify(true);
-    return true;
+        // Fallback for browsers without native navigator.wakeLock:
+        // Create an invisible, silent looping media element to prevent display sleep
+        this.startFallback();
+        const active = this.isActive();
+        this.notify(active);
+        return active;
+      } finally {
+        this._acquirePromise = null;
+      }
+    })();
+
+    return this._acquirePromise;
   }
 
   async release() {

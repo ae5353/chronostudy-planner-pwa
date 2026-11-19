@@ -150,12 +150,13 @@ class StudyTimer {
     store.updateActiveTimer({ draftNotes: notes });
   }
 
-  start(isNewStart = true) {
-    if (this.isRunning) return;
-
-    if (isNewStart || !this.sessionStartTime) {
+  start(isNewStart = false) {
+    if (isNewStart === true && this.elapsedSec === 0) {
+      this.sessionStartTime = new Date();
+    } else if (!this.sessionStartTime) {
       this.sessionStartTime = new Date();
     }
+    if (this.isRunning) return;
 
     this.isRunning = true;
     let lastTick = Date.now();
@@ -165,15 +166,17 @@ class StudyTimer {
       const stepSec = Math.floor((now - lastTick) / 1000);
       if (stepSec >= 1) {
         this.elapsedSec += stepSec;
-        lastTick = now;
+        lastTick += stepSec * 1000;
 
         // Check countdown completion
         if (this.mode === 'countdown' && this.elapsedSec >= this.targetSec) {
+          this.elapsedSec = this.targetSec;
           this.pause();
           const settings = store.getState().settings;
           if (settings.soundEnabled) {
             playCompletionChime();
           }
+          return;
         }
 
         this.notify(false);
@@ -195,7 +198,7 @@ class StudyTimer {
     if (this.isRunning) {
       this.pause();
     } else {
-      this.start();
+      this.start(!this.sessionStartTime);
     }
   }
 

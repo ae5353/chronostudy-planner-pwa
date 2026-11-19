@@ -1,5 +1,5 @@
 // sw.js — Service Worker for Offline PWA Capabilities (Network-First with Cache Fallback)
-const CACHE_NAME = 'chronostudy-clean-v34';
+const CACHE_NAME = 'chronostudy-clean-v35';
 const ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,8 @@ const ASSETS = [
   './src/timer.js',
   './src/ui.js',
   './src/audio.js',
-  './src/sync.js'
+  './src/sync.js',
+  './src/wakelock.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -34,13 +35,8 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
 
-  // Bypass service worker cache for external APIs (Google Drive, GIS, Supabase)
-  if (
-    url.origin.includes('googleapis.com') ||
-    url.origin.includes('google.com') ||
-    url.origin.includes('gstatic.com') ||
-    url.origin.includes('supabase.co')
-  ) {
+  // Bypass service worker cache for cross-origin APIs (Google Drive, GIS, Supabase, Fonts)
+  if (url.origin !== self.location.origin) {
     return;
   }
 
@@ -60,7 +56,7 @@ self.addEventListener('fetch', (event) => {
           if (event.request.mode === 'navigate' || event.request.destination === 'document') {
             return caches.match('./index.html');
           }
-          return null;
+          return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
         });
       })
   );

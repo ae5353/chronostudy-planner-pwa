@@ -54,6 +54,18 @@ export class ChronoUI {
     });
 
     this.render();
+    this.applyInitialUrlParams();
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          store.ensureDailyRollover();
+        }
+      });
+    }
+
+    // Check daily recurring task rollover at startup without mutating inside getters
+    store.ensureDailyRollover();
 
     // Subscribe to store updates
     store.subscribe(() => {
@@ -1577,13 +1589,20 @@ export class ChronoUI {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const result = store.importJSON(event.target.result);
+        e.target.value = '';
         if (result.success) {
-          alert(`Successfully imported backup with ${result.count} study sessions!`);
           this.backupModal.classList.remove('active');
+          await this.showInAppAlert({
+            title: 'Backup Restored',
+            message: `Successfully imported backup with ${result.count} study sessions!`
+          });
         } else {
-          alert('Failed to import backup: ' + result.error);
+          await this.showInAppAlert({
+            title: 'Import Failed',
+            message: 'Failed to import backup: ' + result.error
+          });
         }
       };
       reader.readAsText(file);
@@ -1591,26 +1610,54 @@ export class ChronoUI {
 
     // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) {
+      const activeEl = document.activeElement;
+      const activeTag = activeEl ? activeEl.tagName : '';
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || (activeEl && activeEl.isContentEditable)) {
         return;
       }
 
+      const hasActiveModal = Boolean(document.querySelector('.modal.active'));
+
       if (e.code === 'Space') {
+        if (['BUTTON', 'A'].includes(activeTag) || hasActiveModal) return;
         e.preventDefault();
         timer.toggle();
         playClickSound();
-      } else if (e.code === 'KeyF' && (e.ctrlKey || e.metaKey)) {
+      } else if (e.code === 'KeyF' && e.altKey && e.shiftKey && !hasActiveModal) {
         e.preventDefault();
-        this.openFinishModal();
-      } else if (e.code === 'KeyZ') {
+        if (timer.getState().elapsedSec >= 5) {
+          this.openFinishModal();
+        }
+      } else if (e.code === 'KeyZ' && !e.ctrlKey && !e.metaKey && !e.altKey && !hasActiveModal) {
         timer.toggleZenMode();
       } else if (e.code === 'Escape') {
         if (timer.isZenMode) {
           timer.toggleZenMode(false);
         }
-        document.querySelectorAll('.modal.active').forEach((m) => m.classList.remove('active'));
+        document.querySelectorAll('.modal.active:not(#inapp-dialog-modal)').forEach((m) => m.classList.remove('active'));
       }
     });
+  }
+
+  applyInitialUrlParams() {
+    if (typeof window === 'undefined' || typeof URLSearchParams === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      const action = params.get('action');
+      const validViews = ['focus', 'calendar', 'subjects', 'history'];
+      if (view && validViews.includes(view)) {
+        this.switchView(view);
+      }
+      if (action === 'tasks') {
+        this.switchView('focus');
+        if (this.isMobileLayoutActive()) {
+          this.switchFocusMobileTab('tasks');
+        } else if (this.taskTitleInput) {
+          this.taskTitleInput.focus();
+        }
+      }
+    } catch (e) {}
   }
 
   switchView(viewName) {
@@ -1696,6 +1743,79 @@ export class ChronoUI {
   }
 
   // --- In-App Dialog Engine (Eliminates disruptive browser prompt/confirm alerts) ---
+  sanitizeCssColor(color, fallback = '#64748b') {
+    const val = String(color || '').trim();
+    if (
+      /^#[0-9a-fA-F]{3,8}$/.test(val) ||
+      /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/.test(val) ||
+      /^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%(\s*,\s*(0|1|0?\.\d+))?\s*\)$/.test(val) ||
+      /^[a-zA-Z]{3,20}$/.test(val)
+    ) {
+      return val;
+    }
+    return fallback;
+  }
+
+  sanitizeGoogleEnableUrl(rawUrl) {
+    if (!rawUrl) return '';
+    try {
+      const parsed = new URL(String(rawUrl));
+      const allowedHosts = ['console.developers.google.com', 'console.cloud.google.com'];
+      if (parsed.protocol === 'https:' && allowedHosts.includes(parsed.hostname)) {
+        return parsed.toString();
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  renderGDriveApiErrorHtml(message, { compact = false, projectId = '' } = {}) {
+    const urlMatch = String(message || '').match(/https:\/\/console\.(?:developers|cloud)\.google\.com[^\s'"\\]+/);
+    const safeUrl = this.sanitizeGoogleEnableUrl(urlMatch ? urlMatch[0] : '') ||
+      (projectId ? `https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=${encodeURIComponent(projectId)}` : 'https://console.developers.google.com/apis/api/drive.googleapis.com/overview');
+
+    if (compact) {
+      const safeProj = this.escapeHTML(projectId);
+      return `
+        <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 6px; padding: 0.65rem 0.85rem; margin-top: 0.35rem; text-align: left; font-family: system-ui, -apple-system, sans-serif; text-transform: none; letter-spacing: normal;">
+          <div style="color: #fca5a5; font-weight: 600; font-size: 0.82rem; margin-bottom: 0.25rem;">
+            ⚠ Google Drive API Disabled${safeProj ? ` in Project ${safeProj}` : ''}
+          </div>
+          <div style="font-size: 0.74rem; color: #fecaca; line-height: 1.45;">
+            Google blocked the sync because the Google Drive API library is not yet enabled in your Google Cloud Console project.
+          </div>
+          <div style="margin-top: 0.55rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <a href="${this.escapeHTML(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.85rem; font-size: 0.76rem; text-decoration: none; font-weight: 600; background: #eab308; color: #000; border: none; border-radius: 4px;">
+              ↗ Enable Google Drive API (1 Click)
+            </a>
+            <span style="font-size: 0.72rem; color: #94a3b8;">
+              Click the blue "ENABLE" button, then return and click "Sync Now".
+            </span>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
+      <div style="margin-top: 0.85rem; text-align: center;">
+        <a href="${this.escapeHTML(safeUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+          → Enable Google Drive API in Google Cloud
+        </a>
+      </div>
+      <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
+        Click the blue <strong>"ENABLE"</strong> button on the Google Cloud page, then return here and click "Sync Now".
+      </div>
+    `;
+  }
+
+  setDialogMessage(msgEl, message) {
+    if (typeof message === 'string' && message.includes('drive.googleapis.com')) {
+      msgEl.innerHTML = this.renderGDriveApiErrorHtml(message);
+    } else {
+      msgEl.textContent = message;
+    }
+  }
+
   showInAppConfirm({ title = 'Confirm Action', message = '', confirmText = 'Confirm', danger = false }) {
     return new Promise((resolve) => {
       const modal = document.getElementById('inapp-dialog-modal');
@@ -1711,23 +1831,7 @@ export class ChronoUI {
       }
 
       titleEl.textContent = title;
-      if (typeof message === 'string' && message.includes('drive.googleapis.com')) {
-        const urlMatch = message.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
-        const url = urlMatch ? urlMatch[0] : '';
-        msgEl.innerHTML = `
-          <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
-          <div style="margin-top: 0.85rem; text-align: center;">
-            <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
-              → Enable Google Drive API in Google Cloud
-            </a>
-          </div>
-          <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
-            Click the blue <strong>"ENABLE"</strong> button on the Google Cloud page, then return here and click "Sync Now".
-          </div>
-        `;
-      } else {
-        msgEl.textContent = message;
-      }
+      this.setDialogMessage(msgEl, message);
       msgEl.style.display = message ? 'block' : 'none';
       if (inputGroup) inputGroup.style.display = 'none';
 
@@ -1752,8 +1856,14 @@ export class ChronoUI {
       const onCancel = () => cleanup(false);
       const onConfirm = () => cleanup(true);
       const onKeyDown = (e) => {
-        if (e.key === 'Escape') cleanup(false);
-        if (e.key === 'Enter') cleanup(true);
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cleanup(false);
+        } else if (e.key === 'Enter') {
+          if (document.activeElement === btnCancel) return;
+          e.preventDefault();
+          cleanup(true);
+        }
       };
 
       btnCancel.addEventListener('click', onCancel);
@@ -1781,23 +1891,7 @@ export class ChronoUI {
       }
 
       titleEl.textContent = title;
-      if (typeof message === 'string' && message.includes('drive.googleapis.com')) {
-        const urlMatch = message.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
-        const url = urlMatch ? urlMatch[0] : '';
-        msgEl.innerHTML = `
-          <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
-          <div style="margin-top: 0.85rem; text-align: center;">
-            <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
-              → Enable Google Drive API in Google Cloud
-            </a>
-          </div>
-          <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
-            Click the blue <strong>"ENABLE"</strong> button on the Google Cloud page, then return here and click "Sync Now".
-          </div>
-        `;
-      } else {
-        msgEl.textContent = message;
-      }
+      this.setDialogMessage(msgEl, message);
       msgEl.style.display = message ? 'block' : 'none';
 
       if (inputGroup) inputGroup.style.display = 'block';
@@ -1823,8 +1917,12 @@ export class ChronoUI {
         cleanup(val);
       };
       const onKeyDown = (e) => {
-        if (e.key === 'Escape') cleanup(null);
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cleanup(null);
+        }
         if (e.key === 'Enter') {
+          if (document.activeElement === btnCancel) return;
           e.preventDefault();
           onConfirm();
         }
@@ -1858,23 +1956,7 @@ export class ChronoUI {
       }
 
       titleEl.textContent = title;
-      if (typeof message === 'string' && message.includes('drive.googleapis.com')) {
-        const urlMatch = message.match(/https:\/\/console\.developers\.google\.com[^\s'"]+/);
-        const url = urlMatch ? urlMatch[0] : '';
-        msgEl.innerHTML = `
-          <div style="line-height: 1.45;">Google Drive API is not yet enabled in your Google Cloud project.</div>
-          <div style="margin-top: 0.85rem; text-align: center;">
-            <a href="${url}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.85rem; font-weight: 600;">
-              → Enable Google Drive API in Google Cloud
-            </a>
-          </div>
-          <div style="margin-top: 0.75rem; font-size: 0.76rem; color: var(--text-dim); line-height: 1.4;">
-            Click the blue <strong>"ENABLE"</strong> button on the Google Cloud page, then return here and click "Sync Now".
-          </div>
-        `;
-      } else {
-        msgEl.textContent = message;
-      }
+      this.setDialogMessage(msgEl, message);
       msgEl.style.display = message ? 'block' : 'none';
       if (inputGroup) inputGroup.style.display = 'none';
       if (btnCancel) btnCancel.style.display = 'none';
@@ -2033,29 +2115,9 @@ export class ChronoUI {
           (errLower.includes('disabled') || errLower.includes('has not been used') || errLower.includes('403') || errLower.includes('service_disabled') || errLower.includes('accessnotconfigured'));
 
         if (isDriveDisabled) {
-          const match = err.match(/https?:\/\/[^\s'"\\]+/);
-          const rawUrl = match ? match[0].replace(/\\/g, '') : '';
           const projectIdMatch = err.match(/project[=\s](\d+)/i) || (status.googleClientId ? status.googleClientId.match(/^(\d+)-/) : null);
-          const projectId = projectIdMatch ? projectIdMatch[1] : '749004251176';
-          const enableUrl = rawUrl || `https://console.developers.google.com/apis/api/drive.googleapis.com/overview?project=${projectId}`;
-          this.modalSyncSubtitle.innerHTML = `
-            <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 6px; padding: 0.65rem 0.85rem; margin-top: 0.35rem; text-align: left; font-family: system-ui, -apple-system, sans-serif; text-transform: none; letter-spacing: normal;">
-              <div style="color: #fca5a5; font-weight: 600; font-size: 0.82rem; margin-bottom: 0.25rem;">
-                ⚠ Google Drive API Disabled in Project ${projectId}
-              </div>
-              <div style="font-size: 0.74rem; color: #fecaca; line-height: 1.45;">
-                Google blocked the sync because the Google Drive API library is not yet enabled in your Google Cloud Console project.
-              </div>
-              <div style="margin-top: 0.55rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                <a href="${enableUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.85rem; font-size: 0.76rem; text-decoration: none; font-weight: 600; background: #eab308; color: #000; border: none; border-radius: 4px;">
-                  ↗ Enable Google Drive API (1 Click)
-                </a>
-                <span style="font-size: 0.72rem; color: #94a3b8;">
-                  Click the blue "ENABLE" button, then return and click "Sync Now".
-                </span>
-              </div>
-            </div>
-          `;
+          const projectId = projectIdMatch ? projectIdMatch[1] : '';
+          this.modalSyncSubtitle.innerHTML = this.renderGDriveApiErrorHtml(err, { compact: true, projectId });
         } else {
           this.modalSyncSubtitle.textContent = status.lastError;
         }
@@ -2325,9 +2387,11 @@ create policy "Allow room sync access" on chronostudy_sync
     const res = await syncManager.importSnapshotJSON(text);
     if (res.success) {
       if (this.syncImportTextarea) this.syncImportTextarea.value = '';
+      const addedTasks = res.summary?.addedTasks ?? 0;
+      const addedSessions = res.summary?.addedSessions ?? 0;
       await this.showInAppAlert({
         title: 'Import Successful',
-        message: `Successfully merged workspace snapshot! Added ${res.summary.addedTasks} new tasks and ${res.summary.addedSessions} study sessions without data loss.`
+        message: `Successfully merged workspace snapshot! Added ${addedTasks} new tasks and ${addedSessions} study sessions without data loss.`
       });
     } else {
       await this.showInAppAlert({
@@ -2445,7 +2509,10 @@ create policy "Allow room sync access" on chronostudy_sync
   // --- Floating Mini-Timer Widget (Picture-in-Picture) ---
   async togglePiPTimer() {
     if (!('pictureInPictureEnabled' in document) || !document.pictureInPictureEnabled) {
-      alert('Picture-in-Picture floating timer is not supported or permitted by this browser.');
+      await this.showInAppAlert({
+        title: 'Picture-in-Picture Unsupported',
+        message: 'Picture-in-Picture floating timer is not supported or permitted by this browser.'
+      });
       return;
     }
 
@@ -2466,7 +2533,16 @@ create policy "Allow room sync access" on chronostudy_sync
         this.pipVideo = document.createElement('video');
         this.pipVideo.muted = true;
         this.pipVideo.autoplay = true;
-        this.pipVideo.srcObject = this.pipCanvas.captureStream(25);
+        this.pipVideo.addEventListener('leavepictureinpicture', () => {
+          if (this.pipVideo && this.pipVideo.srcObject) {
+            this.pipVideo.srcObject.getTracks().forEach((t) => t.stop());
+            this.pipVideo.srcObject = null;
+          }
+        });
+      }
+
+      if (!this.pipVideo.srcObject) {
+        this.pipVideo.srcObject = this.pipCanvas.captureStream(2);
       }
 
       await this.pipVideo.play();
@@ -2530,7 +2606,7 @@ create policy "Allow room sync access" on chronostudy_sync
   setCustomCountdownMinutes() {
     if (!this.countdownCustomMins) return;
     const val = parseInt(this.countdownCustomMins.value, 10);
-    if (!isNaN(val) && val > 0 && val <= 480) {
+    if (!isNaN(val) && val > 0 && val <= 720) {
       timer.setTargetMinutes(val);
       document.querySelectorAll('.preset-btn').forEach((b) => b.classList.remove('active'));
       playClickSound();
@@ -2540,7 +2616,8 @@ create policy "Allow room sync access" on chronostudy_sync
   // --- CSV Export Helper ---
   downloadCSV() {
     const csvContent = store.generateCSV();
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const contentWithBom = csvContent.startsWith('\uFEFF') ? csvContent : '\uFEFF' + csvContent;
+    const blob = new Blob([contentWithBom], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -2991,10 +3068,10 @@ create policy "Allow room sync access" on chronostudy_sync
     this.sidebarTaskList.innerHTML = '';
 
     const createSidebarCard = (task) => {
-      const color = store.getSubjectColor(task.subject);
+      const color = this.sanitizeCssColor(store.getSubjectColor(task.subject));
+      const safeId = this.escapeHTML(task.id);
       const sessStats = store.getTaskSessionStats(task);
       const timeLoggedMins = sessStats.totalMins;
-      const sessLabel = `${sessStats.sessionCount} ${sessStats.sessionCount === 1 ? 'sess' : 'sess'}`;
       const isMidnightDone = Boolean(task.completed && store.isMidnightTimestamp(task.completedAt));
       let targetProgressBadge = '';
       if (task.targetMinutes) {
@@ -3019,15 +3096,15 @@ create policy "Allow room sync access" on chronostudy_sync
       card.innerHTML = `
         <div class="task-card-left">
           <label class="custom-checkbox">
-            <input type="checkbox" ${task.completed ? 'checked' : ''} data-task-id="${task.id}" class="sidebar-task-cb" />
+            <input type="checkbox" ${task.completed ? 'checked' : ''} data-task-id="${safeId}" class="sidebar-task-cb" />
             <span class="checkmark"></span>
           </label>
           <div class="task-info">
             <div class="task-title clickable-title" style="font-size: 0.84rem;" title="Click to edit task">${this.escapeHTML(task.title)}</div>
             <div class="task-badges" style="margin-top: 0.2rem;">
               <span class="subject-badge ${!task.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}; font-size: 0.65rem;">${task.subject ? this.escapeHTML(task.subject) : 'General'}</span>
-              ${sidebarDateLabel ? `<span class="meta-badge date-badge ${isOverdueSidebar ? 'overdue' : ''}" style="font-size: 0.65rem;" title="Due: ${task.dueDate}">${sidebarDateLabel}</span>` : ''}
-              ${task.recurrence && task.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}</span>` : ''}
+              ${sidebarDateLabel ? `<span class="meta-badge date-badge ${isOverdueSidebar ? 'overdue' : ''}" style="font-size: 0.65rem;" title="Due: ${this.escapeHTML(task.dueDate)}">${this.escapeHTML(sidebarDateLabel)}</span>` : ''}
+              ${task.recurrence && task.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.escapeHTML(this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval))}</span>` : ''}
               ${isMidnightDone ? `<span class="meta-badge midnight-badge" style="font-size: 0.63rem;" title="Completed during midnight hours (00:00–04:59)">🌙 Midnight</span>` : ''}
               ${targetProgressBadge}
             </div>
@@ -3035,17 +3112,17 @@ create policy "Allow room sync access" on chronostudy_sync
         </div>
         <div class="task-actions">
           ${!task.completed && (!task.dueDate || task.dueDate > todayStr) ? `
-            <button class="btn btn-secondary btn-sidebar-move-today" data-task-id="${task.id}" title="Move to Today" style="padding: 0.2rem 0.42rem; font-size: 0.65rem;">
+            <button type="button" class="btn btn-secondary btn-sidebar-move-today" data-task-id="${safeId}" title="Move to Today" style="padding: 0.2rem 0.42rem; font-size: 0.65rem;">
               → Today
             </button>
           ` : ''}
           ${!task.completed ? `
-            <button class="btn btn-study-now btn-sidebar-study" data-task-id="${task.id}" title="Study now" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">
+            <button type="button" class="btn btn-study-now btn-sidebar-study" data-task-id="${safeId}" title="Study now" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">
               ▶
             </button>
           ` : ''}
-          <button class="btn btn-icon btn-sidebar-edit-task" data-task-id="${task.id}" title="Edit task" style="font-size: 0.75rem;">✎</button>
-          <button class="btn btn-icon btn-del-sidebar-task" data-task-id="${task.id}" title="Delete task" style="font-size: 0.75rem;">✕</button>
+          <button type="button" class="btn btn-icon btn-sidebar-edit-task" data-task-id="${safeId}" title="Edit task" style="font-size: 0.75rem;">✎</button>
+          <button type="button" class="btn btn-icon btn-del-sidebar-task" data-task-id="${safeId}" title="Delete task" style="font-size: 0.75rem;">✕</button>
         </div>
       `;
       return card;
@@ -3357,7 +3434,7 @@ create policy "Allow room sync access" on chronostudy_sync
       if (state.topic) {
         targetText = state.topic;
       } else if (state.mode === 'countdown') {
-        const targetMins = Math.round(state.targetDurationSec / 60);
+        const targetMins = Math.round((state.targetSec || 0) / 60);
         targetText = `${targetMins}m Focus Block`;
       }
       if (this._lastTargetText !== targetText) {
@@ -3562,7 +3639,7 @@ create policy "Allow room sync access" on chronostudy_sync
         if (state.topic) {
           this.zenTargetDisplay.textContent = state.topic;
         } else if (state.mode === 'countdown') {
-          const targetMins = Math.round(state.targetDurationSec / 60);
+          const targetMins = Math.round((state.targetSec || 0) / 60);
           this.zenTargetDisplay.textContent = `${targetMins}m Focus Block`;
         } else {
           this.zenTargetDisplay.textContent = 'Open Study Session';
@@ -3830,7 +3907,8 @@ create policy "Allow room sync access" on chronostudy_sync
   createTaskCardElement(task, todayStr) {
     const card = document.createElement('div');
     card.className = `task-card ${task.completed ? 'task-completed' : ''}`;
-    const color = store.getSubjectColor(task.subject);
+    const color = this.sanitizeCssColor(store.getSubjectColor(task.subject));
+    const safeId = this.escapeHTML(task.id);
     const sessStats = store.getTaskSessionStats(task);
     const timeLoggedMins = sessStats.totalMins;
     const sessWord = sessStats.sessionCount === 1 ? 'session' : 'sessions';
@@ -3860,7 +3938,7 @@ create policy "Allow room sync access" on chronostudy_sync
     card.innerHTML = `
       <div class="task-card-left">
         <label class="custom-checkbox">
-          <input type="checkbox" ${task.completed ? 'checked' : ''} data-task-id="${task.id}" class="task-checkbox" />
+          <input type="checkbox" ${task.completed ? 'checked' : ''} data-task-id="${safeId}" class="task-checkbox" />
           <span class="checkmark"></span>
         </label>
         <div class="task-info">
@@ -3872,17 +3950,17 @@ create policy "Allow room sync access" on chronostudy_sync
             ${targetProgressBadgeHTML}
             ${isMidnightDone ? `
               <span class="meta-badge midnight-badge" title="Completed during midnight hours (00:00–04:59)">
-                🌙 Midnight (${midnightTimeStr})
+                🌙 Midnight (${this.escapeHTML(midnightTimeStr)})
               </span>
             ` : ''}
             ${task.dueDate ? `
-              <span class="meta-badge date-badge ${isOverdue ? 'overdue' : ''}" title="${isOverdue ? `Past due (${task.dueDate})` : `Due date: ${task.dueDate}`}">
-                ${this.formatRelativeDueDate(task.dueDate, todayStr, { includePrefix: true })}
+              <span class="meta-badge date-badge ${isOverdue ? 'overdue' : ''}" title="${isOverdue ? `Past due (${this.escapeHTML(task.dueDate)})` : `Due date: ${this.escapeHTML(task.dueDate)}`}">
+                ${this.escapeHTML(this.formatRelativeDueDate(task.dueDate, todayStr, { includePrefix: true }))}
               </span>
             ` : '<span class="meta-badge date-badge-none">No deadline</span>'}
             ${task.recurrence && task.recurrence !== 'none' ? `
               <span class="meta-badge task-recurrence-badge" title="Recurring study item: automatically generates next occurrence when completed">
-                ↻ ${this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval)}
+                ↻ ${this.escapeHTML(this.getRecurrenceLabel(task.recurrence, task.recurrenceInterval))}
               </span>
             ` : ''}
           </div>
@@ -3891,21 +3969,21 @@ create policy "Allow room sync access" on chronostudy_sync
       </div>
       <div class="task-actions">
         ${!task.completed && (!task.dueDate || task.dueDate > todayStr) ? `
-          <button class="btn btn-secondary btn-move-today" data-task-id="${task.id}" title="Move this task to Today">
+          <button type="button" class="btn btn-secondary btn-move-today" data-task-id="${safeId}" title="Move this task to Today">
             → Today
           </button>
         ` : ''}
         ${!task.completed ? `
-          <button class="btn btn-study-now" data-task-id="${task.id}" title="Start timer with this study item">
+          <button type="button" class="btn btn-study-now" data-task-id="${safeId}" title="Start timer with this study item">
             ▶ Study
           </button>
         ` : (timeLoggedMins === 0 ? `
-          <button class="btn btn-secondary btn-log-time" data-task-id="${task.id}" title="Record time spent on this completed task" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
+          <button type="button" class="btn btn-secondary btn-log-time" data-task-id="${safeId}" title="Record time spent on this completed task" style="font-size: 0.72rem; padding: 0.25rem 0.55rem;">
             + Log Time
           </button>
         ` : '')}
-        <button class="btn btn-icon btn-edit-task" data-task-id="${task.id}" title="Edit task">✎</button>
-        <button class="btn btn-icon btn-delete-task" data-task-id="${task.id}" title="Delete task">✕</button>
+        <button type="button" class="btn btn-icon btn-edit-task" data-task-id="${safeId}" title="Edit task">✎</button>
+        <button type="button" class="btn btn-icon btn-delete-task" data-task-id="${safeId}" title="Delete task">✕</button>
       </div>
     `;
 
@@ -4017,7 +4095,7 @@ create policy "Allow room sync access" on chronostudy_sync
     if (view === 'todo') {
       filtered = filtered.filter((t) => !t.completed && !store.isExpiredFrequentTask(t, todayStr));
     } else if (view === 'today') {
-      filtered = filtered.filter((t) => !store.isExpiredFrequentTask(t, todayStr) && (t.dueDate === todayStr || (t.createdAt && t.createdAt.startsWith(todayStr)) || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr))));
+      filtered = filtered.filter((t) => !store.isExpiredFrequentTask(t, todayStr) && (t.dueDate === todayStr || (t.createdAt && toLocalDateStr(t.createdAt) === todayStr) || (t.recurrence && t.recurrence !== 'none' && (!t.dueDate || t.dueDate <= todayStr))));
     } else if (view === 'planned') {
       filtered = filtered.filter((t) => Boolean(t.dueDate));
     } else if (view === 'general') {
@@ -4295,14 +4373,16 @@ create policy "Allow room sync access" on chronostudy_sync
           scheduleText = sub.schedule.map((s) => `${dayNames[s.day]} ${s.start}-${s.end}`).join(' & ');
         }
 
+        const safeSubColor = this.sanitizeCssColor(sub.color);
+        const safeSubId = this.escapeHTML(sub.id);
         const card = document.createElement('div');
         card.className = 'subject-management-card';
-        card.style.setProperty('--card-accent', sub.color);
+        card.style.setProperty('--card-accent', safeSubColor);
 
         card.innerHTML = `
           <div class="subject-card-header">
             <div class="subject-card-title-group">
-              <span class="subject-color-dot" style="background-color: ${sub.color}"></span>
+              <span class="subject-color-dot" style="background-color: ${safeSubColor}"></span>
               <div>
                 <span class="subject-code-tag">${this.escapeHTML(sub.code || 'COURSE')}</span>
                 <h3 class="subject-name">${this.escapeHTML(sub.name)}</h3>
@@ -4310,8 +4390,8 @@ create policy "Allow room sync access" on chronostudy_sync
               </div>
             </div>
             <div class="subject-card-menu">
-              <button class="btn btn-icon btn-edit-subject" data-id="${sub.id}" title="Edit subject">✎</button>
-              <button class="btn btn-icon btn-delete-subject" data-id="${sub.id}" title="Delete subject">✕</button>
+              <button type="button" class="btn btn-icon btn-edit-subject" data-id="${safeSubId}" title="Edit subject">✎</button>
+              <button type="button" class="btn btn-icon btn-delete-subject" data-id="${safeSubId}" title="Delete subject">✕</button>
             </div>
           </div>
 
@@ -4322,7 +4402,7 @@ create policy "Allow room sync access" on chronostudy_sync
                 <span>Goal: <strong>${targetHours} hrs/wk</strong></span>
               </div>
               <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: ${progressPercent}%; background-color: ${sub.color};"></div>
+                <div class="progress-bar-fill" style="width: ${progressPercent}%; background-color: ${safeSubColor};"></div>
               </div>
             </div>
           ` : `
@@ -4636,14 +4716,15 @@ create policy "Allow room sync access" on chronostudy_sync
       }
 
       const recBadge = item.recurrence && item.recurrence !== 'weekly'
-        ? `<span class="cadence-pill">${recLabels[item.recurrence] || item.recurrence}</span>`
+        ? `<span class="cadence-pill">${this.escapeHTML(recLabels[item.recurrence] || item.recurrence)}</span>`
         : '';
+      const safeItemColor = this.sanitizeCssColor(item.color);
 
       html += `
-        <div class="schedule-mgr-row" style="border-left: 3px solid ${item.color};">
+        <div class="schedule-mgr-row" style="border-left: 3px solid ${safeItemColor};">
           <div class="schedule-mgr-info">
             <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
-              <span class="schedule-mgr-time">${item.start} - ${item.end}</span>
+              <span class="schedule-mgr-time">${this.escapeHTML(item.start)} - ${this.escapeHTML(item.end)}</span>
               <span class="schedule-mgr-badge" style="background-color: ${item.type === 'lecture' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(5, 150, 105, 0.15)'}; color: ${item.type === 'lecture' ? 'var(--primary)' : 'var(--accent-emerald)'};">
                 ${this.escapeHTML(item.category)}
               </span>
@@ -4652,10 +4733,10 @@ create policy "Allow room sync access" on chronostudy_sync
             <div class="schedule-mgr-title">${this.escapeHTML(item.title)}</div>
           </div>
           <div class="schedule-mgr-actions">
-            <button class="btn btn-secondary btn-edit-sched-item" data-type="${item.type}" data-sub-id="${item.subjectId || ''}" data-slot-idx="${item.slotIndex !== undefined ? item.slotIndex : ''}" data-ev-id="${item.id || ''}">
+            <button type="button" class="btn btn-secondary btn-edit-sched-item" data-type="${this.escapeHTML(item.type)}" data-sub-id="${this.escapeHTML(item.subjectId || '')}" data-slot-idx="${item.slotIndex !== undefined ? item.slotIndex : ''}" data-ev-id="${this.escapeHTML(item.id || '')}">
               Edit
             </button>
-            <button class="btn btn-icon btn-del-sched-item" data-type="${item.type}" data-sub-id="${item.subjectId || ''}" data-slot-idx="${item.slotIndex !== undefined ? item.slotIndex : ''}" data-ev-id="${item.id || ''}" title="Delete / Remove">
+            <button type="button" class="btn btn-icon btn-del-sched-item" data-type="${this.escapeHTML(item.type)}" data-sub-id="${this.escapeHTML(item.subjectId || '')}" data-slot-idx="${item.slotIndex !== undefined ? item.slotIndex : ''}" data-ev-id="${this.escapeHTML(item.id || '')}" title="Delete / Remove">
               ✕
             </button>
           </div>
@@ -4808,25 +4889,33 @@ create policy "Allow room sync access" on chronostudy_sync
 
           <div class="day-col-body">
             <!-- Scheduled Classes & Weekly Seminars for this day -->
-            ${this.renderDayClassLectures(dayNumOfWeek)}
+            ${this.renderDayClassLectures(dayNumOfWeek, dateStr)}
 
             <!-- Scheduled Study Tasks for the day -->
             <div class="day-tasks-section">
               ${dayTasks.length > 0 ? `<span class="day-section-sub">Study Tasks:</span>` : ''}
               <div class="day-tasks-list">
                 ${dayTasks.map((t) => {
-                  const color = store.getSubjectColor(t.subject);
+                  const color = this.sanitizeCssColor(store.getSubjectColor(t.subject));
+                  const safeTaskId = this.escapeHTML(t.id);
                   const isDoneForDay = store.isTaskCompletedOnDate(t, dateStr);
                   const isProjectedRoutine = t.recurrence && t.recurrence !== 'none' && t.dueDate !== dateStr && !isDoneForDay;
                   const completedTsForDay = (t.completedDates && t.completedDates[dateStr]) || t.completedAt;
                   const isMidnightDone = Boolean(isDoneForDay && store.isMidnightTimestamp(completedTsForDay));
                   const sessStats = store.getTaskSessionStats(t);
-                  const expandKey = `${dateStr}|${t.id}`;
-                  const isExpanded = this.expandedPlannerTasks && this.expandedPlannerTasks.has(expandKey);
+                  const expandKey = `${dateStr}|${safeTaskId}`;
+                  const isExpanded = this.expandedPlannerTasks && this.expandedPlannerTasks.has(`${dateStr}|${t.id}`);
+                  const gcalStart = new Date(`${dateStr}T09:00:00`);
+                  const gcalEnd = new Date(gcalStart.getTime() + (t.targetMinutes || 60) * 60000);
+                  const fmtGcalLocal = (dObj) => {
+                    const pad = (n) => String(n).padStart(2, '0');
+                    return `${dObj.getFullYear()}${pad(dObj.getMonth() + 1)}${pad(dObj.getDate())}T${pad(dObj.getHours())}${pad(dObj.getMinutes())}00`;
+                  };
+                  const gcalDates = `${fmtGcalLocal(gcalStart)}/${fmtGcalLocal(gcalEnd)}`;
                   return `
                     <div class="cal-task-item ${isDoneForDay ? 'completed' : ''} ${isProjectedRoutine ? 'cal-task-routine' : ''} ${isExpanded ? 'expanded' : ''}" data-expand-key="${expandKey}" style="border-left: 3px solid ${color};">
                       <div class="cal-task-compact-row">
-                        <button class="btn-cal-check" data-task-id="${t.id}" data-date="${dateStr}" title="${isDoneForDay ? 'Mark undone for this day' : 'Mark done for this day'}">
+                        <button type="button" class="btn-cal-check" data-task-id="${safeTaskId}" data-date="${dateStr}" title="${isDoneForDay ? 'Mark undone for this day' : 'Mark done for this day'}">
                           ${isDoneForDay ? '✓' : '○'}
                         </button>
                         <div class="cal-task-title" data-expand-toggle="${expandKey}" title="${this.escapeHTML(t.title)} — Click to toggle details">${this.escapeHTML(t.title)}</div>
@@ -4837,7 +4926,7 @@ create policy "Allow room sync access" on chronostudy_sync
                       <div class="cal-task-details-dropdown" style="display: ${isExpanded ? 'flex' : 'none'};">
                         <div class="cal-task-top">
                           <span class="cal-subject-badge ${!t.subject ? 'badge-no-course-text' : ''}" style="color: ${color};">${t.subject ? this.escapeHTML(t.subject) : 'General'}</span>
-                          ${t.recurrence && t.recurrence !== 'none' ? `<span class="cal-recurrence-pill" title="Repeats: ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}">↻ ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
+                          ${t.recurrence && t.recurrence !== 'none' ? `<span class="cal-recurrence-pill" title="Repeats: ${this.escapeHTML(this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval))}">↻ ${this.escapeHTML(this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval))}</span>` : ''}
                           ${t.targetMinutes ? `<span class="cal-time-goal">${t.targetMinutes}m</span>` : ''}
                         </div>
                         ${((!isProjectedRoutine || isDoneForDay) && (sessStats.sessionCount > 0 || isMidnightDone)) ? `
@@ -4849,23 +4938,24 @@ create policy "Allow room sync access" on chronostudy_sync
                         ${t.notes ? `<div class="cal-task-notes">${this.escapeHTML(t.notes)}</div>` : ''}
                         <div class="cal-task-actions">
                           ${!isDoneForDay ? `
-                            <button class="btn-cal-study" data-task-id="${t.id}" title="Study Now">
+                            <button type="button" class="btn-cal-study" data-task-id="${safeTaskId}" title="Study Now">
                               ▶ Study
                             </button>
                           ` : ''}
                           ${!isDoneForDay && dateStr > todayStr && (!t.recurrence || t.recurrence === 'none') ? `
-                            <button class="btn-cal-move-today" data-task-id="${t.id}" title="Move to Today">→ Today</button>
+                            <button type="button" class="btn-cal-move-today" data-task-id="${safeTaskId}" title="Move to Today">→ Today</button>
                           ` : ''}
-                          <button class="btn-cal-edit" data-task-id="${t.id}" title="Edit task">✎</button>
+                          <button type="button" class="btn-cal-edit" data-task-id="${safeTaskId}" title="Edit task">✎</button>
                           <a 
-                            href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${dateStr.replace(/-/g, '')}T090000Z/${dateStr.replace(/-/g, '')}T100000Z&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" 
+                            href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${gcalDates}&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" 
                             target="_blank" 
+                            rel="noopener noreferrer"
                             class="btn-cal-gcal" 
                             title="Add to Google Calendar"
                           >
                             GCal
                           </a>
-                          <button class="btn-cal-delete" data-task-id="${t.id}" title="Delete task">✕</button>
+                          <button type="button" class="btn-cal-delete" data-task-id="${safeTaskId}" title="Delete task">✕</button>
                         </div>
                       </div>
                     </div>
@@ -4879,7 +4969,7 @@ create policy "Allow room sync access" on chronostudy_sync
               <div class="day-sessions-summary">
                 <span class="day-section-sub">Completed Sessions (${daySessions.length}):</span>
                 ${daySessions.map((s) => {
-                  const sColor = store.getSubjectColor(s.subject);
+                  const sColor = this.sanitizeCssColor(store.getSubjectColor(s.subject));
                   const sMins = Math.max(1, Math.round((s.durationSec || 0) / 60));
                   const sStart = s.startTime ? new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
                   const sEnd = s.endTime ? new Date(s.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -4894,7 +4984,7 @@ create policy "Allow room sync access" on chronostudy_sync
               </div>
             ` : ''}
 
-            <button class="btn-add-day-task" data-date="${dateStr}">+ Add Task for ${dayName}</button>
+            <button type="button" class="btn-add-day-task" data-date="${dateStr}">+ Add Task for ${this.escapeHTML(dayName)}</button>
           </div>
         </div>
       `;
@@ -5017,11 +5107,21 @@ create policy "Allow room sync access" on chronostudy_sync
     });
   }
 
-  renderDayClassLectures(dayOfWeek) {
+  renderDayClassLectures(dayOfWeek, dateStr = null) {
     const state = store.getState();
     const subjects = state.subjects || [];
     const weeklyEvents = state.weeklyEvents || [];
     const groupsOrder = Array.isArray(state.groups) ? state.groups : [];
+    const safeColorFn = (c, fb = '#64748b') => (this.sanitizeCssColor ? this.sanitizeCssColor(c, fb) : fb);
+
+    const getMondayOf = (dObj) => {
+      const m = new Date(dObj);
+      const day = m.getDay() || 7;
+      m.setDate(m.getDate() - day + 1);
+      m.setHours(12, 0, 0, 0);
+      return m;
+    };
+    const targetDateObj = (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) ? new Date(`${dateStr}T12:00:00`) : null;
 
     // Map: categoryName -> items[], deduplicated across lectures and weekly events
     const categoriesMap = new Map();
@@ -5067,8 +5167,35 @@ create policy "Allow room sync access" on chronostudy_sync
         matches = true;
       } else if (rec === 'weekdays') {
         matches = dayOfWeek >= 1 && dayOfWeek <= 5;
-      } else if (rec === 'weekly' || rec === 'biweekly' || rec === 'triweekly' || rec === 'monthly') {
-        matches = ev.day === dayOfWeek;
+      } else if ((rec === 'weekly' || rec === 'biweekly' || rec === 'triweekly' || rec === 'monthly') && ev.day === dayOfWeek) {
+        if (!targetDateObj || rec === 'weekly') {
+          matches = true;
+        } else {
+          const anchorStr = ev.anchorDate || (ev.createdAt ? toLocalDateStr(ev.createdAt) : null);
+          if (!anchorStr || !/^\d{4}-\d{2}-\d{2}$/.test(anchorStr)) {
+            matches = true;
+          } else {
+            const anchorDateObj = new Date(`${anchorStr}T12:00:00`);
+            if (Number.isNaN(anchorDateObj.getTime())) {
+              matches = true;
+            } else {
+              const targetMon = getMondayOf(targetDateObj);
+              const anchorMon = getMondayOf(anchorDateObj);
+              const weekDiff = Math.round((targetMon.getTime() - anchorMon.getTime()) / (7 * 86400000));
+              if (rec === 'biweekly') {
+                matches = weekDiff >= 0 && weekDiff % 2 === 0;
+              } else if (rec === 'triweekly') {
+                matches = weekDiff >= 0 && weekDiff % 3 === 0;
+              } else if (rec === 'monthly') {
+                const anchorOcc = new Date(anchorMon);
+                anchorOcc.setDate(anchorMon.getDate() + (ev.day - 1));
+                const anchorNth = Math.ceil(anchorOcc.getDate() / 7);
+                const targetNth = Math.ceil(targetDateObj.getDate() / 7);
+                matches = weekDiff >= 0 && targetNth === anchorNth;
+              }
+            }
+          }
+        }
       }
 
       if (matches) {
@@ -5116,27 +5243,28 @@ create policy "Allow room sync access" on chronostudy_sync
           <span class="day-section-sub">${this.escapeHTML(categoryName)}:</span>
           <div class="day-classes-list">
             ${items.map((c) => {
+              const safeColor = safeColorFn(c.color, '#059669');
               if (c.type === 'lecture') {
                 return `
-                  <div class="day-class-chip itu-lecture-chip" data-subject-id="${c.subjectId}" data-slot-index="${c.slotIndex}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
+                  <div class="day-class-chip itu-lecture-chip" data-subject-id="${this.escapeHTML(c.subjectId)}" data-slot-index="${c.slotIndex}" style="--class-color: ${safeColor};" title="${this.escapeHTML(c.name)} (${this.escapeHTML(c.start)} - ${this.escapeHTML(c.end)}) — Click to arrange">
                     <div class="class-chip-top">
                       <span class="class-code">${this.escapeHTML(c.code)}</span>
                       <span class="chip-edit-icon" title="Edit lecture time">✎</span>
                     </div>
                     <div class="class-chip-sub">
-                      <span class="class-time">${c.start} - ${c.end}</span>
+                      <span class="class-time">${this.escapeHTML(c.start)} - ${this.escapeHTML(c.end)}</span>
                     </div>
                   </div>
                 `;
               } else {
                 return `
-                  <div class="day-class-chip seminar-chip wevent-chip" data-event-id="${c.id}" style="--class-color: ${c.color};" title="${this.escapeHTML(c.name)} (${c.start} - ${c.end}) — Click to arrange">
+                  <div class="day-class-chip seminar-chip wevent-chip" data-event-id="${this.escapeHTML(c.id)}" style="--class-color: ${safeColor};" title="${this.escapeHTML(c.name)} (${this.escapeHTML(c.start)} - ${this.escapeHTML(c.end)}) — Click to arrange">
                     <div class="class-chip-top">
                       <span class="class-code">${this.escapeHTML(c.code)}</span>
                       <span class="chip-edit-icon" title="Edit event">✎</span>
                     </div>
                     <div class="class-chip-sub">
-                      <span class="class-time">${c.start} - ${c.end}</span>
+                      <span class="class-time">${this.escapeHTML(c.start)} - ${this.escapeHTML(c.end)}</span>
                       ${c.cadenceBadge || ''}
                     </div>
                   </div>
@@ -5212,7 +5340,7 @@ create policy "Allow room sync access" on chronostudy_sync
           </div>
           <div class="month-cell-dots">
             ${dayTasks.slice(0, 3).map((t) => {
-              const color = store.getSubjectColor(t.subject);
+              const color = this.sanitizeCssColor(store.getSubjectColor(t.subject));
               return `<span class="month-task-dot" style="background-color: ${color};" title="${this.escapeHTML(t.title)}"></span>`;
             }).join('')}
             ${dayTasks.length > 3 ? `<span class="more-dots">+${dayTasks.length - 3}</span>` : ''}
@@ -5257,7 +5385,8 @@ create policy "Allow room sync access" on chronostudy_sync
 
     this.backlogTasksContainer.innerHTML = '';
     backlogTasks.forEach((t) => {
-      const color = store.getSubjectColor(t.subject);
+      const color = this.sanitizeCssColor(store.getSubjectColor(t.subject));
+      const safeId = this.escapeHTML(t.id);
       const card = document.createElement('div');
       card.className = 'backlog-task-card';
       card.style.borderLeft = `3px solid ${color}`;
@@ -5266,15 +5395,15 @@ create policy "Allow room sync access" on chronostudy_sync
         <div class="backlog-task-info">
           <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
             <span class="subject-badge ${!t.subject ? 'badge-no-course' : ''}" style="--badge-color: ${color}">${t.subject ? this.escapeHTML(t.subject) : 'General'}</span>
-            ${t.recurrence && t.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval)}</span>` : ''}
+            ${t.recurrence && t.recurrence !== 'none' ? `<span class="meta-badge task-recurrence-badge" style="font-size: 0.65rem;">↻ ${this.escapeHTML(this.getRecurrenceLabel(t.recurrence, t.recurrenceInterval))}</span>` : ''}
           </div>
           <div class="backlog-task-title">${this.escapeHTML(t.title)}</div>
         </div>
         <div class="backlog-task-actions">
-          <button class="btn btn-study-now btn-study-backlog" data-id="${t.id}">▶ Study</button>
-          <button class="btn btn-icon btn-edit-backlog" data-id="${t.id}" title="Edit task">✎</button>
-          <button class="btn btn-secondary btn-schedule-backlog" data-id="${t.id}" title="Assign to a day">Schedule</button>
-          <button class="btn btn-icon btn-del-backlog" data-id="${t.id}">✕</button>
+          <button type="button" class="btn btn-study-now btn-study-backlog" data-id="${safeId}">▶ Study</button>
+          <button type="button" class="btn btn-icon btn-edit-backlog" data-id="${safeId}" title="Edit task">✎</button>
+          <button type="button" class="btn btn-secondary btn-schedule-backlog" data-id="${safeId}" title="Assign to a day">Schedule</button>
+          <button type="button" class="btn btn-icon btn-del-backlog" data-id="${safeId}">✕</button>
         </div>
       `;
 
@@ -5505,28 +5634,29 @@ create policy "Allow room sync access" on chronostudy_sync
         this.analyticsSubjectShare.innerHTML = data.subjectBreakdown.map((sb) => {
           const isActiveFilter = this.historySubjectFilter === sb.name;
           const maxSubDay = Math.max(1, ...sb.dailyMins);
+          const safeSbColor = this.sanitizeCssColor(sb.color);
           return `
             <div class="subject-detail-card ${isActiveFilter ? 'active-filter' : ''}" data-subject="${this.escapeHTML(sb.name)}" title="Click to filter Session Activity Log by ${this.escapeHTML(sb.name)}">
               <div class="subject-detail-top">
                 <div class="subject-detail-identity">
-                  <span class="share-dot" style="background-color: ${sb.color};"></span>
+                  <span class="share-dot" style="background-color: ${safeSbColor};"></span>
                   <span class="subject-detail-name">${this.escapeHTML(sb.name)}</span>
                   <span class="subject-detail-group">${this.escapeHTML(sb.group)}</span>
                 </div>
                 <div class="subject-detail-totals">
-                  <strong class="subject-detail-time">${sb.formattedTime}</strong>
+                  <strong class="subject-detail-time">${this.escapeHTML(sb.formattedTime)}</strong>
                   <span class="subject-detail-pct">${sb.percentage}% share</span>
                 </div>
               </div>
               <div class="share-bar-track">
-                <div class="share-bar-fill" style="width: ${sb.percentage}%; background-color: ${sb.color};"></div>
+                <div class="share-bar-fill" style="width: ${sb.percentage}%; background-color: ${safeSbColor};"></div>
               </div>
               <div class="subject-detail-meta">
                 <span>${sb.sessionCount} session${sb.sessionCount === 1 ? '' : 's'}</span>
                 <span>•</span>
                 <span>Avg ${sb.avgSessionMins}m</span>
                 ${sb.goalPct !== null ? `<span>•</span><span>Weekly goal: ${sb.durationHours}h / ${sb.weeklyGoalHours}h (${sb.goalPct}%)</span>` : ''}
-                ${sb.lastStudiedStr ? `<span>•</span><span>Last: ${sb.lastStudiedStr}</span>` : ''}
+                ${sb.lastStudiedStr ? `<span>•</span><span>Last: ${this.escapeHTML(sb.lastStudiedStr)}</span>` : ''}
               </div>
               ${this.analyticsSubjectScope === 'week' ? `
                 <div class="subject-mini-week">
@@ -5535,7 +5665,7 @@ create policy "Allow room sync access" on chronostudy_sync
                     return `
                       <div class="subject-mini-day" title="${dayNamesShort[idx]}: ${dm}m">
                         <div class="subject-mini-bar-wrap">
-                          <div class="subject-mini-bar" style="height: ${hPct}%; background-color: ${dm > 0 ? sb.color : 'transparent'};"></div>
+                          <div class="subject-mini-bar" style="height: ${hPct}%; background-color: ${dm > 0 ? safeSbColor : 'transparent'};"></div>
                         </div>
                         <span class="subject-mini-label">${dayNamesShort[idx]}</span>
                       </div>
@@ -5621,7 +5751,8 @@ create policy "Allow room sync access" on chronostudy_sync
       `;
 
       items.forEach((sess) => {
-        const color = store.getSubjectColor(sess.subject);
+        const color = this.sanitizeCssColor(store.getSubjectColor(sess.subject));
+        const safeSessId = this.escapeHTML(sess.id);
         const mins = Math.max(1, Math.round(sess.durationSec / 60));
         const startTimeStr = sess.startTime ? new Date(sess.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         const endTimeStr = sess.endTime ? new Date(sess.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -5633,7 +5764,7 @@ create policy "Allow room sync access" on chronostudy_sync
           <div class="history-card-main">
             <div class="history-time-col">
               <span class="history-duration-pill">${mins}m</span>
-              <span class="history-clock">${startTimeStr} - ${endTimeStr}</span>
+              <span class="history-clock">${this.escapeHTML(startTimeStr)} - ${this.escapeHTML(endTimeStr)}</span>
             </div>
             <div class="history-details-col">
               <div class="history-title-row">
@@ -5650,7 +5781,7 @@ create policy "Allow room sync access" on chronostudy_sync
             </div>
           </div>
           <div class="history-actions">
-            <button class="btn btn-icon btn-delete-history" data-id="${sess.id}" title="Delete session log">✕</button>
+            <button type="button" class="btn btn-icon btn-delete-history" data-id="${safeSessId}" title="Delete session log">✕</button>
           </div>
         `;
 
@@ -5833,8 +5964,8 @@ create policy "Allow room sync access" on chronostudy_sync
   }
 
   escapeHTML(str) {
-    if (!str) return '';
-    return str
+    if (str === null || str === undefined) return '';
+    return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')

@@ -514,6 +514,18 @@ body.layout-format-mobile .meta-badge {
   padding: 0.08rem 0.35rem;
 }
 
+body.layout-format-mobile .task-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.2rem;
+}
+
+body.layout-format-mobile .btn-move-today,
+body.layout-format-mobile .btn-move-tomorrow {
+  padding: 0.2rem 0.42rem;
+  font-size: 0.66rem;
+}
+
 body.layout-format-mobile .btn-study-now,
 body.layout-format-mobile .btn-study {
   padding: 0.3rem 0.5rem;

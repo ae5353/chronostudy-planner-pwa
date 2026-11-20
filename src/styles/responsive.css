@@ -722,7 +722,15 @@
   }
 
   body:not(.layout-format-desktop) .task-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 0.2rem;
+  }
+
+  body:not(.layout-format-desktop) .btn-move-today,
+  body:not(.layout-format-desktop) .btn-move-tomorrow {
+    padding: 0.2rem 0.42rem;
+    font-size: 0.66rem;
   }
 
   body:not(.layout-format-desktop) .btn-study-now,

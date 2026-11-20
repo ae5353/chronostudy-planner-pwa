@@ -371,6 +371,14 @@ export class TasksViewController {
           return;
         }
 
+        const btnMoveTomorrow = e.target.closest('.btn-move-tomorrow');
+        if (btnMoveTomorrow) {
+          e.stopPropagation();
+          store.updateTask(btnMoveTomorrow.dataset.taskId, { dueDate: resolveQuickPresetDate('tomorrow') });
+          playClickSound();
+          return;
+        }
+
         const btnStudy = e.target.closest('.btn-study-now');
         if (btnStudy) {
           const task = store.getState().tasks.find((t) => t.id === btnStudy.dataset.taskId);
@@ -448,6 +456,14 @@ export class TasksViewController {
         if (btnMove) {
           e.stopPropagation();
           store.updateTask(btnMove.dataset.taskId, { dueDate: toLocalDateStr(new Date()) });
+          playClickSound();
+          return;
+        }
+
+        const btnMoveTomorrow = e.target.closest('.btn-sidebar-move-tomorrow');
+        if (btnMoveTomorrow) {
+          e.stopPropagation();
+          store.updateTask(btnMoveTomorrow.dataset.taskId, { dueDate: resolveQuickPresetDate('tomorrow') });
           playClickSound();
           return;
         }
@@ -738,6 +754,7 @@ export class TasksViewController {
     const dueLabel = task.dueDate ? formatRelativeDueDate(task.dueDate, todayStr, { includePrefix: !compact }) : '';
     const cbClass = compact ? 'sidebar-task-cb' : 'task-checkbox';
     const moveClass = compact ? 'btn-sidebar-move-today' : 'btn-move-today';
+    const moveTomorrowClass = compact ? 'btn-sidebar-move-tomorrow' : 'btn-move-tomorrow';
     const studyClass = compact ? 'btn-study-now btn-sidebar-study' : 'btn-study-now';
     const editClass = compact ? 'btn-sidebar-edit-task' : 'btn-edit-task';
     const delClass = compact ? 'btn-del-sidebar-task' : 'btn-delete-task';
@@ -775,9 +792,6 @@ export class TasksViewController {
           </div>
         </div>
         <div class="task-actions">
-          ${!task.completed && (!task.dueDate || task.dueDate > todayStr) ? `
-            <button type="button" class="btn btn-secondary ${moveClass}" data-task-id="${safeId}" title="Move to Today"${compact ? ' style="padding: 0.2rem 0.42rem; font-size: 0.65rem;"' : ''}>→ Today</button>
-          ` : ''}
           ${!task.completed ? `
             <button type="button" class="btn ${studyClass}" data-task-id="${safeId}" title="Start timer with this study item"${compact ? ' style="padding: 0.25rem 0.5rem; font-size: 0.7rem;"' : ''}>${compact ? '▶' : '▶ Study'}</button>
           ` : (!compact && timeLoggedMins === 0 ? `
@@ -785,6 +799,12 @@ export class TasksViewController {
           ` : '')}
           <button type="button" class="btn btn-icon ${editClass}" data-task-id="${safeId}" title="Edit task" aria-label="Edit task"${compact ? ' style="font-size: 0.75rem;"' : ''}>✎</button>
           <button type="button" class="btn btn-icon ${delClass}" data-task-id="${safeId}" title="Delete task" aria-label="Delete task"${compact ? ' style="font-size: 0.75rem;"' : ''}>✕</button>
+          ${!task.completed && (!task.dueDate || task.dueDate > todayStr) ? `
+            <button type="button" class="btn btn-secondary ${moveClass}" data-task-id="${safeId}" title="Move to Today"${compact ? ' style="padding: 0.2rem 0.42rem; font-size: 0.65rem;"' : ''}>→ Today</button>
+          ` : ''}
+          ${!task.completed && task.dueDate === todayStr ? `
+            <button type="button" class="btn btn-secondary ${moveTomorrowClass}" data-task-id="${safeId}" title="Move to Tomorrow"${compact ? ' style="padding: 0.2rem 0.42rem; font-size: 0.65rem;"' : ''}>→ Tomorrow</button>
+          ` : ''}
         </div>
       </div>
     `;

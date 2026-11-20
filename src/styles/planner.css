@@ -457,7 +457,8 @@
 .cal-task-actions {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  flex-wrap: wrap;
+  gap: 0.3rem;
   margin-top: 0.2rem;
 }
 
@@ -847,13 +848,15 @@
   margin-top: 0.15rem;
 }
 
-.btn-move-today {
-  font-size: 0.7rem;
-  padding: 0.24rem 0.5rem;
+.btn-move-today,
+.btn-move-tomorrow {
+  font-size: 0.68rem;
+  padding: 0.22rem 0.48rem;
   white-space: nowrap;
 }
 
-.btn-cal-move-today {
+.btn-cal-move-today,
+.btn-cal-move-tomorrow {
   background: var(--bg-subtle);
   color: var(--text-muted);
   border: 1px solid var(--border-color);
@@ -864,7 +867,8 @@
   white-space: nowrap;
 }
 
-.btn-cal-move-today:hover {
+.btn-cal-move-today:hover,
+.btn-cal-move-tomorrow:hover {
   color: var(--text-main);
   border-color: var(--primary);
 }

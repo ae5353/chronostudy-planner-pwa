@@ -270,6 +270,15 @@ export class PlannerViewController {
           return;
         }
 
+        const moveTomorrowBtn = e.target.closest('.btn-cal-move-tomorrow');
+        if (moveTomorrowBtn) {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          store.updateTask(moveTomorrowBtn.dataset.taskId, { dueDate: toLocalDateStr(tomorrow) });
+          playClickSound();
+          return;
+        }
+
         const editBtn = e.target.closest('.btn-cal-edit');
         if (editBtn) {
           this.ui.tasksView.openTaskEditModal(editBtn.dataset.taskId);
@@ -892,6 +901,7 @@ export class PlannerViewController {
                         <div class="cal-task-actions">
                           ${!isDoneForDay ? `<button type="button" class="btn-cal-study" data-task-id="${safeTaskId}" title="Study Now">▶ Study</button>` : ''}
                           ${!isDoneForDay && dateStr > todayStr && (!t.recurrence || t.recurrence === 'none') ? `<button type="button" class="btn-cal-move-today" data-task-id="${safeTaskId}" title="Move to Today">→ Today</button>` : ''}
+                          ${!isDoneForDay && dateStr === todayStr && (!t.recurrence || t.recurrence === 'none') ? `<button type="button" class="btn-cal-move-tomorrow" data-task-id="${safeTaskId}" title="Move to Tomorrow">→ Tomorrow</button>` : ''}
                           <button type="button" class="btn-cal-edit" data-task-id="${safeTaskId}" title="Edit task" aria-label="Edit task">✎</button>
                           <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('[Study] ' + (t.subject || 'General') + ': ' + t.title)}&dates=${gcalDates}&details=${encodeURIComponent(t.notes || 'Scheduled in ChronoStudy')}" target="_blank" rel="noopener noreferrer" class="btn-cal-gcal" title="Add to Google Calendar">GCal</a>
                           <button type="button" class="btn-cal-delete" data-task-id="${safeTaskId}" title="Delete task" aria-label="Delete task">✕</button>

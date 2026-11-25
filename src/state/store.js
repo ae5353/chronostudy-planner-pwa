@@ -762,27 +762,28 @@ export class Store {
     if (updates.timeSpentSec !== undefined && updates.timeSpentSec !== oldTimeSpent) {
       const diffSec = updates.timeSpentSec - oldTimeSpent;
       if (diffSec > 0) {
-        const existingSession = this.state.sessions.find((s) => s.taskId === taskId);
-        if (existingSession) {
-          existingSession.durationSec = Math.max(60, (existingSession.durationSec || 0) + diffSec);
-          existingSession.synced = false;
-        } else {
-          const now = new Date();
-          const start = new Date(now.getTime() - updates.timeSpentSec * 1000);
-          this.state.sessions.unshift({
-            id: 'sess-' + Math.random().toString(36).slice(2, 9),
-            subject: task.subject || 'General',
-            topic: task.title,
-            taskId: task.id,
-            durationSec: updates.timeSpentSec,
-            startTime: start.toISOString(),
-            endTime: now.toISOString(),
-            notes: task.notes || 'Recorded time spent on task',
-            createdAt: now.toISOString(),
-            updatedAt: now.toISOString(),
-            synced: false
-          });
+        const now = new Date();
+        const todayStr = toLocalDateStr(now);
+        const clampedSec = Math.max(60, Math.min(86280, Math.round(diffSec)));
+        let end = now;
+        let start = new Date(now.getTime() - clampedSec * 1000);
+        if (toLocalDateStr(start) !== todayStr) {
+          start = new Date(`${todayStr}T00:01:00`);
+          end = new Date(start.getTime() + clampedSec * 1000);
         }
+        this.state.sessions.unshift({
+          id: 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+          subject: resolvedSubject,
+          topic: task.title,
+          taskId: task.id,
+          durationSec: clampedSec,
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          notes: task.notes || 'Recorded time spent on task',
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+          synced: false
+        });
       } else if (diffSec < 0) {
         const existingSession = this.state.sessions.find((s) => s.taskId === taskId);
         if (existingSession) {
@@ -879,6 +880,61 @@ export class Store {
 
     this.saveState();
     return segments[0];
+  }
+
+  /**
+   * Logs a separate untimed/manual study session linked to a specific task on a chosen calendar date.
+   * Timestamps are anchored strictly within `dateStr` so analytics & planner always credit the exact chosen day.
+   */
+  addTaskSession(taskId, { dateStr = null, durationMins, notes = '' }) {
+    const task = this.state.tasks.find((t) => t.id === taskId);
+    const parsedMins = parseInt(String(durationMins), 10);
+    if (!task || !Number.isFinite(parsedMins) || parsedMins <= 0) {
+      return null;
+    }
+
+    const now = new Date();
+    const todayStr = toLocalDateStr(now);
+    const targetDateStr = (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr.trim()))
+      ? dateStr.trim()
+      : todayStr;
+
+    const durationSec = Math.max(60, Math.min(86280, Math.round(parsedMins * 60)));
+    const dayStart = new Date(`${targetDateStr}T00:01:00`);
+    const dayEnd = new Date(`${targetDateStr}T23:59:00`);
+
+    let start;
+    let end;
+    if (targetDateStr === todayStr) {
+      const candStart = new Date(now.getTime() - durationSec * 1000);
+      if (toLocalDateStr(candStart) === targetDateStr) {
+        start = candStart;
+        end = now;
+      } else {
+        start = dayStart;
+        end = new Date(Math.min(dayEnd.getTime(), dayStart.getTime() + durationSec * 1000));
+      }
+    } else {
+      const noonEnd = new Date(`${targetDateStr}T12:00:00`);
+      const candStart = new Date(noonEnd.getTime() - durationSec * 1000);
+      if (toLocalDateStr(candStart) === targetDateStr) {
+        start = candStart;
+        end = noonEnd;
+      } else {
+        start = dayStart;
+        end = new Date(Math.min(dayEnd.getTime(), dayStart.getTime() + durationSec * 1000));
+      }
+    }
+
+    return this.addSession({
+      subject: task.subject || 'General',
+      topic: task.title,
+      taskId: task.id,
+      durationSec,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+      notes: notes ? notes.trim() : ''
+    });
   }
 
   deleteSession(sessionId) {

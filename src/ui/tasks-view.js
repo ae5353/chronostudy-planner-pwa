@@ -184,6 +184,12 @@ export class TasksViewController {
     this.editTaskRecurrence = document.getElementById('edit-task-recurrence');
     this.editTaskNotes = document.getElementById('edit-task-notes');
     this.editTaskSessionsSummary = document.getElementById('edit-task-sessions-summary');
+    this.editTaskSessionsCount = document.getElementById('edit-task-sessions-count');
+    this.editTaskLogDate = document.getElementById('edit-task-log-date');
+    this.editTaskLogMins = document.getElementById('edit-task-log-mins');
+    this.editTaskLogNotes = document.getElementById('edit-task-log-notes');
+    this.btnEditTaskAddSession = document.getElementById('btn-edit-task-add-session');
+    this.editTaskSessionsList = document.getElementById('edit-task-sessions-list');
   }
 
   bindEvents() {
@@ -545,6 +551,41 @@ export class TasksViewController {
         }
       });
     }
+    if (this.btnEditTaskAddSession) {
+      this.btnEditTaskAddSession.addEventListener('click', () => {
+        this.addStudySessionFromEditModal();
+      });
+    }
+    const handleLogEnter = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.addStudySessionFromEditModal();
+      }
+    };
+    if (this.editTaskLogMins) this.editTaskLogMins.addEventListener('keydown', handleLogEnter);
+    if (this.editTaskLogNotes) this.editTaskLogNotes.addEventListener('keydown', handleLogEnter);
+
+    if (this.editTaskSessionsList) {
+      this.editTaskSessionsList.addEventListener('click', async (e) => {
+        const delBtn = e.target.closest('.btn-delete-task-session');
+        if (!delBtn) return;
+        const sessionId = delBtn.dataset.sessionId;
+        const taskId = this.editTaskId ? this.editTaskId.value : '';
+        if (!sessionId) return;
+        const ok = await showInAppConfirm({
+          title: 'Delete Study Log',
+          message: 'Remove this study log entry from this day?',
+          confirmText: 'Delete',
+          danger: true
+        });
+        if (ok) {
+          store.deleteSession(sessionId);
+          playClickSound();
+          if (taskId) this.renderEditTaskSessions(taskId);
+        }
+      });
+    }
+
     if (this.taskEditForm) {
       this.taskEditForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -560,13 +601,24 @@ export class TasksViewController {
           recurrence: this.editTaskRecurrence ? this.editTaskRecurrence.value : 'none',
           notes: this.editTaskNotes ? this.editTaskNotes.value.trim() : ''
         };
-        if (this.editTaskTimeSpent && this.editTaskTimeSpent.value !== '') {
-          const spentMins = parseInt(this.editTaskTimeSpent.value, 10);
-          if (!isNaN(spentMins) && spentMins >= 0) {
-            updates.timeSpentSec = spentMins * 60;
+        store.updateTask(taskId, updates);
+
+        // If the user entered minutes in the inline log input and clicked Save Changes directly, log that session too
+        if (this.editTaskLogMins && this.editTaskLogMins.value !== '') {
+          const pendingMins = parseInt(this.editTaskLogMins.value, 10);
+          if (!Number.isNaN(pendingMins) && pendingMins > 0) {
+            const logDate = (this.editTaskLogDate && this.editTaskLogDate.value)
+              ? this.editTaskLogDate.value
+              : toLocalDateStr(new Date());
+            const logNotes = this.editTaskLogNotes ? this.editTaskLogNotes.value.trim() : '';
+            store.addTaskSession(taskId, {
+              dateStr: logDate,
+              durationMins: pendingMins,
+              notes: logNotes
+            });
           }
         }
-        store.updateTask(taskId, updates);
+
         playClickSound();
         this.closeTaskEditModal();
       });
@@ -671,38 +723,88 @@ export class TasksViewController {
     if (this.editTaskTitle) this.editTaskTitle.value = task.title || '';
     if (this.editTaskSubject) this.editTaskSubject.value = task.subject || '';
     if (this.editTaskMinutes) this.editTaskMinutes.value = task.targetMinutes || '';
-    if (this.editTaskTimeSpent) this.editTaskTimeSpent.value = task.timeSpentSec ? Math.round(task.timeSpentSec / 60) : '';
     if (this.editTaskDueDate) this.editTaskDueDate.value = task.dueDate || '';
     if (this.editTaskRecurrence) this.editTaskRecurrence.value = task.recurrence || 'none';
     if (this.editTaskNotes) this.editTaskNotes.value = task.notes || '';
+    if (this.editTaskLogDate) this.editTaskLogDate.value = toLocalDateStr(new Date());
+    if (this.editTaskLogMins) this.editTaskLogMins.value = '';
+    if (this.editTaskLogNotes) this.editTaskLogNotes.value = '';
 
-    if (this.editTaskSessionsSummary) {
-      const sessStats = store.getTaskSessionStats(task);
-      if (sessStats.sessionCount > 0 || sessStats.sessions.length > 0) {
-        this.editTaskSessionsSummary.style.display = 'block';
-        const rowsHtml = sessStats.sessions.slice(0, 6).map((s) => {
-          const dStr = store.getSessionDateStr(s);
-          const tStr = s.startTime ? new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-          const mins = Math.max(1, Math.round((s.durationSec || 0) / 60));
-          const midMark = store.isMidnightTimestamp(s.startTime || s.endTime) ? ' 🌙' : '';
-          return `<div class="task-session-mini-row"><span>${escapeHTML(dStr)}${tStr ? ` · ${escapeHTML(tStr)}` : ''}${midMark}</span><strong>${mins}m</strong></div>`;
-        }).join('');
-        const extraNote = sessStats.sessions.length > 6 ? `<div class="task-session-mini-more">+${sessStats.sessions.length - 6} more session segments</div>` : '';
-        this.editTaskSessionsSummary.innerHTML = `
-          <div class="task-sessions-summary-header">
-            <span>Recorded Study History</span>
-            <strong>${sessStats.sessionCount} ${sessStats.sessionCount === 1 ? 'session' : 'sessions'} · ${sessStats.totalMins}m total</strong>
-          </div>
-          ${rowsHtml ? `<div class="task-sessions-mini-list">${rowsHtml}${extraNote}</div>` : ''}
-        `;
-      } else {
-        this.editTaskSessionsSummary.style.display = 'none';
-        this.editTaskSessionsSummary.innerHTML = '';
-      }
+    this.renderEditTaskSessions(task.id);
+
+    const focusTarget = (options.focusTimeSpent && this.editTaskLogMins) ? this.editTaskLogMins : this.editTaskTitle;
+    openModal(this.taskEditModal, { initialFocusEl: focusTarget });
+  }
+
+  addStudySessionFromEditModal() {
+    const taskId = this.editTaskId ? this.editTaskId.value : '';
+    if (!taskId || !this.editTaskLogMins) return;
+    const mins = parseInt(this.editTaskLogMins.value, 10);
+    if (Number.isNaN(mins) || mins <= 0) {
+      this.editTaskLogMins.focus();
+      return;
     }
 
-    const focusTarget = (options.focusTimeSpent && this.editTaskTimeSpent) ? this.editTaskTimeSpent : this.editTaskTitle;
-    openModal(this.taskEditModal, { initialFocusEl: focusTarget });
+    const dateStr = (this.editTaskLogDate && this.editTaskLogDate.value)
+      ? this.editTaskLogDate.value
+      : toLocalDateStr(new Date());
+    const notes = this.editTaskLogNotes ? this.editTaskLogNotes.value.trim() : '';
+
+    store.addTaskSession(taskId, {
+      dateStr,
+      durationMins: mins,
+      notes
+    });
+
+    this.editTaskLogMins.value = '';
+    if (this.editTaskLogNotes) this.editTaskLogNotes.value = '';
+    playClickSound();
+    this.renderEditTaskSessions(taskId);
+    this.editTaskLogMins.focus();
+  }
+
+  renderEditTaskSessions(taskId) {
+    const task = store.getState().tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const sessStats = store.getTaskSessionStats(task);
+
+    if (this.editTaskTimeSpent) {
+      this.editTaskTimeSpent.value = sessStats.totalMins > 0 ? String(sessStats.totalMins) : '0';
+    }
+    if (this.editTaskSessionsCount) {
+      this.editTaskSessionsCount.textContent = `${sessStats.sessionCount} ${sessStats.sessionCount === 1 ? 'session' : 'sessions'} · ${sessStats.totalMins}m total`;
+    }
+    if (!this.editTaskSessionsList) return;
+
+    const sortedSessions = [...(sessStats.sessions || [])].sort(
+      (a, b) => new Date(b.startTime || b.endTime || b.createdAt || 0).getTime() - new Date(a.startTime || a.endTime || a.createdAt || 0).getTime()
+    );
+
+    if (sortedSessions.length === 0) {
+      this.editTaskSessionsList.innerHTML = `<div class="task-session-empty-hint">No study logs yet. Pick a date & minutes above to add a separate session.</div>`;
+      return;
+    }
+
+    this.editTaskSessionsList.innerHTML = sortedSessions.map((s) => {
+      const dStr = store.getSessionDateStr(s);
+      const tStr = s.startTime ? new Date(s.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      const mins = Math.max(1, Math.round((s.durationSec || 0) / 60));
+      const midMark = store.isMidnightTimestamp(s.startTime || s.endTime) ? ' 🌙' : '';
+      const safeSessId = escapeHTML(s.id);
+      const noteHtml = s.notes ? `<span class="task-session-mini-note" title="${escapeHTML(s.notes)}">${escapeHTML(s.notes)}</span>` : '';
+      return `
+        <div class="task-session-mini-row">
+          <div class="task-session-mini-meta">
+            <span>${escapeHTML(dStr)}${tStr ? ` · ${escapeHTML(tStr)}` : ''}${midMark}</span>
+            ${noteHtml}
+          </div>
+          <div class="task-session-mini-right">
+            <strong>${mins}m</strong>
+            <button type="button" class="btn-delete-task-session" data-session-id="${safeSessId}" title="Delete this study log" aria-label="Delete study log">✕</button>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   closeTaskEditModal() {

@@ -1461,9 +1461,9 @@
           </div>
           <div class="form-group" style="margin-bottom: 0;">
             <label for="edit-task-time-spent" style="font-size: 0.75rem; font-weight: 600; color: var(--primary); text-transform: uppercase;">
-              Time Spent / Logged (Mins)
+              Total Logged (Mins)
             </label>
-            <input type="number" id="edit-task-time-spent" class="input-text" min="0" max="1440" placeholder="e.g. 60" title="Total minutes spent working on this task" />
+            <input type="number" id="edit-task-time-spent" class="input-text" min="0" readonly placeholder="0" title="Computed total from all recorded study sessions below" style="opacity: 0.85; cursor: default;" />
           </div>
         </div>
 
@@ -1497,7 +1497,19 @@
           <textarea id="edit-task-notes" class="input-text" rows="3" placeholder="Chapter references, formulas, homework link, or details..." style="font-size: 0.82rem;"></textarea>
         </div>
 
-        <div id="edit-task-sessions-summary" class="task-sessions-summary-box" style="display: none;"></div>
+        <div id="edit-task-sessions-summary" class="task-sessions-summary-box">
+          <div class="task-sessions-summary-header">
+            <span>Study Logs</span>
+            <strong id="edit-task-sessions-count">0 sessions · 0m total</strong>
+          </div>
+          <div class="task-session-add-row">
+            <input type="date" id="edit-task-log-date" class="input-text" aria-label="Study log date" title="Date of this study session" />
+            <input type="number" id="edit-task-log-mins" class="input-text" min="1" max="1440" placeholder="Mins" aria-label="Study log minutes" title="Minutes studied in this session" />
+            <button type="button" id="btn-edit-task-add-session" class="btn btn-secondary btn-sm" title="Record as a separate study session on the selected date">+ Log Session</button>
+          </div>
+          <input type="text" id="edit-task-log-notes" class="input-text task-session-add-notes" placeholder="Optional session note (e.g. solved problems 1-5)" aria-label="Study log note" autocomplete="off" />
+          <div id="edit-task-sessions-list" class="task-sessions-mini-list"></div>
+        </div>
 
         <div class="modal-footer" style="padding-top: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
           <button type="button" id="btn-delete-from-edit-modal" class="btn btn-secondary" style="color: var(--accent-rose);" title="Delete this task">

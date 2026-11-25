@@ -829,16 +829,97 @@
   flex-direction: column;
   gap: 0.25rem;
   border-top: 1px dashed var(--border-color);
-  padding-top: 0.4rem;
+  padding-top: 0.45rem;
+  margin-top: 0.45rem;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.task-session-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(68px, 0.75fr) auto;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.task-session-add-row .input-text {
+  font-size: 0.78rem;
+  padding: 0.34rem 0.48rem;
+  min-width: 0;
+}
+
+.task-session-add-row .btn-sm {
+  font-size: 0.74rem;
+  padding: 0.36rem 0.6rem;
+  white-space: nowrap;
+}
+
+.task-session-add-notes {
+  margin-top: 0.35rem;
+  font-size: 0.76rem;
+  padding: 0.32rem 0.5rem;
 }
 
 .task-session-mini-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
   color: var(--text-dim);
   font-size: 0.74rem;
   font-family: var(--font-mono);
+  padding: 0.16rem 0.25rem;
+  border-radius: 3px;
+}
+
+.task-session-mini-row:hover {
+  background-color: var(--bg-card);
+}
+
+.task-session-mini-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.task-session-mini-note {
+  font-family: var(--font-sans, inherit);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-session-mini-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.btn-delete-task-session {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 3px;
+  line-height: 1;
+}
+
+.btn-delete-task-session:hover {
+  color: var(--accent-rose, #f43f5e);
+  background-color: rgba(244, 63, 94, 0.12);
+}
+
+.task-session-empty-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .task-session-mini-more {

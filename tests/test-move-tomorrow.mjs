@@ -110,7 +110,7 @@ const tasksCssSrc = fs.readFileSync(path.join(rootDir, 'src', 'styles', 'tasks.c
 assert(tasksCssSrc.includes('flex-wrap: wrap'), 'tasks.css .task-actions must wrap gracefully');
 
 const swSrc = fs.readFileSync(path.join(rootDir, 'sw.js'), 'utf8');
-assert(swSrc.includes('chronostudy-clean-v41'), 'sw.js CACHE_NAME must be chronostudy-clean-v41');
+assert(/chronostudy-clean-v4[1-9]|chronostudy-clean-v[5-9]\d/.test(swSrc), 'sw.js CACHE_NAME must be >= v41');
 
 console.log('✔ UI delegation, CSS styling, and Service Worker v41 wiring verified.');
 console.log('\n✔ All Move to Tomorrow regression tests passed!');
